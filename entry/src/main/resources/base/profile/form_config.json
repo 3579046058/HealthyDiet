@@ -1,0 +1,22 @@
+{
+  "forms": [
+    {
+      "name": "HealthWidget",
+      "displayName": "健康卡片",
+      "description": "查看今日步数、心率和饮水进度",
+      "src": "./ets/pages/FormCard.ets",
+      "uiSyntax": "arkts",
+      "window": {
+        "designWidth": 360,
+        "autoDesignWidth": true
+      },
+      "colorMode": "auto",
+      "isDefault": true,
+      "updateEnabled": true,
+      "scheduledUpdateTime": "08:00",
+      "updateDuration": 30,
+      "defaultDimension": "2*2",
+      "supportDimensions": ["2*2", "2*4"]
+    }
+  ]
+}

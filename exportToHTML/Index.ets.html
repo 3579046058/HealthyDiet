@@ -1,0 +1,53 @@
+<html>
+<head>
+<title>Index.ets</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #bbb529;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #faa23d;}
+.s3 { color: #e2da90;}
+.s4 { color: #db7e9b;}
+.s5 { color: #aa7dfc;}
+.s6 { color: #b3e54c;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+Index.ets</font>
+</center></td></tr></table>
+<pre><span class="s0">@</span><span class="s1">Entry</span>
+<span class="s0">@</span><span class="s1">Component</span>
+<span class="s1">struct Index </span><span class="s2">{</span>
+  <span class="s0">@</span><span class="s1">State showTime</span><span class="s3">: </span><span class="s1">boolean </span><span class="s3">= </span><span class="s1">false</span><span class="s3">;</span>
+  <span class="s1">controller</span><span class="s3">: </span><span class="s1">TextClockController </span><span class="s3">= </span><span class="s1">new TextClockController</span><span class="s4">()</span><span class="s3">;</span>
+
+  <span class="s1">build</span><span class="s4">() </span><span class="s2">{</span>
+    <span class="s1">Row</span><span class="s4">() </span><span class="s2">{</span>
+      <span class="s1">Column</span><span class="s4">() </span><span class="s2">{</span>
+        <span class="s1">if </span><span class="s4">(</span><span class="s1">this</span><span class="s3">.</span><span class="s1">showTime</span><span class="s4">) </span><span class="s2">{</span>
+          <span class="s1">TextClock</span><span class="s4">()</span>
+            <span class="s3">.</span><span class="s1">format</span><span class="s4">(</span><span class="s5">'HH:mm:ss'</span><span class="s4">)</span>
+            <span class="s3">.</span><span class="s1">fontSize</span><span class="s4">(</span><span class="s6">40</span><span class="s4">)</span>
+            <span class="s3">.</span><span class="s1">fontWeight</span><span class="s4">(</span><span class="s1">FontWeight</span><span class="s3">.</span><span class="s1">Bold</span><span class="s4">)</span>
+            <span class="s3">.</span><span class="s1">margin</span><span class="s4">(</span><span class="s2">{ </span><span class="s1">bottom</span><span class="s3">: </span><span class="s6">30 </span><span class="s2">}</span><span class="s4">)</span>
+        <span class="s2">}</span>
+
+        <span class="s1">Button</span><span class="s4">(</span><span class="s5">'Hello World'</span><span class="s4">)</span>
+          <span class="s3">.</span><span class="s1">fontSize</span><span class="s4">(</span><span class="s1">$r</span><span class="s4">(</span><span class="s5">'app.float.page_text_font_size'</span><span class="s4">))</span>
+          <span class="s3">.</span><span class="s1">fontWeight</span><span class="s4">(</span><span class="s1">FontWeight</span><span class="s3">.</span><span class="s1">Bold</span><span class="s4">)</span>
+          <span class="s3">.</span><span class="s1">onClick</span><span class="s4">(() </span><span class="s3">=&gt; </span><span class="s2">{</span>
+            <span class="s1">this</span><span class="s3">.</span><span class="s1">showTime </span><span class="s3">= </span><span class="s1">true</span><span class="s3">;</span>
+          <span class="s2">}</span><span class="s4">)</span>
+      <span class="s2">}</span>
+      <span class="s3">.</span><span class="s1">width</span><span class="s4">(</span><span class="s5">'100%'</span><span class="s4">)</span>
+      <span class="s3">.</span><span class="s1">justifyContent</span><span class="s4">(</span><span class="s1">FlexAlign</span><span class="s3">.</span><span class="s1">Center</span><span class="s4">)</span>
+    <span class="s2">}</span>
+    <span class="s3">.</span><span class="s1">height</span><span class="s4">(</span><span class="s5">'100%'</span><span class="s4">)</span>
+  <span class="s2">}</span>
+<span class="s2">}</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<html>
+<head>
+<title>CMakeLists.txt</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #bbb529;}
+.s5 { color: #a9b7c6;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+CMakeLists.txt</font>
+</center></td></tr></table>
+<pre><span class="s0"># the minimum version of CMake.</span>
+<span class="s2">cmake_minimum_required</span><span class="s1">(</span><span class="s3">VERSION </span><span class="s1">3.5.0)</span>
+<span class="s2">project</span><span class="s1">(harmony)</span>
+
+<span class="s2">set</span><span class="s1">(NATIVERENDER_ROOT_PATH ${</span><span class="s2">CMAKE_CURRENT_SOURCE_DIR</span><span class="s1">})</span>
+
+<span class="s2">if</span><span class="s1">(</span><span class="s4">DEFINED </span><span class="s5">PACKAGE_FIND_FILE</span><span class="s1">)</span>
+    <span class="s2">include</span><span class="s1">(${PACKAGE_FIND_FILE})</span>
+<span class="s2">endif</span><span class="s1">()</span>
+
+<span class="s2">include_directories</span><span class="s1">(${NATIVERENDER_ROOT_PATH}</span>
+                    <span class="s1">${NATIVERENDER_ROOT_PATH}/include)</span>
+
+<span class="s2">add_library</span><span class="s1">(entry SHARED napi_init.cpp)</span>
+<span class="s2">target_link_libraries</span><span class="s1">(entry </span><span class="s3">PUBLIC </span><span class="s1">libace_napi.z.so)</span></pre>
+</body>
+</html>

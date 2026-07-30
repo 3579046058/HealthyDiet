@@ -1,0 +1,31 @@
+<html>
+<head>
+<title>.clangd</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #a9b7c6;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+.clangd</font>
+</center></td></tr></table>
+<pre><span class="s0">CompileFlags:</span>
+  <span class="s0">Add: [-Wunreachable-code-aggressive]</span>
+<span class="s0">Diagnostics:</span>
+  <span class="s0">ClangTidy:</span>
+    <span class="s0">Add: [misc-missing-switch-cases,misc-napi-module-name,misc-replace-if-else-with-ternary-operator,misc-unused-local-variable,misc-unused-parameters,modernize-use-auto,readability-system-capabilities,misc-napi-macro-module-name,capi-version-validation]</span>
+    <span class="s0">Remove: []</span>
+    <span class="s0">CheckOptions:</span>
+      <span class="s0">misc-unused-parameters.StrictMode: true</span>
+      <span class="s0">misc-unused-parameters.IgnoreVirtual: true</span>
+      <span class="s0">modernize-use-auto.MinTypeNameLength: 0</span>
+
+  <span class="s0">UnusedIncludes: Strict</span>
+  <span class="s0">UnusedFunctions: Check</span>
+<span class="s0">Hover:</span>
+  <span class="s0">ShowNewHover: Yes</span></pre>
+</body>
+</html>

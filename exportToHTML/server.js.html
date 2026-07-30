@@ -1,0 +1,277 @@
+<html>
+<head>
+<title>server.js</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #a9b7c6;}
+.s1 { color: #e2da90;}
+.s2 { color: #db7e9b;}
+.s3 { color: #aa7dfc;}
+.s4 { color: #faa23d;}
+.s5 { color: #b3e54c;}
+.s6 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+server.js</font>
+</center></td></tr></table>
+<pre><span class="s0">const readline </span><span class="s1">= </span><span class="s0">require</span><span class="s2">(</span><span class="s3">'readline'</span><span class="s2">)</span><span class="s1">;</span>
+<span class="s0">const fs </span><span class="s1">= </span><span class="s0">require</span><span class="s2">(</span><span class="s3">'fs'</span><span class="s2">)</span><span class="s1">;</span>
+<span class="s0">const path </span><span class="s1">= </span><span class="s0">require</span><span class="s2">(</span><span class="s3">'path'</span><span class="s2">)</span><span class="s1">;</span>
+<span class="s0">const </span><span class="s4">{ </span><span class="s0">execSync </span><span class="s4">} </span><span class="s1">= </span><span class="s0">require</span><span class="s2">(</span><span class="s3">'child_process'</span><span class="s2">)</span><span class="s1">;</span>
+
+<span class="s0">const PROJECT_ROOT </span><span class="s1">= </span><span class="s0">path</span><span class="s1">.</span><span class="s0">resolve</span><span class="s2">(</span><span class="s0">__dirname</span><span class="s1">, </span><span class="s3">'..'</span><span class="s2">)</span><span class="s1">;</span>
+<span class="s0">const rl </span><span class="s1">= </span><span class="s0">readline</span><span class="s1">.</span><span class="s0">createInterface</span><span class="s2">(</span><span class="s4">{ </span><span class="s0">input</span><span class="s1">: </span><span class="s0">process</span><span class="s1">.</span><span class="s0">stdin </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+
+<span class="s0">function send</span><span class="s2">(</span><span class="s0">msg</span><span class="s2">) </span><span class="s4">{</span>
+  <span class="s0">process</span><span class="s1">.</span><span class="s0">stdout</span><span class="s1">.</span><span class="s0">write</span><span class="s2">(</span><span class="s0">JSON</span><span class="s1">.</span><span class="s0">stringify</span><span class="s2">(</span><span class="s0">msg</span><span class="s2">) </span><span class="s1">+ </span><span class="s3">'\n'</span><span class="s2">)</span><span class="s1">;</span>
+<span class="s4">}</span>
+
+<span class="s0">function sendError</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s0">code</span><span class="s1">, </span><span class="s0">message</span><span class="s2">) </span><span class="s4">{</span>
+  <span class="s0">send</span><span class="s2">(</span><span class="s4">{ </span><span class="s0">jsonrpc</span><span class="s1">: </span><span class="s3">'2.0'</span><span class="s1">, </span><span class="s0">id</span><span class="s1">, </span><span class="s0">error</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">code</span><span class="s1">, </span><span class="s0">message </span><span class="s4">} }</span><span class="s2">)</span><span class="s1">;</span>
+<span class="s4">}</span>
+
+<span class="s0">function sendResult</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s0">result</span><span class="s2">) </span><span class="s4">{</span>
+  <span class="s0">send</span><span class="s2">(</span><span class="s4">{ </span><span class="s0">jsonrpc</span><span class="s1">: </span><span class="s3">'2.0'</span><span class="s1">, </span><span class="s0">id</span><span class="s1">, </span><span class="s0">result </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+<span class="s4">}</span>
+
+<span class="s0">function safeResolve</span><span class="s2">(</span><span class="s0">filePath</span><span class="s2">) </span><span class="s4">{</span>
+  <span class="s0">const resolved </span><span class="s1">= </span><span class="s0">path</span><span class="s1">.</span><span class="s0">resolve</span><span class="s2">(</span><span class="s0">PROJECT_ROOT</span><span class="s1">, </span><span class="s0">filePath</span><span class="s2">)</span><span class="s1">;</span>
+  <span class="s0">if </span><span class="s2">(</span><span class="s1">!</span><span class="s0">resolved</span><span class="s1">.</span><span class="s0">startsWith</span><span class="s2">(</span><span class="s0">PROJECT_ROOT</span><span class="s2">)) </span><span class="s4">{</span>
+    <span class="s0">throw new Error</span><span class="s2">(</span><span class="s3">'Path traversal denied'</span><span class="s2">)</span><span class="s1">;</span>
+  <span class="s4">}</span>
+  <span class="s0">return resolved</span><span class="s1">;</span>
+<span class="s4">}</span>
+
+<span class="s0">rl</span><span class="s1">.</span><span class="s0">on</span><span class="s2">(</span><span class="s3">'line'</span><span class="s1">, </span><span class="s2">(</span><span class="s0">line</span><span class="s2">) </span><span class="s1">=&gt; </span><span class="s4">{</span>
+  <span class="s0">let msg</span><span class="s1">;</span>
+  <span class="s0">try </span><span class="s4">{</span>
+    <span class="s0">msg </span><span class="s1">= </span><span class="s0">JSON</span><span class="s1">.</span><span class="s0">parse</span><span class="s2">(</span><span class="s0">line</span><span class="s2">)</span><span class="s1">;</span>
+  <span class="s4">} </span><span class="s0">catch </span><span class="s4">{</span>
+    <span class="s0">return</span><span class="s1">;</span>
+  <span class="s4">}</span>
+
+  <span class="s0">const </span><span class="s4">{ </span><span class="s0">id</span><span class="s1">, </span><span class="s0">method</span><span class="s1">, </span><span class="s0">params </span><span class="s4">} </span><span class="s1">= </span><span class="s0">msg</span><span class="s1">;</span>
+
+  <span class="s0">if </span><span class="s2">(</span><span class="s0">method </span><span class="s1">=== </span><span class="s3">'initialize'</span><span class="s2">) </span><span class="s4">{</span>
+    <span class="s0">sendResult</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s4">{</span>
+      <span class="s0">protocolVersion</span><span class="s1">: </span><span class="s0">params</span><span class="s1">?.</span><span class="s0">protocolVersion </span><span class="s1">|| </span><span class="s3">'2024-11-05'</span><span class="s1">,</span>
+      <span class="s0">capabilities</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">tools</span><span class="s1">: </span><span class="s4">{} }</span><span class="s1">,</span>
+      <span class="s0">serverInfo</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">name</span><span class="s1">: </span><span class="s3">'harmony-mcp'</span><span class="s1">, </span><span class="s0">version</span><span class="s1">: </span><span class="s3">'1.0.0' </span><span class="s4">}</span>
+    <span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+
+  <span class="s4">} </span><span class="s0">else if </span><span class="s2">(</span><span class="s0">method </span><span class="s1">=== </span><span class="s3">'tools/list'</span><span class="s2">) </span><span class="s4">{</span>
+    <span class="s0">sendResult</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s4">{</span>
+      <span class="s0">tools</span><span class="s1">: </span><span class="s2">[</span>
+        <span class="s4">{</span>
+          <span class="s0">name</span><span class="s1">: </span><span class="s3">'read_file'</span><span class="s1">,</span>
+          <span class="s0">description</span><span class="s1">: </span><span class="s3">'Read a file from the project'</span><span class="s1">,</span>
+          <span class="s0">inputSchema</span><span class="s1">: </span><span class="s4">{</span>
+            <span class="s0">type</span><span class="s1">: </span><span class="s3">'object'</span><span class="s1">,</span>
+            <span class="s0">properties</span><span class="s1">: </span><span class="s4">{</span>
+              <span class="s0">path</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'string'</span><span class="s1">, </span><span class="s0">description</span><span class="s1">: </span><span class="s3">'Relative path from project root (e.g. entry/src/main/ets/pages/Index.ets)' </span><span class="s4">}</span>
+            <span class="s4">}</span><span class="s1">,</span>
+            <span class="s0">required</span><span class="s1">: </span><span class="s2">[</span><span class="s3">'path'</span><span class="s2">]</span>
+          <span class="s4">}</span>
+        <span class="s4">}</span><span class="s1">,</span>
+        <span class="s4">{</span>
+          <span class="s0">name</span><span class="s1">: </span><span class="s3">'write_file'</span><span class="s1">,</span>
+          <span class="s0">description</span><span class="s1">: </span><span class="s3">'Write content to a file (creates dirs if needed)'</span><span class="s1">,</span>
+          <span class="s0">inputSchema</span><span class="s1">: </span><span class="s4">{</span>
+            <span class="s0">type</span><span class="s1">: </span><span class="s3">'object'</span><span class="s1">,</span>
+            <span class="s0">properties</span><span class="s1">: </span><span class="s4">{</span>
+              <span class="s0">path</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'string'</span><span class="s1">, </span><span class="s0">description</span><span class="s1">: </span><span class="s3">'Relative path from project root' </span><span class="s4">}</span><span class="s1">,</span>
+              <span class="s0">content</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'string'</span><span class="s1">, </span><span class="s0">description</span><span class="s1">: </span><span class="s3">'File content to write' </span><span class="s4">}</span>
+            <span class="s4">}</span><span class="s1">,</span>
+            <span class="s0">required</span><span class="s1">: </span><span class="s2">[</span><span class="s3">'path'</span><span class="s1">, </span><span class="s3">'content'</span><span class="s2">]</span>
+          <span class="s4">}</span>
+        <span class="s4">}</span><span class="s1">,</span>
+        <span class="s4">{</span>
+          <span class="s0">name</span><span class="s1">: </span><span class="s3">'search_files'</span><span class="s1">,</span>
+          <span class="s0">description</span><span class="s1">: </span><span class="s3">'Search for text in project files using ripgrep or findstr'</span><span class="s1">,</span>
+          <span class="s0">inputSchema</span><span class="s1">: </span><span class="s4">{</span>
+            <span class="s0">type</span><span class="s1">: </span><span class="s3">'object'</span><span class="s1">,</span>
+            <span class="s0">properties</span><span class="s1">: </span><span class="s4">{</span>
+              <span class="s0">pattern</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'string'</span><span class="s1">, </span><span class="s0">description</span><span class="s1">: </span><span class="s3">'Search pattern' </span><span class="s4">}</span><span class="s1">,</span>
+              <span class="s0">glob</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'string'</span><span class="s1">, </span><span class="s0">description</span><span class="s1">: </span><span class="s3">'File pattern filter (e.g. *.ets, *.ts)' </span><span class="s4">}</span>
+            <span class="s4">}</span><span class="s1">,</span>
+            <span class="s0">required</span><span class="s1">: </span><span class="s2">[</span><span class="s3">'pattern'</span><span class="s2">]</span>
+          <span class="s4">}</span>
+        <span class="s4">}</span><span class="s1">,</span>
+        <span class="s4">{</span>
+          <span class="s0">name</span><span class="s1">: </span><span class="s3">'project_tree'</span><span class="s1">,</span>
+          <span class="s0">description</span><span class="s1">: </span><span class="s3">'Show project directory structure (up to depth 3)'</span><span class="s1">,</span>
+          <span class="s0">inputSchema</span><span class="s1">: </span><span class="s4">{</span>
+            <span class="s0">type</span><span class="s1">: </span><span class="s3">'object'</span><span class="s1">,</span>
+            <span class="s0">properties</span><span class="s1">: </span><span class="s4">{</span>
+              <span class="s0">dir</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'string'</span><span class="s1">, </span><span class="s0">description</span><span class="s1">: </span><span class="s3">'Relative subdirectory (optional)' </span><span class="s4">}</span><span class="s1">,</span>
+              <span class="s0">depth</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'number'</span><span class="s1">, </span><span class="s0">description</span><span class="s1">: </span><span class="s3">'Depth level (default 2, max 4)' </span><span class="s4">}</span>
+            <span class="s4">}</span>
+          <span class="s4">}</span>
+        <span class="s4">}</span><span class="s1">,</span>
+        <span class="s4">{</span>
+          <span class="s0">name</span><span class="s1">: </span><span class="s3">'run_shell'</span><span class="s1">,</span>
+          <span class="s0">description</span><span class="s1">: </span><span class="s3">'Run a shell command in the project directory'</span><span class="s1">,</span>
+          <span class="s0">inputSchema</span><span class="s1">: </span><span class="s4">{</span>
+            <span class="s0">type</span><span class="s1">: </span><span class="s3">'object'</span><span class="s1">,</span>
+            <span class="s0">properties</span><span class="s1">: </span><span class="s4">{</span>
+              <span class="s0">command</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'string'</span><span class="s1">, </span><span class="s0">description</span><span class="s1">: </span><span class="s3">'Shell command to run' </span><span class="s4">}</span>
+            <span class="s4">}</span><span class="s1">,</span>
+            <span class="s0">required</span><span class="s1">: </span><span class="s2">[</span><span class="s3">'command'</span><span class="s2">]</span>
+          <span class="s4">}</span>
+        <span class="s4">}</span><span class="s1">,</span>
+        <span class="s4">{</span>
+          <span class="s0">name</span><span class="s1">: </span><span class="s3">'scan_ai_markers'</span><span class="s1">,</span>
+          <span class="s0">description</span><span class="s1">: </span><span class="s3">'Scan project source files for // AI: markers and return details'</span><span class="s1">,</span>
+          <span class="s0">inputSchema</span><span class="s1">: </span><span class="s4">{</span>
+            <span class="s0">type</span><span class="s1">: </span><span class="s3">'object'</span><span class="s1">,</span>
+            <span class="s0">properties</span><span class="s1">: </span><span class="s4">{</span>
+              <span class="s0">dir</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'string'</span><span class="s1">, </span><span class="s0">description</span><span class="s1">: </span><span class="s3">'Subdirectory to scan (optional, default is root)' </span><span class="s4">}</span>
+            <span class="s4">}</span>
+          <span class="s4">}</span>
+        <span class="s4">}</span>
+      <span class="s2">]</span>
+    <span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+
+  <span class="s4">} </span><span class="s0">else if </span><span class="s2">(</span><span class="s0">method </span><span class="s1">=== </span><span class="s3">'tools/call'</span><span class="s2">) </span><span class="s4">{</span>
+    <span class="s0">const toolName </span><span class="s1">= </span><span class="s0">params</span><span class="s1">?.</span><span class="s0">name</span><span class="s1">;</span>
+    <span class="s0">const args </span><span class="s1">= </span><span class="s0">params</span><span class="s1">?.</span><span class="s0">arguments </span><span class="s1">|| </span><span class="s4">{}</span><span class="s1">;</span>
+
+    <span class="s0">try </span><span class="s4">{</span>
+      <span class="s0">switch </span><span class="s2">(</span><span class="s0">toolName</span><span class="s2">) </span><span class="s4">{</span>
+        <span class="s0">case </span><span class="s3">'read_file'</span><span class="s1">: </span><span class="s4">{</span>
+          <span class="s0">const filePath </span><span class="s1">= </span><span class="s0">safeResolve</span><span class="s2">(</span><span class="s0">args</span><span class="s1">.</span><span class="s0">path</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">const content </span><span class="s1">= </span><span class="s0">fs</span><span class="s1">.</span><span class="s0">readFileSync</span><span class="s2">(</span><span class="s0">filePath</span><span class="s1">, </span><span class="s3">'utf-8'</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">sendResult</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s4">{ </span><span class="s0">content</span><span class="s1">: </span><span class="s2">[</span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'text'</span><span class="s1">, </span><span class="s0">text</span><span class="s1">: </span><span class="s0">content </span><span class="s4">}</span><span class="s2">] </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">break</span><span class="s1">;</span>
+        <span class="s4">}</span>
+        <span class="s0">case </span><span class="s3">'write_file'</span><span class="s1">: </span><span class="s4">{</span>
+          <span class="s0">const filePath </span><span class="s1">= </span><span class="s0">safeResolve</span><span class="s2">(</span><span class="s0">args</span><span class="s1">.</span><span class="s0">path</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">fs</span><span class="s1">.</span><span class="s0">mkdirSync</span><span class="s2">(</span><span class="s0">path</span><span class="s1">.</span><span class="s0">dirname</span><span class="s2">(</span><span class="s0">filePath</span><span class="s2">)</span><span class="s1">, </span><span class="s4">{ </span><span class="s0">recursive</span><span class="s1">: </span><span class="s0">true </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">fs</span><span class="s1">.</span><span class="s0">writeFileSync</span><span class="s2">(</span><span class="s0">filePath</span><span class="s1">, </span><span class="s0">args</span><span class="s1">.</span><span class="s0">content</span><span class="s1">, </span><span class="s3">'utf-8'</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">sendResult</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s4">{ </span><span class="s0">content</span><span class="s1">: </span><span class="s2">[</span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'text'</span><span class="s1">, </span><span class="s0">text</span><span class="s1">: </span><span class="s3">'Written ' </span><span class="s1">+ </span><span class="s0">args</span><span class="s1">.</span><span class="s0">path </span><span class="s4">}</span><span class="s2">] </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">break</span><span class="s1">;</span>
+        <span class="s4">}</span>
+        <span class="s0">case </span><span class="s3">'search_files'</span><span class="s1">: </span><span class="s4">{</span>
+          <span class="s0">const cwd </span><span class="s1">= </span><span class="s0">PROJECT_ROOT</span><span class="s1">;</span>
+          <span class="s0">const glob </span><span class="s1">= </span><span class="s0">args</span><span class="s1">.</span><span class="s0">glob </span><span class="s1">|| </span><span class="s3">'*'</span><span class="s1">;</span>
+          <span class="s0">let result</span><span class="s1">;</span>
+          <span class="s0">try </span><span class="s4">{</span>
+            <span class="s0">result </span><span class="s1">= </span><span class="s0">execSync</span><span class="s2">(</span>
+              <span class="s3">'rg --no-heading -n &quot;' </span><span class="s1">+ </span><span class="s0">args</span><span class="s1">.</span><span class="s0">pattern</span><span class="s1">.</span><span class="s0">replace</span><span class="s2">(</span><span class="s3">/&quot;/g</span><span class="s1">, </span><span class="s3">'\\&quot;'</span><span class="s2">) </span><span class="s1">+ </span><span class="s3">'&quot; -g &quot;' </span><span class="s1">+ </span><span class="s0">glob </span><span class="s1">+ </span><span class="s3">'&quot;'</span><span class="s1">,</span>
+              <span class="s4">{ </span><span class="s0">cwd</span><span class="s1">, </span><span class="s0">encoding</span><span class="s1">: </span><span class="s3">'utf-8'</span><span class="s1">, </span><span class="s0">stdio</span><span class="s1">: </span><span class="s2">[</span><span class="s3">'pipe'</span><span class="s1">, </span><span class="s3">'pipe'</span><span class="s1">, </span><span class="s3">'pipe'</span><span class="s2">]</span><span class="s1">, </span><span class="s0">timeout</span><span class="s1">: </span><span class="s5">10000 </span><span class="s4">}</span>
+            <span class="s2">)</span><span class="s1">;</span>
+          <span class="s4">} </span><span class="s0">catch </span><span class="s4">{</span>
+            <span class="s0">try </span><span class="s4">{</span>
+              <span class="s0">result </span><span class="s1">= </span><span class="s0">execSync</span><span class="s2">(</span>
+                <span class="s3">'Get-ChildItem -Recurse -Filter &quot;' </span><span class="s1">+ </span><span class="s0">glob </span><span class="s1">+ </span><span class="s3">'&quot; | Select-String -Pattern &quot;' </span><span class="s1">+ </span><span class="s0">args</span><span class="s1">.</span><span class="s0">pattern </span><span class="s1">+ </span><span class="s3">'&quot;'</span><span class="s1">,</span>
+                <span class="s4">{ </span><span class="s0">cwd</span><span class="s1">, </span><span class="s0">encoding</span><span class="s1">: </span><span class="s3">'utf-8'</span><span class="s1">, </span><span class="s0">shell</span><span class="s1">: </span><span class="s3">'powershell'</span><span class="s1">, </span><span class="s0">stdio</span><span class="s1">: </span><span class="s2">[</span><span class="s3">'pipe'</span><span class="s1">, </span><span class="s3">'pipe'</span><span class="s1">, </span><span class="s3">'pipe'</span><span class="s2">]</span><span class="s1">, </span><span class="s0">timeout</span><span class="s1">: </span><span class="s5">15000 </span><span class="s4">}</span>
+              <span class="s2">)</span><span class="s1">;</span>
+            <span class="s4">} </span><span class="s0">catch </span><span class="s2">(</span><span class="s0">e2</span><span class="s2">) </span><span class="s4">{</span>
+              <span class="s0">result </span><span class="s1">= </span><span class="s0">e2</span><span class="s1">.</span><span class="s0">stdout </span><span class="s1">|| </span><span class="s3">'No matches found'</span><span class="s1">;</span>
+            <span class="s4">}</span>
+          <span class="s4">}</span>
+          <span class="s0">sendResult</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s4">{ </span><span class="s0">content</span><span class="s1">: </span><span class="s2">[</span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'text'</span><span class="s1">, </span><span class="s0">text</span><span class="s1">: </span><span class="s0">result </span><span class="s4">}</span><span class="s2">] </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">break</span><span class="s1">;</span>
+        <span class="s4">}</span>
+        <span class="s0">case </span><span class="s3">'project_tree'</span><span class="s1">: </span><span class="s4">{</span>
+          <span class="s0">const targetDir </span><span class="s1">= </span><span class="s0">safeResolve</span><span class="s2">(</span><span class="s0">args</span><span class="s1">.</span><span class="s0">dir </span><span class="s1">|| </span><span class="s3">'.'</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">const depth </span><span class="s1">= </span><span class="s0">Math</span><span class="s1">.</span><span class="s0">min</span><span class="s2">(</span><span class="s0">args</span><span class="s1">.</span><span class="s0">depth </span><span class="s1">|| </span><span class="s5">2</span><span class="s1">, </span><span class="s5">4</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">function tree</span><span class="s2">(</span><span class="s0">dir</span><span class="s1">, </span><span class="s0">level</span><span class="s2">) </span><span class="s4">{</span>
+            <span class="s0">if </span><span class="s2">(</span><span class="s0">level </span><span class="s1">&gt; </span><span class="s0">depth</span><span class="s2">) </span><span class="s0">return </span><span class="s3">''</span><span class="s1">;</span>
+            <span class="s0">let lines </span><span class="s1">= </span><span class="s3">''</span><span class="s1">;</span>
+            <span class="s0">const items </span><span class="s1">= </span><span class="s0">fs</span><span class="s1">.</span><span class="s0">readdirSync</span><span class="s2">(</span><span class="s0">dir</span><span class="s1">, </span><span class="s4">{ </span><span class="s0">withFileTypes</span><span class="s1">: </span><span class="s0">true </span><span class="s4">}</span><span class="s2">)</span>
+              <span class="s1">.</span><span class="s0">filter</span><span class="s2">(</span><span class="s0">function</span><span class="s2">(</span><span class="s0">d</span><span class="s2">) </span><span class="s4">{ </span><span class="s0">return </span><span class="s1">!</span><span class="s0">d</span><span class="s1">.</span><span class="s0">name</span><span class="s1">.</span><span class="s0">startsWith</span><span class="s2">(</span><span class="s3">'.'</span><span class="s2">) </span><span class="s1">&amp;&amp; </span><span class="s0">d</span><span class="s1">.</span><span class="s0">name </span><span class="s1">!== </span><span class="s3">'node_modules' </span><span class="s1">&amp;&amp; </span><span class="s0">d</span><span class="s1">.</span><span class="s0">name </span><span class="s1">!== </span><span class="s3">'oh_modules'</span><span class="s1">; </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+            <span class="s0">for </span><span class="s2">(</span><span class="s0">const item of items</span><span class="s2">) </span><span class="s4">{</span>
+              <span class="s0">const indent </span><span class="s1">= </span><span class="s3">'  '</span><span class="s1">.</span><span class="s0">repeat</span><span class="s2">(</span><span class="s0">level</span><span class="s2">)</span><span class="s1">;</span>
+              <span class="s0">const prefix </span><span class="s1">= </span><span class="s0">item</span><span class="s1">.</span><span class="s0">isDirectory</span><span class="s2">() </span><span class="s1">? </span><span class="s3">'[DIR]' </span><span class="s1">: </span><span class="s3">'[FILE]'</span><span class="s1">;</span>
+              <span class="s0">lines </span><span class="s1">+= </span><span class="s0">indent </span><span class="s1">+ </span><span class="s0">prefix </span><span class="s1">+ </span><span class="s3">' ' </span><span class="s1">+ </span><span class="s0">item</span><span class="s1">.</span><span class="s0">name </span><span class="s1">+ </span><span class="s3">'\n'</span><span class="s1">;</span>
+              <span class="s0">if </span><span class="s2">(</span><span class="s0">item</span><span class="s1">.</span><span class="s0">isDirectory</span><span class="s2">()) </span><span class="s4">{</span>
+                <span class="s0">lines </span><span class="s1">+= </span><span class="s0">tree</span><span class="s2">(</span><span class="s0">path</span><span class="s1">.</span><span class="s0">join</span><span class="s2">(</span><span class="s0">dir</span><span class="s1">, </span><span class="s0">item</span><span class="s1">.</span><span class="s0">name</span><span class="s2">)</span><span class="s1">, </span><span class="s0">level </span><span class="s1">+ </span><span class="s5">1</span><span class="s2">)</span><span class="s1">;</span>
+              <span class="s4">}</span>
+            <span class="s4">}</span>
+            <span class="s0">return lines</span><span class="s1">;</span>
+          <span class="s4">}</span>
+          <span class="s0">const output </span><span class="s1">= </span><span class="s0">tree</span><span class="s2">(</span><span class="s0">targetDir</span><span class="s1">, </span><span class="s5">0</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">sendResult</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s4">{ </span><span class="s0">content</span><span class="s1">: </span><span class="s2">[</span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'text'</span><span class="s1">, </span><span class="s0">text</span><span class="s1">: </span><span class="s0">output </span><span class="s1">|| </span><span class="s3">'(empty)' </span><span class="s4">}</span><span class="s2">] </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">break</span><span class="s1">;</span>
+        <span class="s4">}</span>
+        <span class="s0">case </span><span class="s3">'run_shell'</span><span class="s1">: </span><span class="s4">{</span>
+          <span class="s0">try </span><span class="s4">{</span>
+            <span class="s0">const result </span><span class="s1">= </span><span class="s0">execSync</span><span class="s2">(</span><span class="s0">args</span><span class="s1">.</span><span class="s0">command</span><span class="s1">, </span><span class="s4">{</span>
+              <span class="s0">cwd</span><span class="s1">: </span><span class="s0">PROJECT_ROOT</span><span class="s1">,</span>
+              <span class="s0">encoding</span><span class="s1">: </span><span class="s3">'utf-8'</span><span class="s1">,</span>
+              <span class="s0">timeout</span><span class="s1">: </span><span class="s5">30000</span><span class="s1">,</span>
+              <span class="s0">shell</span><span class="s1">: </span><span class="s3">'powershell'</span>
+            <span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+            <span class="s0">sendResult</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s4">{ </span><span class="s0">content</span><span class="s1">: </span><span class="s2">[</span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'text'</span><span class="s1">, </span><span class="s0">text</span><span class="s1">: </span><span class="s0">result </span><span class="s1">|| </span><span class="s3">'(no output)' </span><span class="s4">}</span><span class="s2">] </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s4">} </span><span class="s0">catch </span><span class="s2">(</span><span class="s0">e</span><span class="s2">) </span><span class="s4">{</span>
+            <span class="s0">const stderr </span><span class="s1">= </span><span class="s0">e</span><span class="s1">.</span><span class="s0">stderr </span><span class="s1">|| </span><span class="s3">''</span><span class="s1">;</span>
+            <span class="s0">const stdout </span><span class="s1">= </span><span class="s0">e</span><span class="s1">.</span><span class="s0">stdout </span><span class="s1">|| </span><span class="s3">''</span><span class="s1">;</span>
+            <span class="s0">sendResult</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s4">{ </span><span class="s0">content</span><span class="s1">: </span><span class="s2">[</span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'text'</span><span class="s1">, </span><span class="s0">text</span><span class="s1">: </span><span class="s0">stdout </span><span class="s1">+ </span><span class="s3">'\n' </span><span class="s1">+ </span><span class="s0">stderr </span><span class="s4">}</span><span class="s2">] </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s4">}</span>
+          <span class="s0">break</span><span class="s1">;</span>
+        <span class="s4">}</span>
+        <span class="s0">case </span><span class="s3">'scan_ai_markers'</span><span class="s1">: </span><span class="s4">{</span>
+          <span class="s0">const targetDir </span><span class="s1">= </span><span class="s0">safeResolve</span><span class="s2">(</span><span class="s0">args</span><span class="s1">.</span><span class="s0">dir </span><span class="s1">|| </span><span class="s3">'.'</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">const results </span><span class="s1">= </span><span class="s2">[]</span><span class="s1">;</span>
+          <span class="s0">function walk</span><span class="s2">(</span><span class="s0">dir</span><span class="s2">) </span><span class="s4">{</span>
+            <span class="s0">let items</span><span class="s1">;</span>
+            <span class="s0">try </span><span class="s4">{ </span><span class="s0">items </span><span class="s1">= </span><span class="s0">fs</span><span class="s1">.</span><span class="s0">readdirSync</span><span class="s2">(</span><span class="s0">dir</span><span class="s1">, </span><span class="s4">{ </span><span class="s0">withFileTypes</span><span class="s1">: </span><span class="s0">true </span><span class="s4">}</span><span class="s2">)</span><span class="s1">; </span><span class="s4">} </span><span class="s0">catch </span><span class="s4">{ </span><span class="s0">return</span><span class="s1">; </span><span class="s4">}</span>
+            <span class="s0">for </span><span class="s2">(</span><span class="s0">const item of items</span><span class="s2">) </span><span class="s4">{</span>
+              <span class="s0">const full </span><span class="s1">= </span><span class="s0">path</span><span class="s1">.</span><span class="s0">join</span><span class="s2">(</span><span class="s0">dir</span><span class="s1">, </span><span class="s0">item</span><span class="s1">.</span><span class="s0">name</span><span class="s2">)</span><span class="s1">;</span>
+              <span class="s0">if </span><span class="s2">(</span><span class="s0">item</span><span class="s1">.</span><span class="s0">isDirectory</span><span class="s2">()) </span><span class="s4">{</span>
+                <span class="s0">if </span><span class="s2">(</span><span class="s1">!</span><span class="s0">item</span><span class="s1">.</span><span class="s0">name</span><span class="s1">.</span><span class="s0">startsWith</span><span class="s2">(</span><span class="s3">'.'</span><span class="s2">) </span><span class="s1">&amp;&amp; </span><span class="s0">item</span><span class="s1">.</span><span class="s0">name </span><span class="s1">!== </span><span class="s3">'oh_modules' </span><span class="s1">&amp;&amp; </span><span class="s0">item</span><span class="s1">.</span><span class="s0">name </span><span class="s1">!== </span><span class="s3">'node_modules' </span><span class="s1">&amp;&amp; </span><span class="s0">item</span><span class="s1">.</span><span class="s0">name </span><span class="s1">!== </span><span class="s3">'build'</span><span class="s2">) </span><span class="s4">{</span>
+                  <span class="s0">walk</span><span class="s2">(</span><span class="s0">full</span><span class="s2">)</span><span class="s1">;</span>
+                <span class="s4">}</span>
+              <span class="s4">} </span><span class="s0">else if </span><span class="s2">(</span><span class="s0">item</span><span class="s1">.</span><span class="s0">name</span><span class="s1">.</span><span class="s0">endsWith</span><span class="s2">(</span><span class="s3">'.ets'</span><span class="s2">) </span><span class="s1">|| </span><span class="s0">item</span><span class="s1">.</span><span class="s0">name</span><span class="s1">.</span><span class="s0">endsWith</span><span class="s2">(</span><span class="s3">'.ts'</span><span class="s2">) </span><span class="s1">|| </span><span class="s0">item</span><span class="s1">.</span><span class="s0">name</span><span class="s1">.</span><span class="s0">endsWith</span><span class="s2">(</span><span class="s3">'.js'</span><span class="s2">) </span><span class="s1">|| </span><span class="s0">item</span><span class="s1">.</span><span class="s0">name</span><span class="s1">.</span><span class="s0">endsWith</span><span class="s2">(</span><span class="s3">'.json5'</span><span class="s2">)) </span><span class="s4">{</span>
+                <span class="s0">try </span><span class="s4">{</span>
+                  <span class="s0">const content </span><span class="s1">= </span><span class="s0">fs</span><span class="s1">.</span><span class="s0">readFileSync</span><span class="s2">(</span><span class="s0">full</span><span class="s1">, </span><span class="s3">'utf-8'</span><span class="s2">)</span><span class="s1">;</span>
+                  <span class="s0">const lines </span><span class="s1">= </span><span class="s0">content</span><span class="s1">.</span><span class="s0">split</span><span class="s2">(</span><span class="s3">'\n'</span><span class="s2">)</span><span class="s1">;</span>
+                  <span class="s0">for </span><span class="s2">(</span><span class="s0">let i </span><span class="s1">= </span><span class="s5">0</span><span class="s1">; </span><span class="s0">i </span><span class="s1">&lt; </span><span class="s0">lines</span><span class="s1">.</span><span class="s0">length</span><span class="s1">; </span><span class="s0">i</span><span class="s1">++</span><span class="s2">) </span><span class="s4">{</span>
+                    <span class="s0">const trimmed </span><span class="s1">= </span><span class="s0">lines</span><span class="s2">[</span><span class="s0">i</span><span class="s2">]</span><span class="s1">.</span><span class="s0">trim</span><span class="s2">()</span><span class="s1">;</span>
+                    <span class="s0">const idx </span><span class="s1">= </span><span class="s0">trimmed</span><span class="s1">.</span><span class="s0">indexOf</span><span class="s2">(</span><span class="s3">'// AI:'</span><span class="s2">)</span><span class="s1">;</span>
+                    <span class="s0">if </span><span class="s2">(</span><span class="s0">idx </span><span class="s1">!== -</span><span class="s5">1</span><span class="s2">) </span><span class="s4">{</span>
+                      <span class="s0">const relPath </span><span class="s1">= </span><span class="s0">path</span><span class="s1">.</span><span class="s0">relative</span><span class="s2">(</span><span class="s0">PROJECT_ROOT</span><span class="s1">, </span><span class="s0">full</span><span class="s2">)</span><span class="s1">;</span>
+                      <span class="s0">const before </span><span class="s1">= </span><span class="s0">lines</span><span class="s2">[</span><span class="s0">Math</span><span class="s1">.</span><span class="s0">max</span><span class="s2">(</span><span class="s5">0</span><span class="s1">, </span><span class="s0">i </span><span class="s1">- </span><span class="s5">2</span><span class="s2">)]</span><span class="s1">.</span><span class="s0">trim</span><span class="s2">()</span><span class="s1">;</span>
+                      <span class="s0">const after </span><span class="s1">= </span><span class="s0">lines</span><span class="s2">[</span><span class="s0">Math</span><span class="s1">.</span><span class="s0">min</span><span class="s2">(</span><span class="s0">lines</span><span class="s1">.</span><span class="s0">length </span><span class="s1">- </span><span class="s5">1</span><span class="s1">, </span><span class="s0">i </span><span class="s1">+ </span><span class="s5">2</span><span class="s2">)]</span><span class="s1">.</span><span class="s0">trim</span><span class="s2">()</span><span class="s1">;</span>
+                      <span class="s0">results</span><span class="s1">.</span><span class="s0">push</span><span class="s2">(</span><span class="s4">{</span>
+                        <span class="s0">file</span><span class="s1">: </span><span class="s0">relPath</span><span class="s1">,</span>
+                        <span class="s0">line</span><span class="s1">: </span><span class="s0">i </span><span class="s1">+ </span><span class="s5">1</span><span class="s1">,</span>
+                        <span class="s0">marker</span><span class="s1">: </span><span class="s0">trimmed</span><span class="s1">.</span><span class="s0">substring</span><span class="s2">(</span><span class="s0">idx</span><span class="s2">)</span><span class="s1">.</span><span class="s0">trim</span><span class="s2">()</span><span class="s1">,</span>
+                        <span class="s0">context</span><span class="s1">: </span><span class="s4">{ </span><span class="s0">before</span><span class="s1">: </span><span class="s0">before</span><span class="s1">, </span><span class="s0">after</span><span class="s1">: </span><span class="s0">after </span><span class="s4">}</span>
+                      <span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+                    <span class="s4">}</span>
+                  <span class="s4">}</span>
+                <span class="s4">} </span><span class="s0">catch </span><span class="s4">{ }</span>
+              <span class="s4">}</span>
+            <span class="s4">}</span>
+          <span class="s4">}</span>
+          <span class="s0">walk</span><span class="s2">(</span><span class="s0">targetDir</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">const text </span><span class="s1">= </span><span class="s0">results</span><span class="s1">.</span><span class="s0">length </span><span class="s1">=== </span><span class="s5">0</span>
+            <span class="s1">? </span><span class="s3">'No // AI: markers found.'</span>
+            <span class="s1">: </span><span class="s0">JSON</span><span class="s1">.</span><span class="s0">stringify</span><span class="s2">(</span><span class="s0">results</span><span class="s1">, </span><span class="s0">null</span><span class="s1">, </span><span class="s5">2</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">sendResult</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s4">{ </span><span class="s0">content</span><span class="s1">: </span><span class="s2">[</span><span class="s4">{ </span><span class="s0">type</span><span class="s1">: </span><span class="s3">'text'</span><span class="s1">, </span><span class="s0">text</span><span class="s1">: </span><span class="s0">text </span><span class="s4">}</span><span class="s2">] </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+          <span class="s0">break</span><span class="s1">;</span>
+        <span class="s4">}</span>
+        <span class="s0">default</span><span class="s1">:</span>
+          <span class="s0">sendError</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, -</span><span class="s5">32601</span><span class="s1">, </span><span class="s3">'Unknown tool: ' </span><span class="s1">+ </span><span class="s0">toolName</span><span class="s2">)</span><span class="s1">;</span>
+      <span class="s4">}</span>
+    <span class="s4">} </span><span class="s0">catch </span><span class="s2">(</span><span class="s0">e</span><span class="s2">) </span><span class="s4">{</span>
+      <span class="s0">sendError</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, -</span><span class="s5">32603</span><span class="s1">, </span><span class="s0">e</span><span class="s1">.</span><span class="s0">message</span><span class="s2">)</span><span class="s1">;</span>
+    <span class="s4">}</span>
+
+  <span class="s4">} </span><span class="s0">else if </span><span class="s2">(</span><span class="s0">method </span><span class="s1">=== </span><span class="s3">'notifications/initialized'</span><span class="s2">) </span><span class="s4">{</span>
+    <span class="s6">// ignore</span>
+  <span class="s4">} </span><span class="s0">else if </span><span class="s2">(</span><span class="s0">method </span><span class="s1">=== </span><span class="s3">'ping'</span><span class="s2">) </span><span class="s4">{</span>
+    <span class="s0">sendResult</span><span class="s2">(</span><span class="s0">id</span><span class="s1">, </span><span class="s4">{}</span><span class="s2">)</span><span class="s1">;</span>
+  <span class="s4">}</span>
+<span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+
+<span class="s0">send</span><span class="s2">(</span><span class="s4">{ </span><span class="s0">jsonrpc</span><span class="s1">: </span><span class="s3">'2.0'</span><span class="s1">, </span><span class="s0">method</span><span class="s1">: </span><span class="s3">'initialized' </span><span class="s4">}</span><span class="s2">)</span><span class="s1">;</span>
+</pre>
+</body>
+</html>

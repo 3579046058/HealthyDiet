@@ -1,0 +1,12 @@
+{
+  "src": [
+    "pages/Index",
+    "pages/WeightPage",
+    "pages/WaterPage",
+    "pages/SportPage",
+    "pages/SleepPage",
+    "pages/ReportPage",
+    "pages/GoalPage",
+    "pages/FormCard"
+  ]
+}

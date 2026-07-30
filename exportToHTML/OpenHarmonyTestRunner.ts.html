@@ -1,0 +1,104 @@
+<html>
+<head>
+<title>OpenHarmonyTestRunner.ts</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #faa23d;}
+.s3 { color: #e2da90;}
+.s4 { color: #aa7dfc;}
+.s5 { color: #db7e9b;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+OpenHarmonyTestRunner.ts</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd. 
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;); 
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at 
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0 
+ * 
+ * Unless required by applicable law or agreed to in writing, software 
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS, 
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing permissions and 
+ * limitations under the License. 
+ */</span>
+
+<span class="s1">import </span><span class="s2">{ </span><span class="s1">abilityDelegatorRegistry</span><span class="s3">, </span><span class="s1">TestRunner </span><span class="s2">} </span><span class="s1">from </span><span class="s4">'@kit.TestKit'</span><span class="s3">;</span>
+<span class="s1">import </span><span class="s2">{ </span><span class="s1">BusinessError </span><span class="s2">} </span><span class="s1">from </span><span class="s4">'@kit.BasicServicesKit'</span><span class="s3">;</span>
+<span class="s1">import </span><span class="s2">{ </span><span class="s1">hilog </span><span class="s2">} </span><span class="s1">from </span><span class="s4">'@kit.PerformanceAnalysisKit'</span><span class="s3">;</span>
+<span class="s1">import </span><span class="s2">{ </span><span class="s1">resourceManager </span><span class="s2">} </span><span class="s1">from </span><span class="s4">'@kit.LocalizationKit'</span><span class="s3">;</span>
+<span class="s1">import </span><span class="s2">{ </span><span class="s1">util </span><span class="s2">} </span><span class="s1">from </span><span class="s4">'@kit.ArkTS'</span><span class="s3">;</span>
+<span class="s1">import </span><span class="s2">{ </span><span class="s1">Hypium </span><span class="s2">} </span><span class="s1">from </span><span class="s4">'@ohos/hypium'</span><span class="s3">;</span>
+<span class="s1">import testsuite from </span><span class="s4">'../test/List.test'</span><span class="s3">;</span>
+
+<span class="s1">let abilityDelegator</span><span class="s3">: </span><span class="s1">abilityDelegatorRegistry</span><span class="s3">.</span><span class="s1">AbilityDelegator</span><span class="s3">;</span>
+<span class="s1">let abilityDelegatorArguments</span><span class="s3">: </span><span class="s1">abilityDelegatorRegistry</span><span class="s3">.</span><span class="s1">AbilityDelegatorArgs</span><span class="s3">;</span>
+<span class="s1">let jsonPath</span><span class="s3">: </span><span class="s1">string </span><span class="s3">= </span><span class="s4">'mock/mock-config.json'</span><span class="s3">;</span>
+<span class="s1">let domain</span><span class="s3">: </span><span class="s1">int </span><span class="s3">= </span><span class="s5">0x0000</span><span class="s3">; </span><span class="s0">//日志标识,0x0000作为测试框架的业务标识</span>
+<span class="s1">let tag</span><span class="s3">: </span><span class="s1">string </span><span class="s3">= </span><span class="s4">'testTag'</span><span class="s3">; </span><span class="s0">//日志标识字符串,作为tag标识当前runner类下的测试行为</span>
+
+<span class="s1">export default class OpenHarmonyTestRunner implements TestRunner </span><span class="s2">{</span>
+  <span class="s1">constructor</span><span class="s5">() </span><span class="s2">{</span>
+  <span class="s2">}</span>
+
+  <span class="s1">onPrepare</span><span class="s5">() </span><span class="s2">{</span>
+    <span class="s1">hilog</span><span class="s3">.</span><span class="s1">info</span><span class="s5">(</span><span class="s1">domain</span><span class="s3">, </span><span class="s1">tag</span><span class="s3">, </span><span class="s4">'%{public}s'</span><span class="s3">, </span><span class="s4">'OpenHarmonyTestRunner OnPrepare'</span><span class="s5">)</span><span class="s3">;</span>
+  <span class="s2">}</span>
+
+  <span class="s1">async onRun</span><span class="s5">() </span><span class="s2">{</span>
+    <span class="s1">hilog</span><span class="s3">.</span><span class="s1">info</span><span class="s5">(</span><span class="s1">domain</span><span class="s3">, </span><span class="s1">tag</span><span class="s3">, </span><span class="s4">'%{public}s'</span><span class="s3">, </span><span class="s4">'OpenHarmonyTestRunner onRun run'</span><span class="s5">)</span><span class="s3">;</span>
+    <span class="s1">abilityDelegatorArguments </span><span class="s3">= </span><span class="s1">abilityDelegatorRegistry</span><span class="s3">.</span><span class="s1">getArguments</span><span class="s5">()</span><span class="s3">;</span>
+    <span class="s1">abilityDelegator </span><span class="s3">= </span><span class="s1">abilityDelegatorRegistry</span><span class="s3">.</span><span class="s1">getAbilityDelegator</span><span class="s5">()</span><span class="s3">;</span>
+    <span class="s1">let moduleName </span><span class="s3">= </span><span class="s1">abilityDelegatorArguments</span><span class="s3">.</span><span class="s1">parameters</span><span class="s5">[</span><span class="s4">'-m'</span><span class="s5">]</span><span class="s3">;</span>
+    <span class="s1">let context </span><span class="s3">= </span><span class="s1">abilityDelegator</span><span class="s3">.</span><span class="s1">getAppContext</span><span class="s5">()</span><span class="s3">.</span><span class="s1">getApplicationContext</span><span class="s5">()</span><span class="s3">.</span><span class="s1">createModuleContext</span><span class="s5">(</span><span class="s1">moduleName</span><span class="s5">)</span><span class="s3">;</span>
+    <span class="s1">let mResourceManager </span><span class="s3">= </span><span class="s1">context</span><span class="s3">.</span><span class="s1">resourceManager</span><span class="s3">;</span>
+    <span class="s1">await checkMock</span><span class="s5">(</span><span class="s1">abilityDelegator</span><span class="s3">, </span><span class="s1">mResourceManager</span><span class="s5">)</span><span class="s3">;</span>
+    <span class="s1">hilog</span><span class="s3">.</span><span class="s1">info</span><span class="s5">(</span><span class="s1">domain</span><span class="s3">, </span><span class="s1">tag</span><span class="s3">, </span><span class="s4">'%{public}s'</span><span class="s3">, </span><span class="s4">'start run testcase!!!'</span><span class="s5">)</span><span class="s3">;</span>
+    <span class="s1">Hypium</span><span class="s3">.</span><span class="s1">hypiumTest</span><span class="s5">(</span><span class="s1">abilityDelegator</span><span class="s3">, </span><span class="s1">abilityDelegatorArguments</span><span class="s3">, </span><span class="s1">testsuite</span><span class="s5">)</span><span class="s3">;</span>
+    <span class="s1">hilog</span><span class="s3">.</span><span class="s1">info</span><span class="s5">(</span><span class="s1">domain</span><span class="s3">, </span><span class="s1">tag</span><span class="s3">, </span><span class="s4">'%{public}s'</span><span class="s3">, </span><span class="s4">'OpenHarmonyTestRunner onRun end'</span><span class="s5">)</span><span class="s3">;</span>
+  <span class="s2">}</span>
+<span class="s2">}</span>
+
+<span class="s1">async function checkMock</span><span class="s5">(</span><span class="s1">abilityDelegator</span><span class="s3">: </span><span class="s1">abilityDelegatorRegistry</span><span class="s3">.</span><span class="s1">AbilityDelegator</span><span class="s3">, </span><span class="s1">resourceManager</span><span class="s3">: </span><span class="s1">resourceManager</span><span class="s3">.</span><span class="s1">ResourceManager</span><span class="s5">) </span><span class="s2">{</span>
+  <span class="s1">let rawFile</span><span class="s3">: </span><span class="s1">Uint8Array</span><span class="s3">;</span>
+  <span class="s1">try </span><span class="s2">{</span>
+    <span class="s1">rawFile </span><span class="s3">= </span><span class="s1">resourceManager</span><span class="s3">.</span><span class="s1">getRawFileContentSync</span><span class="s5">(</span><span class="s1">jsonPath</span><span class="s5">)</span><span class="s3">;</span>
+    <span class="s1">hilog</span><span class="s3">.</span><span class="s1">info</span><span class="s5">(</span><span class="s1">domain</span><span class="s3">, </span><span class="s1">tag</span><span class="s3">, </span><span class="s4">'MockList file exists'</span><span class="s5">)</span><span class="s3">;</span>
+    <span class="s1">let mockStr</span><span class="s3">: </span><span class="s1">string </span><span class="s3">= </span><span class="s1">util</span><span class="s3">.</span><span class="s1">TextDecoder</span><span class="s3">.</span><span class="s1">create</span><span class="s5">(</span><span class="s4">&quot;utf-8&quot;</span><span class="s3">, </span><span class="s2">{ </span><span class="s1">ignoreBOM</span><span class="s3">: </span><span class="s1">true </span><span class="s2">}</span><span class="s5">)</span><span class="s3">.</span><span class="s1">decodeWithStream</span><span class="s5">(</span><span class="s1">rawFile</span><span class="s5">)</span><span class="s3">;</span>
+    <span class="s1">let mockMap</span><span class="s3">: </span><span class="s1">Record</span><span class="s3">&lt;</span><span class="s1">string</span><span class="s3">, </span><span class="s1">string</span><span class="s3">&gt; = </span><span class="s1">getMockList</span><span class="s5">(</span><span class="s1">mockStr</span><span class="s5">)</span><span class="s3">;</span>
+    <span class="s1">try </span><span class="s2">{</span>
+      <span class="s1">abilityDelegator</span><span class="s3">.</span><span class="s1">setMockList</span><span class="s5">(</span><span class="s1">mockMap</span><span class="s5">)</span><span class="s3">;</span>
+    <span class="s2">} </span><span class="s1">catch </span><span class="s5">(</span><span class="s1">error</span><span class="s5">) </span><span class="s2">{</span>
+      <span class="s1">let code </span><span class="s3">= </span><span class="s5">(</span><span class="s1">error as BusinessError</span><span class="s5">)</span><span class="s3">.</span><span class="s1">code</span><span class="s3">;</span>
+      <span class="s1">let message </span><span class="s3">= </span><span class="s5">(</span><span class="s1">error as BusinessError</span><span class="s5">)</span><span class="s3">.</span><span class="s1">message</span><span class="s3">;</span>
+      <span class="s1">hilog</span><span class="s3">.</span><span class="s1">error</span><span class="s5">(</span><span class="s1">domain</span><span class="s3">, </span><span class="s1">tag</span><span class="s3">, </span><span class="s4">`abilityDelegator.setMockList failed, error code: </span><span class="s2">${</span><span class="s1">code</span><span class="s2">}</span><span class="s4">, message: </span><span class="s2">${</span><span class="s1">message</span><span class="s2">}</span><span class="s4">.`</span><span class="s5">)</span><span class="s3">;</span>
+    <span class="s2">}</span>
+  <span class="s2">} </span><span class="s1">catch </span><span class="s5">(</span><span class="s1">error</span><span class="s5">) </span><span class="s2">{</span>
+    <span class="s1">let code </span><span class="s3">= </span><span class="s5">(</span><span class="s1">error as BusinessError</span><span class="s5">)</span><span class="s3">.</span><span class="s1">code</span><span class="s3">;</span>
+    <span class="s1">let message </span><span class="s3">= </span><span class="s5">(</span><span class="s1">error as BusinessError</span><span class="s5">)</span><span class="s3">.</span><span class="s1">message</span><span class="s3">;</span>
+    <span class="s1">hilog</span><span class="s3">.</span><span class="s1">error</span><span class="s5">(</span><span class="s1">domain</span><span class="s3">, </span><span class="s1">tag</span><span class="s3">, </span><span class="s4">`ResourceManager:callback getRawFileContent failed, error code: </span><span class="s2">${</span><span class="s1">code</span><span class="s2">}</span><span class="s4">, message: </span><span class="s2">${</span><span class="s1">message</span><span class="s2">}</span><span class="s4">.`</span><span class="s5">)</span><span class="s3">;</span>
+  <span class="s2">}</span>
+<span class="s2">}</span>
+
+<span class="s1">function getMockList</span><span class="s5">(</span><span class="s1">jsonStr</span><span class="s3">: </span><span class="s1">string</span><span class="s5">) </span><span class="s2">{</span>
+  <span class="s1">let jsonObj</span><span class="s3">: </span><span class="s1">Record</span><span class="s3">&lt;</span><span class="s1">string</span><span class="s3">, </span><span class="s1">Object</span><span class="s3">&gt; = </span><span class="s1">JSON</span><span class="s3">.</span><span class="s1">parse</span><span class="s5">(</span><span class="s1">jsonStr</span><span class="s5">)</span><span class="s3">;</span>
+  <span class="s1">let map</span><span class="s3">: </span><span class="s1">Map</span><span class="s3">&lt;</span><span class="s1">string</span><span class="s3">, </span><span class="s1">object</span><span class="s3">&gt; = </span><span class="s1">new Map</span><span class="s3">&lt;</span><span class="s1">string</span><span class="s3">, </span><span class="s1">object</span><span class="s3">&gt;</span><span class="s5">(</span><span class="s1">Object</span><span class="s3">.</span><span class="s1">entries</span><span class="s5">(</span><span class="s1">jsonObj</span><span class="s5">))</span><span class="s3">;</span>
+  <span class="s1">let mockList</span><span class="s3">: </span><span class="s1">Record</span><span class="s3">&lt;</span><span class="s1">string</span><span class="s3">, </span><span class="s1">string</span><span class="s3">&gt; = </span><span class="s2">{}</span><span class="s3">;</span>
+  <span class="s1">map</span><span class="s3">.</span><span class="s1">forEach</span><span class="s5">((</span><span class="s1">value</span><span class="s3">: </span><span class="s1">object</span><span class="s3">, </span><span class="s1">key</span><span class="s3">: </span><span class="s1">string</span><span class="s5">) </span><span class="s3">=&gt; </span><span class="s2">{</span>
+    <span class="s1">let realValue</span><span class="s3">: </span><span class="s1">string </span><span class="s3">= </span><span class="s1">value</span><span class="s5">[</span><span class="s4">'source'</span><span class="s5">]</span><span class="s3">.</span><span class="s1">toString</span><span class="s5">()</span><span class="s3">;</span>
+    <span class="s1">mockList</span><span class="s5">[</span><span class="s1">key</span><span class="s5">] </span><span class="s3">= </span><span class="s1">realValue</span><span class="s3">;</span>
+  <span class="s2">}</span><span class="s5">)</span><span class="s3">;</span>
+  <span class="s1">hilog</span><span class="s3">.</span><span class="s1">info</span><span class="s5">(</span><span class="s1">domain</span><span class="s3">, </span><span class="s1">tag</span><span class="s3">, </span><span class="s4">'%{public}s'</span><span class="s3">, </span><span class="s4">'mock-json value:' </span><span class="s3">+ </span><span class="s1">JSON</span><span class="s3">.</span><span class="s1">stringify</span><span class="s5">(</span><span class="s1">mockList</span><span class="s5">) </span><span class="s3">?? </span><span class="s4">''</span><span class="s5">)</span><span class="s3">;</span>
+  <span class="s1">return mockList</span><span class="s3">;</span>
+<span class="s2">}</span></pre>
+</body>
+</html>

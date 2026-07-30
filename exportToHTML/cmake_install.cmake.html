@@ -1,0 +1,76 @@
+<html>
+<head>
+<title>cmake_install.cmake</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #bbb529;}
+.s4 { color: #6a8759;}
+.s5 { color: #a9b7c6;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+cmake_install.cmake</font>
+</center></td></tr></table>
+<pre><span class="s0"># Install script for directory: D:/harmony/entry/src/main/cpp</span>
+
+<span class="s0"># Set the install prefix</span>
+<span class="s2">if</span><span class="s1">(</span><span class="s3">NOT DEFINED </span><span class="s2">CMAKE_INSTALL_PREFIX</span><span class="s1">)</span>
+  <span class="s2">set</span><span class="s1">(</span><span class="s2">CMAKE_INSTALL_PREFIX </span><span class="s4">&quot;C:/Program Files (x86)/harmony&quot;</span><span class="s1">)</span>
+<span class="s2">endif</span><span class="s1">()</span>
+<span class="s2">string</span><span class="s1">(REGEX REPLACE </span><span class="s4">&quot;/$&quot; &quot;&quot; </span><span class="s2">CMAKE_INSTALL_PREFIX </span><span class="s4">&quot;${CMAKE_INSTALL_PREFIX}&quot;</span><span class="s1">)</span>
+
+<span class="s0"># Set the install configuration name.</span>
+<span class="s2">if</span><span class="s1">(</span><span class="s3">NOT DEFINED </span><span class="s5">CMAKE_INSTALL_CONFIG_NAME</span><span class="s1">)</span>
+  <span class="s2">if</span><span class="s1">(</span><span class="s2">BUILD_TYPE</span><span class="s1">)</span>
+    <span class="s2">string</span><span class="s1">(REGEX REPLACE </span><span class="s4">&quot;^[^A-Za-z0-9_]+&quot; &quot;&quot;</span>
+           <span class="s1">CMAKE_INSTALL_CONFIG_NAME </span><span class="s4">&quot;${BUILD_TYPE}&quot;</span><span class="s1">)</span>
+  <span class="s2">else</span><span class="s1">()</span>
+    <span class="s2">set</span><span class="s1">(CMAKE_INSTALL_CONFIG_NAME </span><span class="s4">&quot;Debug&quot;</span><span class="s1">)</span>
+  <span class="s2">endif</span><span class="s1">()</span>
+  <span class="s2">message</span><span class="s1">(STATUS </span><span class="s4">&quot;Install configuration: \&quot;${CMAKE_INSTALL_CONFIG_NAME}\&quot;&quot;</span><span class="s1">)</span>
+<span class="s2">endif</span><span class="s1">()</span>
+
+<span class="s0"># Set the component getting installed.</span>
+<span class="s2">if</span><span class="s1">(</span><span class="s3">NOT </span><span class="s5">CMAKE_INSTALL_COMPONENT</span><span class="s1">)</span>
+  <span class="s2">if</span><span class="s1">(</span><span class="s5">COMPONENT</span><span class="s1">)</span>
+    <span class="s2">message</span><span class="s1">(STATUS </span><span class="s4">&quot;Install component: \&quot;${COMPONENT}\&quot;&quot;</span><span class="s1">)</span>
+    <span class="s2">set</span><span class="s1">(CMAKE_INSTALL_COMPONENT </span><span class="s4">&quot;${COMPONENT}&quot;</span><span class="s1">)</span>
+  <span class="s2">else</span><span class="s1">()</span>
+    <span class="s2">set</span><span class="s1">(CMAKE_INSTALL_COMPONENT)</span>
+  <span class="s2">endif</span><span class="s1">()</span>
+<span class="s2">endif</span><span class="s1">()</span>
+
+<span class="s0"># Install shared libraries without execute permission?</span>
+<span class="s2">if</span><span class="s1">(</span><span class="s3">NOT DEFINED </span><span class="s5">CMAKE_INSTALL_SO_NO_EXE</span><span class="s1">)</span>
+  <span class="s2">set</span><span class="s1">(CMAKE_INSTALL_SO_NO_EXE </span><span class="s4">&quot;0&quot;</span><span class="s1">)</span>
+<span class="s2">endif</span><span class="s1">()</span>
+
+<span class="s0"># Is this installation the result of a crosscompile?</span>
+<span class="s2">if</span><span class="s1">(</span><span class="s3">NOT DEFINED </span><span class="s2">CMAKE_CROSSCOMPILING</span><span class="s1">)</span>
+  <span class="s2">set</span><span class="s1">(</span><span class="s2">CMAKE_CROSSCOMPILING </span><span class="s4">&quot;TRUE&quot;</span><span class="s1">)</span>
+<span class="s2">endif</span><span class="s1">()</span>
+
+<span class="s0"># Set default install directory permissions.</span>
+<span class="s2">if</span><span class="s1">(</span><span class="s3">NOT DEFINED </span><span class="s5">CMAKE_OBJDUMP</span><span class="s1">)</span>
+  <span class="s2">set</span><span class="s1">(CMAKE_OBJDUMP </span><span class="s4">&quot;D:/devecostudio-windows-6.1.0.860/DevEco Studio/sdk/default/hms/native/BiSheng/bin/llvm-objdump.exe&quot;</span><span class="s1">)</span>
+<span class="s2">endif</span><span class="s1">()</span>
+
+<span class="s2">if</span><span class="s1">(</span><span class="s5">CMAKE_INSTALL_COMPONENT</span><span class="s1">)</span>
+  <span class="s2">set</span><span class="s1">(CMAKE_INSTALL_MANIFEST </span><span class="s4">&quot;install_manifest_${CMAKE_INSTALL_COMPONENT}.txt&quot;</span><span class="s1">)</span>
+<span class="s2">else</span><span class="s1">()</span>
+  <span class="s2">set</span><span class="s1">(CMAKE_INSTALL_MANIFEST </span><span class="s4">&quot;install_manifest.txt&quot;</span><span class="s1">)</span>
+<span class="s2">endif</span><span class="s1">()</span>
+
+<span class="s2">string</span><span class="s1">(REPLACE </span><span class="s4">&quot;;&quot; &quot;\n&quot; </span><span class="s1">CMAKE_INSTALL_MANIFEST_CONTENT</span>
+       <span class="s4">&quot;${CMAKE_INSTALL_MANIFEST_FILES}&quot;</span><span class="s1">)</span>
+<span class="s2">file</span><span class="s1">(WRITE </span><span class="s4">&quot;D:/harmony/entry/.cxx/default/default/debug/arm64-v8a/${CMAKE_INSTALL_MANIFEST}&quot;</span>
+     <span class="s4">&quot;${CMAKE_INSTALL_MANIFEST_CONTENT}&quot;</span><span class="s1">)</span>
+</pre>
+</body>
+</html>

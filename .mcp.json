@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+        "harmony": {
+            "command": "node",
+            "args": [
+                ".harmony-mcp/server.js"
+            ]
+        }
+    }
+}

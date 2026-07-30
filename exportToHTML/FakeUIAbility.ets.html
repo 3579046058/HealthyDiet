@@ -1,0 +1,52 @@
+<html>
+<head>
+<title>FakeUIAbility.ets</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #a9b7c6;}
+.s1 { color: #faa23d;}
+.s2 { color: #e2da90;}
+.s3 { color: #aa7dfc;}
+.s4 { color: #db7e9b;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+FakeUIAbility.ets</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">{</span><span class="s0">AbilityConstant</span><span class="s2">, </span><span class="s0">UIAbility</span><span class="s2">, </span><span class="s0">Want</span><span class="s1">} </span><span class="s0">from </span><span class="s3">'@kit.AbilityKit'</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">{</span><span class="s0">hilog</span><span class="s1">} </span><span class="s0">from </span><span class="s3">'@kit.PerformanceAnalysisKit'</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">{</span><span class="s0">window</span><span class="s1">} </span><span class="s0">from </span><span class="s3">'@kit.ArkUI'</span><span class="s2">;</span>
+
+<span class="s0">const DOMAIN </span><span class="s2">= </span><span class="s4">0x0000</span><span class="s2">;</span>
+
+<span class="s0">export default class FakeUIAbility extends UIAbility </span><span class="s1">{</span>
+    <span class="s0">onCreate</span><span class="s4">(</span><span class="s0">want</span><span class="s2">: </span><span class="s0">Want</span><span class="s2">, </span><span class="s0">launchParam</span><span class="s2">: </span><span class="s0">AbilityConstant</span><span class="s2">.</span><span class="s0">LaunchParam</span><span class="s4">)</span><span class="s2">: </span><span class="s0">void </span><span class="s1">{</span>
+  <span class="s1">}</span>
+
+  <span class="s0">onDestroy</span><span class="s4">()</span><span class="s2">: </span><span class="s0">void </span><span class="s1">{</span>
+  <span class="s1">}</span>
+
+  <span class="s0">onWindowStageCreate</span><span class="s4">(</span><span class="s0">windowStage</span><span class="s2">: </span><span class="s0">window</span><span class="s2">.</span><span class="s0">WindowStage</span><span class="s4">)</span><span class="s2">: </span><span class="s0">void </span><span class="s1">{</span>
+    <span class="s0">windowStage</span><span class="s2">.</span><span class="s0">loadContent</span><span class="s4">(</span><span class="s3">'pages/Index'</span><span class="s2">, </span><span class="s4">(</span><span class="s0">err</span><span class="s4">) </span><span class="s2">=&gt; </span><span class="s1">{</span>
+      <span class="s0">if </span><span class="s4">(</span><span class="s0">err</span><span class="s2">.</span><span class="s0">code</span><span class="s4">) </span><span class="s1">{</span>
+        <span class="s0">hilog</span><span class="s2">.</span><span class="s0">error</span><span class="s4">(</span><span class="s0">DOMAIN</span><span class="s2">, </span><span class="s3">'testTag'</span><span class="s2">, </span><span class="s3">'Failed to load the content. Cause: %{public}s'</span><span class="s2">, </span><span class="s0">JSON</span><span class="s2">.</span><span class="s0">stringify</span><span class="s4">(</span><span class="s0">err</span><span class="s4">))</span><span class="s2">;</span>
+        <span class="s0">return</span><span class="s2">;</span>
+      <span class="s1">}</span>
+    <span class="s1">}</span><span class="s4">)</span><span class="s2">;</span>
+  <span class="s1">}</span>
+
+  <span class="s0">onWindowStageDestroy</span><span class="s4">()</span><span class="s2">: </span><span class="s0">void </span><span class="s1">{</span>
+  <span class="s1">}</span>
+
+  <span class="s0">onForeground</span><span class="s4">()</span><span class="s2">: </span><span class="s0">void </span><span class="s1">{</span>
+  <span class="s1">}</span>
+
+  <span class="s0">onBackground</span><span class="s4">()</span><span class="s2">: </span><span class="s0">void </span><span class="s1">{</span>
+  <span class="s1">}</span>
+<span class="s1">}</span>
+</pre>
+</body>
+</html>

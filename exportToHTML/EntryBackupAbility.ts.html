@@ -1,0 +1,35 @@
+<html>
+<head>
+<title>EntryBackupAbility.ts</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #a9b7c6;}
+.s1 { color: #aa7dfc;}
+.s2 { color: #e2da90;}
+.s3 { color: #faa23d;}
+.s4 { color: #db7e9b;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+EntryBackupAbility.ts</font>
+</center></td></tr></table>
+<pre><span class="s0">import hilog from </span><span class="s1">&quot;@ohos:hilog&quot;</span><span class="s2">;</span>
+<span class="s0">import BackupExtensionAbility from </span><span class="s1">&quot;@ohos:application.BackupExtensionAbility&quot;</span><span class="s2">;</span>
+<span class="s0">import type </span><span class="s3">{ </span><span class="s0">BundleVersion </span><span class="s3">} </span><span class="s0">from </span><span class="s1">&quot;@ohos:application.BackupExtensionAbility&quot;</span><span class="s2">;</span>
+<span class="s0">const DOMAIN </span><span class="s2">= </span><span class="s4">0x0000</span><span class="s2">;</span>
+<span class="s0">export default class EntryBackupAbility extends BackupExtensionAbility </span><span class="s3">{</span>
+    <span class="s0">async onBackup</span><span class="s4">() </span><span class="s3">{</span>
+        <span class="s0">hilog</span><span class="s2">.</span><span class="s0">info</span><span class="s4">(</span><span class="s0">DOMAIN</span><span class="s2">, </span><span class="s1">'testTag'</span><span class="s2">, </span><span class="s1">'onBackup ok'</span><span class="s4">)</span><span class="s2">;</span>
+        <span class="s0">await Promise</span><span class="s2">.</span><span class="s0">resolve</span><span class="s4">()</span><span class="s2">;</span>
+    <span class="s3">}</span>
+    <span class="s0">async onRestore</span><span class="s4">(</span><span class="s0">bundleVersion</span><span class="s2">: </span><span class="s0">BundleVersion</span><span class="s4">) </span><span class="s3">{</span>
+        <span class="s0">hilog</span><span class="s2">.</span><span class="s0">info</span><span class="s4">(</span><span class="s0">DOMAIN</span><span class="s2">, </span><span class="s1">'testTag'</span><span class="s2">, </span><span class="s1">'onRestore ok %{public}s'</span><span class="s2">, </span><span class="s0">JSON</span><span class="s2">.</span><span class="s0">stringify</span><span class="s4">(</span><span class="s0">bundleVersion</span><span class="s4">))</span><span class="s2">;</span>
+        <span class="s0">await Promise</span><span class="s2">.</span><span class="s0">resolve</span><span class="s4">()</span><span class="s2">;</span>
+    <span class="s3">}</span>
+<span class="s3">}</span>
+</pre>
+</body>
+</html>
