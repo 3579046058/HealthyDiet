@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
-import { Constants, DbRow } from '../common/Constants';
+import { Constants, DbRow, GoalConfig, ThemeColors } from '../common/Constants';
 import { TrendChart } from '../components/TrendChart';
 
 @Entry
@@ -9,16 +9,43 @@ struct WeightPage {
   @State weightInput: string = '';
   @State currentWeight: string = '--';
   @State bmi: string = '--';
+  @State heightCm: number = 170;
   @State historyDates: string[] = [];
   @State historyWeights: number[] = [];
   @State records: DbRow[] = [];
+  @StorageLink('currentTheme') theme: string = 'dark';
 
   aboutToAppear(): void {
     this.loadData();
+    this.startAutoRefresh();
+  }
+
+  aboutToDisappear(): void {
+    this.stopAutoRefresh();
+  }
+
+  private refreshTimer: number = -1;
+
+  startAutoRefresh(): void {
+    if (this.refreshTimer !== -1) {
+      clearInterval(this.refreshTimer);
+    }
+    this.refreshTimer = setInterval(() => {
+      this.loadData();
+    }, 15000);
+  }
+
+  stopAutoRefresh(): void {
+    if (this.refreshTimer !== -1) {
+      clearInterval(this.refreshTimer);
+      this.refreshTimer = -1;
+    }
   }
 
   async loadData(): Promise<void> {
     try {
+      const goalConfig: GoalConfig = await GlobalData.prefs.getGoalConfig();
+      this.heightCm = goalConfig.heightCm;
       const latest = await GlobalData.db.getLatestWeight();
       if (latest) {
         this.currentWeight = Number(latest.weight_kg).toFixed(1);
@@ -40,7 +67,7 @@ struct WeightPage {
   }
 
   calcBMI(weightKg: number): string {
-    const h = 170; // 默认身高170cm，后续可配置
+    const h = this.heightCm;
     const bmiVal = weightKg / ((h / 100) * (h / 100));
     return bmiVal.toFixed(1);
   }
@@ -53,6 +80,16 @@ struct WeightPage {
     this.weightInput = '';
     await this.loadData();
   }
+
+  async deleteWeight(id: number): Promise<void> {
+    await GlobalData.db.deleteWeightRecord(id);
+    await this.loadData();
+  }
+
+  bg(): string { return ThemeColors.pageBg(this.theme); }
+  card(): string { return ThemeColors.cardBg(this.theme); }
+  txt(): string { return ThemeColors.textPrimary(this.theme); }
+  sub(): string { return ThemeColors.textSecondary(this.theme); }
 
   build() {
     Column() {
@@ -80,7 +117,7 @@ struct WeightPage {
                 .fontWeight(FontWeight.Bold)
               Text('kg')
                 .fontSize(16)
-                .fontColor('#888888')
+                .fontColor(this.sub())
             }
             Divider()
               .vertical(true)
@@ -93,7 +130,7 @@ struct WeightPage {
                 .fontColor('#4CAF50')
               Text('BMI')
                 .fontSize(16)
-                .fontColor('#888888')
+                .fontColor(this.sub())
             }
           }
           .width('100%')
@@ -105,6 +142,9 @@ struct WeightPage {
             TextInput({ placeholder: '输入体重 (kg)', text: this.weightInput })
               .width(180)
               .type(InputType.Number)
+              .backgroundColor(ThemeColors.inputBg(this.theme))
+              .fontColor(this.txt())
+              .placeholderColor(ThemeColors.textSecondary(this.theme))
               .onChange((v: string) => { this.weightInput = v; })
             Button('记录')
               .backgroundColor('#4CAF50')
@@ -148,10 +188,12 @@ struct WeightPage {
                   Text(Number(record.weight_kg).toFixed(1) + ' kg')
                     .fontSize(14)
                     .fontWeight(FontWeight.Bold)
+                  Text('🗑').fontSize(16).margin({ left: 12 })
+                    .onClick(() => { this.deleteWeight(Number(record.id)); })
                 }
                 .width('100%')
                 .padding(14)
-                .backgroundColor('#1A1A2E')
+                .backgroundColor(this.card())
                 .borderRadius(10)
               }
             })
@@ -165,6 +207,11 @@ struct WeightPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#0D0D1A')
+    .backgroundColor(this.bg())
+  }
+
+  pageTransition() {
+    PageTransitionEnter({ duration: 300, curve: Curve.Friction }).slide(SlideEffect.Right)
+    PageTransitionExit({ duration: 200, curve: Curve.FastOutLinearIn }).slide(SlideEffect.Left)
   }
 }

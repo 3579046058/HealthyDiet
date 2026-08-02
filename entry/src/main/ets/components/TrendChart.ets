@@ -1,6 +1,8 @@
 /**
  * 趋势折线图组件（基于 Canvas）
  */
+import { ThemeColors } from '../common/Constants';
+
 @Component
 export struct TrendChart {
   @Prop dataPoints: number[] = [];
@@ -9,6 +11,7 @@ export struct TrendChart {
   @Prop chartHeight: number = 160;
   @Prop showLabels: boolean = true;
   @Prop labels: string[] = [];
+  @StorageLink('currentTheme') theme: string = 'dark';
 
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
   private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
@@ -90,7 +93,7 @@ export struct TrendChart {
     // 绘制底部标签
     if (this.showLabels && this.labels.length > 0) {
       ctx.font = '11px sans-serif';
-      ctx.fillStyle = '#888888';
+      ctx.fillStyle = ThemeColors.textSecondary(this.theme);
       ctx.textAlign = 'center';
       const step = coords.length > 1 ? Math.max(1, Math.floor(coords.length / 6)) : 1;
       for (let i = 0; i < coords.length; i += step) {

@@ -1,13 +1,17 @@
 import { preferences } from '@kit.ArkData';
-import { GoalConfig } from '../common/Constants';
+import { GoalConfig, StreakData } from '../common/Constants';
 
 const KEY_STEP_GOAL = 'goal_steps';
 const KEY_WATER_GOAL = 'goal_water_ml';
 const KEY_SPORT_DAYS = 'goal_sport_days';
 const KEY_SLEEP_HOURS = 'goal_sleep_hours';
 const KEY_WEIGHT_GOAL = 'goal_weight_kg';
+const KEY_HEIGHT_CM = 'height_cm';
+const KEY_THEME = 'theme_mode';
 const KEY_STEP_COUNT = 'step_count_today';
-const KEY_LAST_SYNC = 'last_sync_date';
+const KEY_STREAK_CURRENT = 'streak_current';
+const KEY_STREAK_BEST = 'streak_best';
+const KEY_LAST_ACTIVE_DATE = 'last_active_date';
 
 export class PreferenceHelper {
   private pref_: preferences.Preferences | null = null;
@@ -30,6 +34,7 @@ export class PreferenceHelper {
       weeklySportDays: await this.pref.get(KEY_SPORT_DAYS, 3) as number,
       sleepHours: await this.pref.get(KEY_SLEEP_HOURS, 8) as number,
       weightKg: await this.pref.get(KEY_WEIGHT_GOAL, 70) as number,
+      heightCm: await this.pref.get(KEY_HEIGHT_CM, 170) as number,
     };
   }
 
@@ -39,11 +44,45 @@ export class PreferenceHelper {
     await this.pref.put(KEY_SPORT_DAYS, config.weeklySportDays);
     await this.pref.put(KEY_SLEEP_HOURS, config.sleepHours);
     await this.pref.put(KEY_WEIGHT_GOAL, config.weightKg);
+    await this.pref.put(KEY_HEIGHT_CM, config.heightCm);
     await this.pref.flush();
   }
 
-  async getStepCountToday(): Promise<number> {
-    return await this.pref.get(KEY_STEP_COUNT, 0) as number;
+  async getTheme(): Promise<string> {
+    return await this.pref.get(KEY_THEME, 'dark') as string;
+  }
+
+  async setTheme(theme: string): Promise<void> {
+    await this.pref.put(KEY_THEME, theme);
+    await this.pref.flush();
+  }
+
+  async get(key: string, defValue: string | number | boolean): Promise<string | number | boolean> {
+    const val = await this.pref.get(key, defValue);
+    if (typeof val === 'bigint') {
+      return Number(val);
+    }
+    if (typeof val === 'number') {
+      return val;
+    }
+    if (typeof val === 'boolean') {
+      return val;
+    }
+    return String(val);
+  }
+
+  async put(key: string, value: string | number | boolean): Promise<void> {
+    if (typeof value === 'string') {
+      await this.pref.put(key, value);
+    } else if (typeof value === 'number') {
+      await this.pref.put(key, value);
+    } else {
+      await this.pref.put(key, value);
+    }
+  }
+
+  async flush(): Promise<void> {
+    await this.pref.flush();
   }
 
   async setStepCountToday(steps: number): Promise<void> {
@@ -51,12 +90,45 @@ export class PreferenceHelper {
     await this.pref.flush();
   }
 
-  async getLastSyncDate(): Promise<string> {
-    return await this.pref.get(KEY_LAST_SYNC, '') as string;
+  async getStreakData(): Promise<StreakData> {
+    const current = await this.pref.get(KEY_STREAK_CURRENT, 0) as number;
+    const best = await this.pref.get(KEY_STREAK_BEST, 0) as number;
+    return { current, best };
   }
 
-  async setLastSyncDate(date: string): Promise<void> {
-    await this.pref.put(KEY_LAST_SYNC, date);
+  async updateStreak(achieved: boolean): Promise<StreakData> {
+    const lastActive = await this.pref.get(KEY_LAST_ACTIVE_DATE, '') as string;
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    let current = await this.pref.get(KEY_STREAK_CURRENT, 0) as number;
+    let best = await this.pref.get(KEY_STREAK_BEST, 0) as number;
+
+    if (lastActive === todayStr) {
+      return { current, best };
+    }
+
+    const yesterday = new Date(today.getTime() - 86400000);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
+    if (achieved) {
+      if (lastActive === yesterdayStr || lastActive === '') {
+        current++;
+      } else {
+        current = 1;
+      }
+      if (current > best) {
+        best = current;
+      }
+    } else {
+      current = 0;
+    }
+
+    await this.pref.put(KEY_STREAK_CURRENT, current);
+    await this.pref.put(KEY_STREAK_BEST, best);
+    await this.pref.put(KEY_LAST_ACTIVE_DATE, todayStr);
     await this.pref.flush();
+
+    return { current, best };
   }
 }

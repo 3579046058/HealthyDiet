@@ -1,6 +1,8 @@
 /**
  * 健康概览卡片组件
  */
+import { ThemeColors } from '../common/Constants';
+
 @Component
 export struct HealthCard {
   @Prop title: string = '';
@@ -9,7 +11,8 @@ export struct HealthCard {
   @Prop subText: string = '';
   @Prop iconColor: string = '#FF9800';
   @Prop iconSymbol: string = '';
-  private onCardClick?: () => void;
+  onCardClick?: () => void;
+  @StorageLink('currentTheme') theme: string = 'dark';
 
   build() {
     Column() {
@@ -29,10 +32,11 @@ export struct HealthCard {
         Column() {
           Text(this.title)
             .fontSize(13)
-            .fontColor('#888888')
+            .fontColor(ThemeColors.textSecondary(this.theme))
           Text(this.value + ' ' + (this.unit || ''))
             .fontSize(22)
             .fontWeight(FontWeight.Bold)
+            .fontColor(ThemeColors.textPrimary(this.theme))
             .margin({ top: 2 })
         }
         .margin({ left: 12 })
@@ -44,13 +48,13 @@ export struct HealthCard {
       if (this.subText) {
         Text(this.subText)
           .fontSize(12)
-          .fontColor('#666666')
+          .fontColor(ThemeColors.textSecondary(this.theme))
           .width('100%')
           .padding({ left: 14, right: 14, bottom: 10 })
       }
     }
     .width('100%')
-    .backgroundColor('#1A1A2E')
+    .backgroundColor(ThemeColors.cardBg(this.theme))
     .borderRadius(14)
     .onClick(() => {
       if (this.onCardClick) {

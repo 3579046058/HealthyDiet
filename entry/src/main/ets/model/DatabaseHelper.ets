@@ -8,6 +8,13 @@ const TABLE_SPORT = 'sport_records';
 const TABLE_SLEEP = 'sleep_records';
 const TABLE_HEART = 'heart_rate_records';
 const TABLE_STEP = 'step_records';
+const TABLE_DIET = 'diet_records';
+const TABLE_MOOD = 'mood_records';
+const TABLE_MEDICATION = 'medication_records';
+const TABLE_PERIOD = 'period_records';
+const TABLE_BODY_COMP = 'body_composition_records';
+const TABLE_PLAN = 'workout_plans';
+const TABLE_WATER_TIMELINE = 'water_timeline';
 
 export class DatabaseHelper {
   private rdbStore: relationalStore.RdbStore | null = null;
@@ -87,8 +94,70 @@ export class DatabaseHelper {
         goal_steps INTEGER,
         timestamp INTEGER
       )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_DIET} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT,
+        meal_type TEXT,
+        food_name TEXT,
+        amount_g INTEGER,
+        calories INTEGER,
+        protein REAL,
+        fat REAL,
+        carbs REAL,
+        timestamp INTEGER
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_MOOD} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT,
+        mood INTEGER,
+        note TEXT,
+        timestamp INTEGER
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_MEDICATION} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        dosage TEXT,
+        time TEXT,
+        frequency TEXT,
+        start_date TEXT,
+        end_date TEXT,
+        timestamp INTEGER
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_PERIOD} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        start_date TEXT,
+        end_date TEXT,
+        cycle_length INTEGER,
+        period_length INTEGER,
+        timestamp INTEGER
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_BODY_COMP} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT,
+        body_fat REAL,
+        muscle_mass REAL,
+        body_water REAL,
+        bone_mass REAL,
+        visceral_fat REAL,
+        timestamp INTEGER
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_PLAN} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        duration_weeks INTEGER,
+        times_per_week INTEGER,
+        exercises TEXT,
+        start_date TEXT,
+        timestamp INTEGER
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_WATER_TIMELINE} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT,
+        time TEXT,
+        ml INTEGER,
+        timestamp INTEGER
+      )`,
     ];
-
     if (this.rdbStore) {
       for (const sql of tables) {
         await this.rdbStore.executeSql(sql);
@@ -96,7 +165,14 @@ export class DatabaseHelper {
     }
   }
 
-  // === Daily Summary ===
+  private async getTodayDate(): Promise<string> {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
   async getDailySummary(date: string): Promise<DbRow | null> {
     if (!this.rdbStore) return null;
     const pred = new relationalStore.RdbPredicates(TABLE_DAILY);
@@ -120,7 +196,16 @@ export class DatabaseHelper {
     }
   }
 
-  // === Weight ===
+  async getDailySummaries(startDate: string, endDate: string): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const pred = new relationalStore.RdbPredicates(TABLE_DAILY);
+    pred.greaterThanOrEqualTo('date', startDate);
+    pred.lessThanOrEqualTo('date', endDate);
+    pred.orderByAsc('date');
+    const result = await this.rdbStore.query(pred, ['*']);
+    return this.readAllRows(result);
+  }
+
   async getLatestWeight(): Promise<DbRow | null> {
     if (!this.rdbStore) return null;
     const pred = new relationalStore.RdbPredicates(TABLE_WEIGHT);
@@ -132,19 +217,24 @@ export class DatabaseHelper {
     return null;
   }
 
-  async insertWeight(weightKg: number): Promise<void> {
+  async addWeightRecord(date: string, weightKg: number): Promise<void> {
     if (!this.rdbStore) return;
-    const now = Date.now();
-    const today = await this.getTodayDate();
     const values: relationalStore.ValuesBucket = {
-      date: today,
-      weight_kg: weightKg,
-      timestamp: now
+      date: date, weight_kg: weightKg, timestamp: Date.now()
     };
     await this.rdbStore.insert(TABLE_WEIGHT, values);
   }
 
-  // === Water ===
+  async getWeightRecords(startDate: string, endDate: string): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const pred = new relationalStore.RdbPredicates(TABLE_WEIGHT);
+    pred.greaterThanOrEqualTo('date', startDate);
+    pred.lessThanOrEqualTo('date', endDate);
+    pred.orderByAsc('date');
+    const result = await this.rdbStore.query(pred, ['*']);
+    return this.readAllRows(result);
+  }
+
   async getWaterRecord(date: string): Promise<DbRow | null> {
     if (!this.rdbStore) return null;
     const pred = new relationalStore.RdbPredicates(TABLE_WATER);
@@ -159,36 +249,42 @@ export class DatabaseHelper {
   async addWaterCup(date: string, cupMl: number): Promise<void> {
     if (!this.rdbStore) return;
     const existing = await this.getWaterRecord(date);
-    const now = Date.now();
-
     if (existing) {
       const currentMl = Number(existing.total_ml) || 0;
       const currentCups = Number(existing.cups) || 0;
-      const waterMl = currentMl + cupMl;
-      const cups = currentCups + 1;
       const values: relationalStore.ValuesBucket = {
-        total_ml: waterMl,
-        cups: cups,
-        timestamp: now
+        total_ml: currentMl + cupMl, cups: currentCups + 1, timestamp: Date.now()
       };
       const pred = new relationalStore.RdbPredicates(TABLE_WATER);
       pred.equalTo('date', date);
       await this.rdbStore.update(values, pred);
     } else {
       const values: relationalStore.ValuesBucket = {
-        date: date,
-        total_ml: cupMl,
-        cups: 1,
-        timestamp: now
+        date: date, total_ml: cupMl, cups: 1, timestamp: Date.now()
       };
       await this.rdbStore.insert(TABLE_WATER, values);
     }
   }
 
-  // === Sport ===
-  async insertSportRecord(record: DbRow): Promise<void> {
+  async addWaterTimeline(date: string, time: string, ml: number): Promise<void> {
     if (!this.rdbStore) return;
-    const now = Date.now();
+    const values: relationalStore.ValuesBucket = {
+      date, time, ml, timestamp: Date.now()
+    };
+    await this.rdbStore.insert(TABLE_WATER_TIMELINE, values);
+  }
+
+  async getWaterTimeline(date: string): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const pred = new relationalStore.RdbPredicates(TABLE_WATER_TIMELINE);
+    pred.equalTo('date', date);
+    pred.orderByAsc('time');
+    const result = await this.rdbStore.query(pred, ['*']);
+    return this.readAllRows(result);
+  }
+
+  async addSportRecord(record: DbRow): Promise<void> {
+    if (!this.rdbStore) return;
     const values: relationalStore.ValuesBucket = {
       date: String(record.date),
       sport_type: String(record.sport_type),
@@ -196,7 +292,7 @@ export class DatabaseHelper {
       distance_km: Number(record.distance_km),
       calories: Number(record.calories),
       avg_heart_rate: Number(record.avg_heart_rate),
-      timestamp: now
+      timestamp: Date.now()
     };
     await this.rdbStore.insert(TABLE_SPORT, values);
   }
@@ -211,22 +307,8 @@ export class DatabaseHelper {
     return this.readAllRows(result);
   }
 
-  // === Sleep ===
-  async getSleepRecord(date: string): Promise<DbRow | null> {
-    if (!this.rdbStore) return null;
-    const pred = new relationalStore.RdbPredicates(TABLE_SLEEP);
-    pred.equalTo('date', date);
-    const result = await this.rdbStore.query(pred, ['*']);
-    if (result.rowCount > 0 && result.goToFirstRow()) {
-      return result.getRow();
-    }
-    return null;
-  }
-
-  async upsertSleepRecord(record: DbRow): Promise<void> {
+  async addSleepRecord(record: DbRow): Promise<void> {
     if (!this.rdbStore) return;
-    const existing = await this.getSleepRecord(String(record.date));
-    const now = Date.now();
     const values: relationalStore.ValuesBucket = {
       date: String(record.date),
       start_time: String(record.start_time),
@@ -236,120 +318,9 @@ export class DatabaseHelper {
       rem_min: Number(record.rem_min),
       total_minutes: Number(record.total_minutes),
       score: Number(record.score),
-      timestamp: now
+      timestamp: Date.now()
     };
-
-    if (existing) {
-      const pred = new relationalStore.RdbPredicates(TABLE_SLEEP);
-      pred.equalTo('date', String(record.date));
-      await this.rdbStore.update(values, pred);
-    } else {
-      await this.rdbStore.insert(TABLE_SLEEP, values);
-    }
-  }
-
-  // === Heart Rate ===
-  async insertHeartRate(date: string, bpm: number): Promise<void> {
-    if (!this.rdbStore) return;
-    const now = Date.now();
-    const values: relationalStore.ValuesBucket = {
-      date: date,
-      timestamp: now,
-      bpm: bpm
-    };
-    await this.rdbStore.insert(TABLE_HEART, values);
-  }
-
-  async getHeartRates(date: string): Promise<DbRow[]> {
-    if (!this.rdbStore) return [];
-    const pred = new relationalStore.RdbPredicates(TABLE_HEART);
-    pred.equalTo('date', date);
-    const result = await this.rdbStore.query(pred, ['*']);
-    return this.readAllRows(result);
-  }
-
-  // === Steps ===
-  async upsertSteps(date: string, steps: number, goal: number): Promise<void> {
-    if (!this.rdbStore) return;
-    const existing = await this.getStepRecord(date);
-    const now = Date.now();
-    const values: relationalStore.ValuesBucket = {
-      date: date,
-      total_steps: steps,
-      goal_steps: goal,
-      timestamp: now
-    };
-
-    if (existing) {
-      const pred = new relationalStore.RdbPredicates(TABLE_STEP);
-      pred.equalTo('date', date);
-      await this.rdbStore.update(values, pred);
-    } else {
-      await this.rdbStore.insert(TABLE_STEP, values);
-    }
-  }
-
-  async getStepRecord(date: string): Promise<DbRow | null> {
-    if (!this.rdbStore) return null;
-    const pred = new relationalStore.RdbPredicates(TABLE_STEP);
-    pred.equalTo('date', date);
-    const result = await this.rdbStore.query(pred, ['*']);
-    if (result.rowCount > 0 && result.goToFirstRow()) {
-      return result.getRow();
-    }
-    return null;
-  }
-
-  // === Helpers ===
-  private async getTodayDate(): Promise<string> {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-
-  private readAllRows(resultSet: relationalStore.ResultSet): DbRow[] {
-    const rows: DbRow[] = [];
-    if (resultSet.rowCount > 0 && resultSet.goToFirstRow()) {
-      do {
-        rows.push(resultSet.getRow());
-      } while (resultSet.goToNextRow());
-    }
-    return rows;
-  }
-
-  // === Compatibility methods for pages ===
-  async getDailySummaries(startDate: string, endDate: string): Promise<DbRow[]> {
-    if (!this.rdbStore) return [];
-    const pred = new relationalStore.RdbPredicates(TABLE_DAILY);
-    pred.greaterThanOrEqualTo('date', startDate);
-    pred.lessThanOrEqualTo('date', endDate);
-    pred.orderByAsc('date');
-    const result = await this.rdbStore.query(pred, ['*']);
-    return this.readAllRows(result);
-  }
-
-  async addWeightRecord(date: string, weightKg: number): Promise<void> {
-    await this.insertWeight(weightKg);
-  }
-
-  async getWeightRecords(startDate: string, endDate: string): Promise<DbRow[]> {
-    if (!this.rdbStore) return [];
-    const pred = new relationalStore.RdbPredicates(TABLE_WEIGHT);
-    pred.greaterThanOrEqualTo('date', startDate);
-    pred.lessThanOrEqualTo('date', endDate);
-    pred.orderByAsc('date');
-    const result = await this.rdbStore.query(pred, ['*']);
-    return this.readAllRows(result);
-  }
-
-  async addSportRecord(record: DbRow): Promise<void> {
-    await this.insertSportRecord(record);
-  }
-
-  async addSleepRecord(record: DbRow): Promise<void> {
-    await this.upsertSleepRecord(record);
+    await this.rdbStore.insert(TABLE_SLEEP, values);
   }
 
   async getSleepRecords(startDate: string, endDate: string): Promise<DbRow[]> {
@@ -362,11 +333,275 @@ export class DatabaseHelper {
     return this.readAllRows(result);
   }
 
-  async addHeartRateRecord(date: string, bpm: number): Promise<void> {
-    await this.insertHeartRate(date, bpm);
+  async addDietRecord(record: DbRow): Promise<void> {
+    if (!this.rdbStore) return;
+    const values: relationalStore.ValuesBucket = {
+      date: String(record.date),
+      meal_type: String(record.meal_type),
+      food_name: String(record.food_name),
+      amount_g: Number(record.amount_g),
+      calories: Number(record.calories),
+      protein: Number(record.protein),
+      fat: Number(record.fat),
+      carbs: Number(record.carbs),
+      timestamp: Date.now()
+    };
+    await this.rdbStore.insert(TABLE_DIET, values);
   }
 
-  async updateStepCount(date: string, steps: number, goal: number): Promise<void> {
-    await this.upsertSteps(date, steps, goal);
+  async getDietRecords(date: string): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const pred = new relationalStore.RdbPredicates(TABLE_DIET);
+    pred.equalTo('date', date);
+    pred.orderByAsc('timestamp');
+    const result = await this.rdbStore.query(pred, ['*']);
+    return this.readAllRows(result);
+  }
+
+  async getDietRecordsRange(startDate: string, endDate: string): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const pred = new relationalStore.RdbPredicates(TABLE_DIET);
+    pred.greaterThanOrEqualTo('date', startDate);
+    pred.lessThanOrEqualTo('date', endDate);
+    pred.orderByAsc('date');
+    const result = await this.rdbStore.query(pred, ['*']);
+    return this.readAllRows(result);
+  }
+
+  async addMoodRecord(record: DbRow): Promise<void> {
+    if (!this.rdbStore) return;
+    const values: relationalStore.ValuesBucket = {
+      date: String(record.date),
+      mood: Number(record.mood),
+      note: String(record.note),
+      timestamp: Date.now()
+    };
+    await this.rdbStore.insert(TABLE_MOOD, values);
+  }
+
+  async getMoodRecords(startDate: string, endDate: string): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const pred = new relationalStore.RdbPredicates(TABLE_MOOD);
+    pred.greaterThanOrEqualTo('date', startDate);
+    pred.lessThanOrEqualTo('date', endDate);
+    pred.orderByAsc('date');
+    pred.orderByAsc('timestamp');
+    const result = await this.rdbStore.query(pred, ['*']);
+    return this.readAllRows(result);
+  }
+
+  async addMedicationRecord(record: DbRow): Promise<void> {
+    if (!this.rdbStore) return;
+    const values: relationalStore.ValuesBucket = {
+      name: String(record.name),
+      dosage: String(record.dosage),
+      time: String(record.time),
+      frequency: String(record.frequency),
+      start_date: String(record.start_date),
+      end_date: String(record.end_date),
+      timestamp: Date.now()
+    };
+    await this.rdbStore.insert(TABLE_MEDICATION, values);
+  }
+
+  async getMedicationRecords(): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const pred = new relationalStore.RdbPredicates(TABLE_MEDICATION);
+    pred.orderByDesc('timestamp');
+    const result = await this.rdbStore.query(pred, ['*']);
+    return this.readAllRows(result);
+  }
+
+  async deleteMedicationRecord(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_MEDICATION);
+    pred.equalTo('id', id);
+    await this.rdbStore.delete(pred);
+  }
+
+  async addPeriodRecord(record: DbRow): Promise<void> {
+    if (!this.rdbStore) return;
+    const values: relationalStore.ValuesBucket = {
+      start_date: String(record.start_date),
+      end_date: String(record.end_date),
+      cycle_length: Number(record.cycle_length),
+      period_length: Number(record.period_length),
+      timestamp: Date.now()
+    };
+    await this.rdbStore.insert(TABLE_PERIOD, values);
+  }
+
+  async getPeriodRecords(): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const pred = new relationalStore.RdbPredicates(TABLE_PERIOD);
+    pred.orderByDesc('start_date');
+    const result = await this.rdbStore.query(pred, ['*']);
+    return this.readAllRows(result);
+  }
+
+  async addBodyCompositionRecord(record: DbRow): Promise<void> {
+    if (!this.rdbStore) return;
+    const values: relationalStore.ValuesBucket = {
+      date: String(record.date),
+      body_fat: Number(record.body_fat),
+      muscle_mass: Number(record.muscle_mass),
+      body_water: Number(record.body_water),
+      bone_mass: Number(record.bone_mass),
+      visceral_fat: Number(record.visceral_fat),
+      timestamp: Date.now()
+    };
+    await this.rdbStore.insert(TABLE_BODY_COMP, values);
+  }
+
+  async getBodyCompositionRecords(startDate: string, endDate: string): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const pred = new relationalStore.RdbPredicates(TABLE_BODY_COMP);
+    pred.greaterThanOrEqualTo('date', startDate);
+    pred.lessThanOrEqualTo('date', endDate);
+    pred.orderByDesc('date');
+    const result = await this.rdbStore.query(pred, ['*']);
+    return this.readAllRows(result);
+  }
+
+  async getLatestBodyComposition(): Promise<DbRow | null> {
+    if (!this.rdbStore) return null;
+    const pred = new relationalStore.RdbPredicates(TABLE_BODY_COMP);
+    pred.orderByDesc('timestamp');
+    const result = await this.rdbStore.query(pred, ['*']);
+    if (result.rowCount > 0 && result.goToFirstRow()) {
+      return result.getRow();
+    }
+    return null;
+  }
+
+  async addWorkoutPlan(record: DbRow): Promise<void> {
+    if (!this.rdbStore) return;
+    const values: relationalStore.ValuesBucket = {
+      name: String(record.name),
+      duration_weeks: Number(record.duration_weeks),
+      times_per_week: Number(record.times_per_week),
+      exercises: String(record.exercises),
+      start_date: String(record.start_date),
+      timestamp: Date.now()
+    };
+    await this.rdbStore.insert(TABLE_PLAN, values);
+  }
+
+  async getWorkoutPlans(): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const pred = new relationalStore.RdbPredicates(TABLE_PLAN);
+    pred.orderByDesc('timestamp');
+    const result = await this.rdbStore.query(pred, ['*']);
+    return this.readAllRows(result);
+  }
+
+  async deleteWorkoutPlan(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_PLAN);
+    pred.equalTo('id', id);
+    await this.rdbStore.delete(pred);
+  }
+
+  async deleteWeightRecord(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_WEIGHT);
+    pred.equalTo('id', id);
+    await this.rdbStore.delete(pred);
+  }
+
+  async deleteSportRecord(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_SPORT);
+    pred.equalTo('id', id);
+    await this.rdbStore.delete(pred);
+  }
+
+  async deleteSleepRecord(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_SLEEP);
+    pred.equalTo('id', id);
+    await this.rdbStore.delete(pred);
+  }
+
+  async deleteDietRecord(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_DIET);
+    pred.equalTo('id', id);
+    await this.rdbStore.delete(pred);
+  }
+
+  async deleteMoodRecord(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    console.info('DatabaseHelper deleteMoodRecord id=' + String(id));
+    const pred = new relationalStore.RdbPredicates(TABLE_MOOD);
+    pred.equalTo('id', id);
+    const rows = await this.rdbStore.delete(pred);
+    console.info('DatabaseHelper deleteMoodRecord deleted rows=' + String(rows));
+  }
+
+  async deletePeriodRecord(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_PERIOD);
+    pred.equalTo('id', id);
+    await this.rdbStore.delete(pred);
+  }
+
+  async deleteBodyCompositionRecord(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_BODY_COMP);
+    pred.equalTo('id', id);
+    await this.rdbStore.delete(pred);
+  }
+
+  async deleteWaterTimelineItem(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_WATER_TIMELINE);
+    pred.equalTo('id', id);
+    await this.rdbStore.delete(pred);
+  }
+
+  async upsertSteps(date: string, steps: number, goal: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_STEP);
+    pred.equalTo('date', date);
+    const result = await this.rdbStore.query(pred, ['*']);
+    if (result.rowCount > 0) {
+      const values: relationalStore.ValuesBucket = {
+        total_steps: steps, goal_steps: goal, timestamp: Date.now()
+      };
+      await this.rdbStore.update(values, pred);
+    } else {
+      const values: relationalStore.ValuesBucket = {
+        date: date, total_steps: steps, goal_steps: goal, timestamp: Date.now()
+      };
+      await this.rdbStore.insert(TABLE_STEP, values);
+    }
+    await this.upsertDailySummary({ date: date, steps: steps });
+  }
+
+  async updateDailySummaryField(date: string, field: string, value: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const existing = await this.getDailySummary(date);
+    const updates: relationalStore.ValuesBucket = {};
+    updates[field] = value;
+    if (existing) {
+      const pred = new relationalStore.RdbPredicates(TABLE_DAILY);
+      pred.equalTo('date', date);
+      await this.rdbStore.update(updates, pred);
+    } else {
+      const values: relationalStore.ValuesBucket = { date: date };
+      values[field] = value;
+      await this.rdbStore.insert(TABLE_DAILY, values);
+    }
+  }
+
+  private readAllRows(resultSet: relationalStore.ResultSet): DbRow[] {
+    const rows: DbRow[] = [];
+    if (resultSet.rowCount > 0 && resultSet.goToFirstRow()) {
+      do {
+        rows.push(resultSet.getRow());
+      } while (resultSet.goToNextRow());
+    }
+    return rows;
   }
 }

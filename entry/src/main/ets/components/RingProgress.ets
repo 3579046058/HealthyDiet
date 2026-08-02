@@ -1,6 +1,8 @@
 /**
  * 活动圆环组件 - 类似 Apple 三环
  */
+import { ThemeColors } from '../common/Constants';
+
 @Component
 export struct RingProgress {
   @Prop progress: number = 0; // 0-100
@@ -10,6 +12,7 @@ export struct RingProgress {
   @Prop label: string = '';
   @Prop valueText: string = '';
   @Prop unit: string = '';
+  @StorageLink('currentTheme') theme: string = 'dark';
 
   build() {
     Column() {
@@ -19,7 +22,7 @@ export struct RingProgress {
           .width(this.ringSize)
           .height(this.ringSize)
           .fill('transparent')
-          .stroke('#333333')
+          .stroke(ThemeColors.divider(this.theme))
           .strokeWidth(this.strokeWidth)
 
         // 进度圆环 - 使用 Progress 组件
@@ -34,11 +37,12 @@ export struct RingProgress {
           Text(this.valueText)
             .fontSize(24)
             .fontWeight(FontWeight.Bold)
+            .fontColor(ThemeColors.textPrimary(this.theme))
             .lineHeight(28)
           if (this.unit) {
             Text(this.unit)
               .fontSize(12)
-              .fontColor('#888888')
+              .fontColor(ThemeColors.textSecondary(this.theme))
           }
         }
         .justifyContent(FlexAlign.Center)
@@ -52,7 +56,7 @@ export struct RingProgress {
       if (this.label) {
         Text(this.label)
           .fontSize(13)
-          .fontColor('#888888')
+          .fontColor(ThemeColors.textSecondary(this.theme))
           .margin({ top: 6 })
       }
     }

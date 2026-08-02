@@ -7,6 +7,14 @@
     "pages/SleepPage",
     "pages/ReportPage",
     "pages/GoalPage",
-    "pages/FormCard"
+    "pages/FormCard",
+    "pages/DietPage",
+    "pages/WomenHealthPage",
+    "pages/MedicationPage",
+    "pages/MoodPage",
+    "pages/BodyCompositionPage",
+    "pages/WorkoutPlanPage",
+    "pages/DevicePage",
+    "pages/LoginPage"
   ]
 }
