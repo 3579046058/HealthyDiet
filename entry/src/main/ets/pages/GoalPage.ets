@@ -9,7 +9,6 @@ struct GoalPage {
   @State waterGoal: string = '2000';
   @State sportDays: string = '3';
   @State sleepHours: string = '8';
-  @State weightGoal: string = '70';
   @StorageLink('currentTheme') theme: string = 'dark';
 
   aboutToAppear(): void {
@@ -23,7 +22,6 @@ struct GoalPage {
       this.waterGoal = String(config.dailyWaterMl);
       this.sportDays = String(config.weeklySportDays);
       this.sleepHours = String(config.sleepHours);
-      this.weightGoal = String(config.weightKg);
     } catch (err) {
       console.error('GoalPage load error:', JSON.stringify(err));
     }
@@ -36,7 +34,7 @@ struct GoalPage {
       dailyWaterMl: parseInt(this.waterGoal) || 2000,
       weeklySportDays: parseInt(this.sportDays) || 3,
       sleepHours: parseFloat(this.sleepHours) || 8,
-      weightKg: parseFloat(this.weightGoal) || 70,
+      weightKg: current.weightKg,
       heightCm: current.heightCm,
     });
     router.back();
@@ -62,7 +60,6 @@ struct GoalPage {
           this.goalCard('每日喝水目标', '喝水', this.waterGoal, 'ml', (v: string) => { this.waterGoal = v; })
           this.goalCard('每周运动天数', '运动', this.sportDays, '天/周', (v: string) => { this.sportDays = v; })
           this.goalCard('每日睡眠目标', '睡眠', this.sleepHours, '小时', (v: string) => { this.sleepHours = v; })
-          this.goalCard('目标体重', '体重', this.weightGoal, 'kg', (v: string) => { this.weightGoal = v; })
 
           Button() {
             Text('保存目标').fontSize(18).fontColor(this.txt())

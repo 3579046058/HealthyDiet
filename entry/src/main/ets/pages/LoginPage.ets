@@ -12,6 +12,8 @@ struct LoginPage {
   @State userName: string = '';
   @State showLogoutConfirm: boolean = false;
   @State heightCm: string = '';
+  @State weightKg: string = '';
+  @State skipWeightPrompt: boolean = false;
   @State unionId: string = '';
   @State loginError: string = '';
   @StorageLink('currentTheme') theme: string = 'dark';
@@ -32,9 +34,23 @@ struct LoginPage {
       }
       const config = await GlobalData.prefs.getGoalConfig();
       this.heightCm = String(config.heightCm);
+      this.weightKg = String(config.weightKg);
+      this.skipWeightPrompt = await GlobalData.prefs.getWeightSkipPrompt();
     } catch (err) {
       console.error('LoginPage checkLoginStatus error:', JSON.stringify(err));
     }
+  }
+
+  async saveWeight(): Promise<void> {
+    const val = parseFloat(this.weightKg);
+    if (isNaN(val) || val <= 0) {
+      return;
+    }
+    const config = await GlobalData.prefs.getGoalConfig();
+    config.weightKg = val;
+    await GlobalData.prefs.saveGoalConfig(config);
+    await GlobalData.prefs.setWeight(val);
+    await GlobalData.prefs.markWeightConfigured();
   }
 
   login(): void {
@@ -101,6 +117,11 @@ struct LoginPage {
     const config = await GlobalData.prefs.getGoalConfig();
     config.heightCm = parseInt(this.heightCm) || 170;
     await GlobalData.prefs.saveGoalConfig(config);
+  }
+
+  async toggleSkipWeightPrompt(v: boolean): Promise<void> {
+    this.skipWeightPrompt = v;
+    await GlobalData.prefs.setWeightSkipPrompt(v);
   }
 
   bg(): string { return ThemeColors.pageBg(this.theme); }
@@ -185,6 +206,33 @@ struct LoginPage {
             .fontColor(this.txt()).fontSize(14)
             .margin({ top: 8 })
             .onClick(() => { this.saveHeight(); })
+
+          Row() {
+            Text('体重').fontSize(14).fontColor(this.sub()).margin({ right: 8 })
+            TextInput({ placeholder: '70', text: this.weightKg })
+              .type(InputType.Number).width(80).height(40)
+              .backgroundColor(ThemeColors.inputBg(this.theme))
+              .fontColor(this.txt())
+              .placeholderColor(ThemeColors.textSecondary(this.theme))
+              .onChange((v: string) => { this.weightKg = v; })
+            Text('kg').fontSize(14).fontColor(this.sub()).margin({ left: 6 })
+          }
+          .margin({ top: 16 })
+
+          Button('保存体重').width(160).height(40)
+            .backgroundColor('#FF6B35').borderRadius(20)
+            .fontColor(this.txt()).fontSize(14)
+            .margin({ top: 8 })
+            .onClick(() => { this.saveWeight(); })
+
+          Row() {
+            Text('设置后不再弹出体重弹窗').fontSize(13).fontColor(this.sub())
+            Blank()
+            Toggle({ type: ToggleType.Switch, isOn: this.skipWeightPrompt })
+              .selectedColor('#FF6B35')
+              .onChange((on: boolean) => { this.toggleSkipWeightPrompt(on); })
+          }
+          .width('100%').padding({ top: 12, left: 0 })
 
           Button('退出登录')
             .width('90%').height(48)

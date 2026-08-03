@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { DbRow, ThemeColors, FoodCalories } from '../common/Constants';
+import { FoodRecognitionService } from '../services/FoodRecognitionService';
 
 @Entry
 @Component
@@ -16,6 +17,14 @@ struct DietPage {
 
   aboutToAppear(): void {
     this.initDate();
+  }
+
+  onPageShow(): void {
+    if (this.date.length === 0) {
+      this.initDate();
+    } else {
+      this.loadData();
+    }
   }
 
   async initDate(): Promise<void> {
@@ -41,7 +50,12 @@ struct DietPage {
     if (isNaN(grams) || grams <= 0) {
       return;
     }
-    const calories: number = FoodCalories.calcCalories(name, grams);
+    // 云端计算卡路里（优先），失败则用本地食物库
+    let calories: number = FoodCalories.calcCalories(name, grams);
+    const cloud = await FoodRecognitionService.getInstance().calculateCalories(name, grams);
+    if (cloud >= 0) {
+      calories = cloud;
+    }
     const record: DbRow = {
       date: this.date,
       meal_type: this.mealType,
@@ -123,6 +137,14 @@ struct DietPage {
     return total;
   }
 
+  getAmountText(item: DbRow): string {
+    const v = item.amount_g;
+    if (v === undefined || v === null) {
+      return '0';
+    }
+    return String(v);
+  }
+
   @Builder
   mealButton(emoji: string, type: string): void {
     Button(emoji)
@@ -157,7 +179,7 @@ struct DietPage {
             Column() {
               Text(String(item.food_name))
                 .fontSize(14)
-              Text(String(item.amount_g) + 'g')
+              Text(this.getAmountText(item) + 'g')
                 .fontSize(12)
                 .fontColor(this.sub())
             }

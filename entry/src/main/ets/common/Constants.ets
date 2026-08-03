@@ -47,13 +47,15 @@ export class Constants {
   static readonly PAGE_LOGIN: string = 'pages/LoginPage';
 
   static readonly SPORT_TYPES: SportTypeDef[] = [
-    { label: 'walk', value: 'walk', icon: '🚶' },
-    { label: 'run', value: 'run', icon: '🏃' },
-    { label: 'cycle', value: 'cycle', icon: '🚴' },
-    { label: 'swim', value: 'swim', icon: '🏊' },
-    { label: 'yoga', value: 'yoga', icon: '🧘' },
-    { label: 'strength', value: 'strength', icon: '🏋️' },
+    { label: '步行', value: 'walk', icon: '🚶' },
+    { label: '跑步', value: 'run', icon: '🏃' },
+    { label: '骑行', value: 'cycle', icon: '🚴' },
+    { label: '游泳', value: 'swim', icon: '🏊' },
+    { label: '瑜伽', value: 'yoga', icon: '🧘' },
+    { label: '力量', value: 'strength', icon: '🏋️' },
   ];
+
+  static readonly INTENSITIES: string[] = ['低强度', '中强度', '高强度'];
 
   static readonly FOOD_CATEGORIES: string[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 

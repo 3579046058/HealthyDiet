@@ -1,9 +1,9 @@
 {
   "string": [
-    {"name": "app_name", "value": "Health1st"},
+    {"name": "app_name", "value": "健康1st"},
     {"name": "module_desc", "value": "Healthy Life Assistant"},
     {"name": "EntryAbility_desc", "value": "Track daily activity, sleep, exercise and water"},
-    {"name": "EntryAbility_label", "value": "Health1st"},
+    {"name": "EntryAbility_label", "value": "健康1st"},
     {"name": "widget_name", "value": "Today's Health"},
     {"name": "widget_desc", "value": "View today's steps, heart rate and water"},
 

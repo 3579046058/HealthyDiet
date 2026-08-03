@@ -12,6 +12,8 @@ const KEY_STEP_COUNT = 'step_count_today';
 const KEY_STREAK_CURRENT = 'streak_current';
 const KEY_STREAK_BEST = 'streak_best';
 const KEY_LAST_ACTIVE_DATE = 'last_active_date';
+const KEY_WEIGHT_SKIP_PROMPT = 'weight_skip_prompt';
+const KEY_WEIGHT_CONFIGURED = 'weight_configured';
 
 export class PreferenceHelper {
   private pref_: preferences.Preferences | null = null;
@@ -54,6 +56,33 @@ export class PreferenceHelper {
 
   async setTheme(theme: string): Promise<void> {
     await this.pref.put(KEY_THEME, theme);
+    await this.pref.flush();
+  }
+
+  async getWeight(): Promise<number> {
+    return await this.pref.get(KEY_WEIGHT_GOAL, 70) as number;
+  }
+
+  async setWeight(weightKg: number): Promise<void> {
+    await this.pref.put(KEY_WEIGHT_GOAL, weightKg);
+    await this.pref.flush();
+  }
+
+  async getWeightSkipPrompt(): Promise<boolean> {
+    return await this.pref.get(KEY_WEIGHT_SKIP_PROMPT, false) as boolean;
+  }
+
+  async setWeightSkipPrompt(skip: boolean): Promise<void> {
+    await this.pref.put(KEY_WEIGHT_SKIP_PROMPT, skip);
+    await this.pref.flush();
+  }
+
+  async isWeightConfigured(): Promise<boolean> {
+    return await this.pref.get(KEY_WEIGHT_CONFIGURED, false) as boolean;
+  }
+
+  async markWeightConfigured(): Promise<void> {
+    await this.pref.put(KEY_WEIGHT_CONFIGURED, true);
     await this.pref.flush();
   }
 

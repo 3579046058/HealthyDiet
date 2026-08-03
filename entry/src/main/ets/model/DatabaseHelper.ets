@@ -335,11 +335,13 @@ export class DatabaseHelper {
 
   async addDietRecord(record: DbRow): Promise<void> {
     if (!this.rdbStore) return;
+    const amtNum: number = Number(record.amount_g);
+    console.info('addDietRecord amount_g raw=' + String(record.amount_g) + ' num=' + String(amtNum));
     const values: relationalStore.ValuesBucket = {
       date: String(record.date),
       meal_type: String(record.meal_type),
       food_name: String(record.food_name),
-      amount_g: Number(record.amount_g),
+      amount_g: amtNum,
       calories: Number(record.calories),
       protein: Number(record.protein),
       fat: Number(record.fat),

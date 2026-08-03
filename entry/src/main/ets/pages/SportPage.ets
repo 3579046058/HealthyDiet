@@ -1,6 +1,7 @@
 import { router, promptAction } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { Constants, DbRow, SportTypeDef, ThemeColors } from '../common/Constants';
+import { FoodRecognitionService } from '../services/FoodRecognitionService';
 
 @Entry
 @Component
@@ -9,11 +10,16 @@ struct SportPage {
   @State durationSec: number = 0;
   @State distanceKm: number = 0;
   @State isTracking: boolean = false;
+  @State isPaused: boolean = false;
   @State timerId: number = -1;
   @State calorieBurn: number = 0;
   @State heartRateAvg: number = 0;
   @State records: DbRow[] = [];
   @State bodyWeight: number = 70;
+  @State intensity: string = '中强度';
+  @State showManualAdd: boolean = false;
+  @State manualMin: string = '30';
+  @State isCalcCalories: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
 
   aboutToAppear(): void {
@@ -80,22 +86,48 @@ struct SportPage {
 
   startTracking(): void {
     this.isTracking = true;
+    this.isPaused = false;
     this.durationSec = 0;
     this.distanceKm = 0;
     this.calorieBurn = 0;
     const met: number = Constants.MET_VALUES.get(this.currentSport) ?? 4.0;
     const maxHr: number = Constants.MAX_HR;
     const restHr: number = Constants.REST_HR;
-    // Karvonen 简化：运动心率 ≈ 静息心率 + MET × 8，上限为最大心率
     this.heartRateAvg = Math.min(maxHr, restHr + Math.round(met * 8));
+    this.startTimer();
+  }
+
+  pauseTracking(): void {
+    if (this.timerId !== -1) {
+      clearInterval(this.timerId);
+      this.timerId = -1;
+    }
+    this.isPaused = true;
+  }
+
+  resumeTracking(): void {
+    if (this.isTracking && this.isPaused) {
+      this.isPaused = false;
+      this.startTimer();
+    }
+  }
+
+  private startTimer(): void {
+    if (this.timerId !== -1) {
+      clearInterval(this.timerId);
+    }
     this.timerId = setInterval(() => {
       this.durationSec++;
-      const spd = Constants.SPEED_KMH.get(this.currentSport) ?? 5;
-      this.distanceKm = parseFloat(((this.durationSec / 3600) * spd).toFixed(2));
-      const hours: number = this.durationSec / 3600;
-      const weightKg: number = this.bodyWeight;
-      this.calorieBurn = Math.round(met * weightKg * hours);
+      this.updateMetrics();
     }, 1000);
+  }
+
+  private updateMetrics(): void {
+    const met: number = Constants.MET_VALUES.get(this.currentSport) ?? 4.0;
+    const spd = Constants.SPEED_KMH.get(this.currentSport) ?? 5;
+    this.distanceKm = parseFloat(((this.durationSec / 3600) * spd).toFixed(2));
+    const hours: number = this.durationSec / 3600;
+    this.calorieBurn = Math.round(met * this.bodyWeight * hours);
   }
 
   stopTracking(): void {
@@ -104,6 +136,16 @@ struct SportPage {
       this.timerId = -1;
     }
     this.isTracking = false;
+    this.isPaused = false;
+  }
+
+  adjustTime(deltaSec: number): void {
+    let newVal: number = this.durationSec + deltaSec;
+    if (newVal < 0) {
+      newVal = 0;
+    }
+    this.durationSec = newVal;
+    this.updateMetrics();
   }
 
   async saveSportRecord(): Promise<void> {
@@ -111,19 +153,59 @@ struct SportPage {
       promptAction.showToast({ message: '运动时间太短，至少需要60秒' });
       return;
     }
+    const minutes: number = Math.max(1, Math.round(this.durationSec / 60));
+    let calories: number = this.calorieBurn;
+    this.isCalcCalories = true;
+    const cloud = await FoodRecognitionService.getInstance().calculateSportCalories(
+      this.getSportLabel(this.currentSport), minutes, this.intensity, this.bodyWeight
+    );
+    this.isCalcCalories = false;
+    if (cloud >= 0) {
+      calories = cloud;
+    }
     const today = await GlobalData.getTodayDate();
     const record: DbRow = {
       date: today,
       sport_type: this.currentSport,
-      duration_min: Math.max(1, Math.round(this.durationSec / 60)),
+      duration_min: minutes,
       distance_km: this.distanceKm,
-      calories: this.calorieBurn,
+      calories: calories,
       avg_heart_rate: this.heartRateAvg,
     };
     await GlobalData.db.addSportRecord(record);
-    await this.saveDailySummarySport(today, Math.max(1, Math.round(this.durationSec / 60)), this.calorieBurn);
+    await this.saveDailySummarySport(today, minutes, calories);
     this.stopTracking();
     await this.loadHistory();
+    promptAction.showToast({ message: '运动记录已保存' });
+  }
+
+  async saveManualRecord(): Promise<void> {
+    const minVal = parseFloat(this.manualMin);
+    if (isNaN(minVal) || minVal <= 0) {
+      promptAction.showToast({ message: '请输入有效的运动时长' });
+      return;
+    }
+    const minutes: number = Math.round(minVal);
+    this.isCalcCalories = true;
+    const cloud = await FoodRecognitionService.getInstance().calculateSportCalories(
+      this.getSportLabel(this.currentSport), minutes, this.intensity, this.bodyWeight
+    );
+    this.isCalcCalories = false;
+    const calories: number = cloud >= 0 ? cloud : 0;
+    const today = await GlobalData.getTodayDate();
+    const record: DbRow = {
+      date: today,
+      sport_type: this.currentSport,
+      duration_min: minutes,
+      distance_km: 0,
+      calories: calories,
+      avg_heart_rate: this.heartRateAvg,
+    };
+    await GlobalData.db.addSportRecord(record);
+    await this.saveDailySummarySport(today, minutes, calories);
+    await this.loadHistory();
+    this.showManualAdd = false;
+    promptAction.showToast({ message: '手动记录已保存' });
   }
 
   async saveDailySummarySport(date: string, minutes: number, calories: number): Promise<void> {
@@ -139,8 +221,12 @@ struct SportPage {
   }
 
   formatDuration(sec: number): string {
-    const m = Math.floor(sec / 60);
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
     const s = sec % 60;
+    if (h > 0) {
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
     return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   }
 
@@ -160,11 +246,60 @@ struct SportPage {
         Text('←').fontSize(22).onClick(() => { router.back(); })
         Text('运动记录').fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 12 })
         Blank()
+        Text('＋ 手动添加').fontSize(14).fontColor('#FF6B35')
+          .onClick(() => { this.showManualAdd = !this.showManualAdd; })
       }
       .width('100%').padding(16)
 
       Scroll() {
         Column() {
+          // 手动添加记录面板
+          if (this.showManualAdd) {
+            Column() {
+              Text('手动添加记录').fontSize(16).fontWeight(FontWeight.Bold).margin({ bottom: 12 })
+
+              Text('运动类型').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
+              Text(this.getSportLabel(this.currentSport))
+                .fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.txt())
+                .width('100%').padding(12).backgroundColor(this.card()).borderRadius(8)
+                .margin({ bottom: 10 })
+
+              Text('运动时长 (分钟)').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
+              TextInput({ placeholder: '30', text: this.manualMin })
+                .type(InputType.Number).width('100%').height(44)
+                .backgroundColor(ThemeColors.inputBg(this.theme))
+                .fontColor(this.txt()).placeholderColor(this.sub())
+                .onChange((v: string) => { this.manualMin = v; })
+                .margin({ bottom: 10 })
+
+              Text('运动强度').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
+              Row() {
+                ForEach(Constants.INTENSITIES, (item: string) => {
+                  Text(item)
+                    .fontSize(13)
+                    .fontColor(this.intensity === item ? '#FFFFFF' : this.sub())
+                    .backgroundColor(this.intensity === item ? '#FF6B35' : this.card())
+                    .borderRadius(16).padding({ left: 14, right: 14, top: 8, bottom: 8 })
+                    .margin({ right: 8 })
+                    .onClick(() => { this.intensity = item; })
+                })
+              }
+              .width('100%')
+
+              if (this.isCalcCalories) {
+                Text('正在云端计算热量...').fontSize(12).fontColor('#FF6B35').width('100%').margin({ top: 10 })
+              }
+
+              Button('保存记录').width('100%').height(46)
+                .backgroundColor('#FF6B35').borderRadius(23)
+                .margin({ top: 12 })
+                .onClick(() => { this.saveManualRecord(); })
+            }
+            .width('100%').padding(16)
+            .backgroundColor(this.card()).borderRadius(12)
+            .margin({ left: 16, right: 16, bottom: 16 })
+          }
+
           Text('选择运动类型')
             .fontSize(16).fontWeight(FontWeight.Bold)
             .width('100%').padding({ left: 16, bottom: 8 })
@@ -187,18 +322,47 @@ struct SportPage {
           }
           .width('100%').padding({ left: 16, right: 16 })
 
+          // 烈度选择
+          Text('运动强度').fontSize(13).fontColor(this.sub())
+            .width('100%').padding({ left: 16, top: 8, bottom: 4 })
+          Row() {
+            ForEach(Constants.INTENSITIES, (item: string) => {
+              Text(item)
+                .fontSize(13)
+                .fontColor(this.intensity === item ? '#FFFFFF' : this.sub())
+                .backgroundColor(this.intensity === item ? '#FF6B35' : this.card())
+                .borderRadius(16).padding({ left: 14, right: 14, top: 8, bottom: 8 })
+                .margin({ right: 8 })
+                .onClick(() => { this.intensity = item; })
+            })
+          }
+          .width('100%').padding({ left: 16, right: 16 })
+
           if (!this.isTracking) {
             Button() {
               Text('▶ 开始运动').fontSize(20).fontColor(this.txt())
             }
             .width(200).height(56).backgroundColor('#FF6B35').borderRadius(28)
-            .margin({ top: 24 })
+            .margin({ top: 20 })
             .onClick(() => { this.startTracking(); })
           } else {
             Column() {
               Text(this.formatDuration(this.durationSec))
                 .fontSize(56).fontWeight(FontWeight.Bold).fontColor('#FF6B35')
-              Text('运动时长').fontSize(14).fontColor(this.sub())
+              Text(this.isPaused ? '已暂停' : '运动中').fontSize(14).fontColor(this.isPaused ? '#FF9800' : this.sub())
+
+              // 加减时间
+              Row() {
+                Button('-1分').fontSize(13).backgroundColor('#555555').borderRadius(16).height(36)
+                  .onClick(() => { this.adjustTime(-60); })
+                Button('-30秒').fontSize(13).backgroundColor('#555555').borderRadius(16).height(36).margin({ left: 8 })
+                  .onClick(() => { this.adjustTime(-30); })
+                Button('+30秒').fontSize(13).backgroundColor('#FF6B35').borderRadius(16).height(36).margin({ left: 8 })
+                  .onClick(() => { this.adjustTime(30); })
+                Button('+1分').fontSize(13).backgroundColor('#FF6B35').borderRadius(16).height(36).margin({ left: 8 })
+                  .onClick(() => { this.adjustTime(60); })
+              }
+              .margin({ top: 8 })
 
               Row() {
                 Column() {
@@ -207,7 +371,11 @@ struct SportPage {
                 }
                 Divider().vertical(true).height(50).margin({ left: 24, right: 24 })
                 Column() {
-                  Text(String(this.calorieBurn)).fontSize(24).fontWeight(FontWeight.Bold)
+                  if (this.isCalcCalories) {
+                    Text('...').fontSize(24).fontWeight(FontWeight.Bold)
+                  } else {
+                    Text(String(this.calorieBurn)).fontSize(24).fontWeight(FontWeight.Bold)
+                  }
                   Text('千卡').fontSize(12).fontColor(this.sub())
                 }
                 Divider().vertical(true).height(50).margin({ left: 24, right: 24 })
@@ -216,24 +384,33 @@ struct SportPage {
                   Text('bpm').fontSize(12).fontColor(this.sub())
                 }
               }
-              .width('100%').justifyContent(FlexAlign.Center).margin({ top: 20 })
+              .width('100%').justifyContent(FlexAlign.Center).margin({ top: 16 })
 
               Text('卡路里按体重 ' + this.bodyWeight.toFixed(0) + 'kg 估算')
                 .fontSize(11).fontColor(this.sub()).margin({ top: 8 })
 
               Row() {
-                Button('⏹ 结束').width(140).height(48)
-                  .backgroundColor('#F44336').borderRadius(24)
+                if (this.isPaused) {
+                  Button('▶ 继续').width(100).height(48)
+                    .backgroundColor('#4CAF50').borderRadius(24)
+                    .onClick(() => { this.resumeTracking(); })
+                } else {
+                  Button('⏸ 暂停').width(100).height(48)
+                    .backgroundColor('#FF9800').borderRadius(24)
+                    .onClick(() => { this.pauseTracking(); })
+                }
+                Button('⏹ 结束').width(120).height(48)
+                  .backgroundColor('#F44336').borderRadius(24).margin({ left: 10 })
                   .onClick(() => { this.saveSportRecord(); })
-                Button('✖ 取消').width(120).height(48)
-                  .backgroundColor('#555555').borderRadius(24).margin({ left: 12 })
+                Button('✖ 取消').width(90).height(48)
+                  .backgroundColor('#555555').borderRadius(24).margin({ left: 10 })
                   .onClick(() => { this.stopTracking(); })
               }
-              .margin({ top: 24 })
+              .margin({ top: 20 })
             }
             .width('100%').padding(24)
             .backgroundColor(this.card()).borderRadius(16)
-            .margin({ left: 16, right: 16, top: 20 })
+            .margin({ left: 16, right: 16, top: 16 })
           }
 
           Text('运动历史').fontSize(16).fontWeight(FontWeight.Bold)

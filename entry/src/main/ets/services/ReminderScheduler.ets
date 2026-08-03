@@ -114,11 +114,11 @@ export class ReminderScheduler {
         minute: minute,
         daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
         wantAgent: {
-          pkgName: 'com.harmonyhealth.app',
+          pkgName: 'com.yourcompany.healthapp',
           abilityName: 'EntryAbility'
         },
         maxScreenWantAgent: {
-          pkgName: 'com.harmonyhealth.app',
+          pkgName: 'com.yourcompany.healthapp',
           abilityName: 'EntryAbility'
         },
         ringDuration: 10,

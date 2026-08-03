@@ -3,8 +3,10 @@ import { GlobalData } from '../common/GlobalData';
 import { Constants, GoalConfig, StreakData, DbRow, ThemeColors } from '../common/Constants';
 import { RingProgress } from '../components/RingProgress';
 import { HealthCard } from '../components/HealthCard';
+import { FoodRecognitionTab } from '../components/FoodRecognitionTab';
 import { ReminderScheduler } from '../services/ReminderScheduler';
 import { NotificationService } from '../services/NotificationService';
+import { WeightDialog } from '../components/WeightDialog';
 
 @Entry
 @Component
@@ -50,6 +52,7 @@ struct Index {
   @State textColor: string = '#FFFFFF';
   @State subTextColor: string = '#AAAAAA';
   readonly accentColor: string = '#FF6B35';
+  private weightDialogController: CustomDialogController | null = null;
 
   updateThemeColors(): void {
     this.bgColor = ThemeColors.bg(this.theme);
@@ -61,10 +64,31 @@ struct Index {
   aboutToAppear(): void {
     this.loadAllData();
     this.startAutoRefresh();
+    this.checkWeightPrompt();
   }
 
   aboutToDisappear(): void {
     this.stopAutoRefresh();
+  }
+
+  async checkWeightPrompt(): Promise<void> {
+    try {
+      const skip = await GlobalData.prefs.getWeightSkipPrompt();
+      const configured = await GlobalData.prefs.isWeightConfigured();
+      if (skip || configured) {
+        return;
+      }
+      setTimeout(() => {
+        this.weightDialogController = new CustomDialogController({
+          builder: WeightDialog(),
+          autoCancel: true,
+          customStyle: true
+        });
+        this.weightDialogController.open();
+      }, 600);
+    } catch (err) {
+      console.error('checkWeightPrompt error:', JSON.stringify(err));
+    }
   }
 
   private refreshTimer: number = -1;
@@ -320,11 +344,14 @@ struct Index {
         TabContent() { this.diaryTab() }
         .tabBar(this.tabBuilder('📓', '日记', 1))
 
+        TabContent() { this.recognitionTab() }
+        .tabBar(this.tabBuilder('📷', '识图', 2))
+
         TabContent() { this.notificationTab() }
-        .tabBar(this.tabBuilder('🔔', '通知', 2))
+        .tabBar(this.tabBuilder('🔔', '通知', 3))
 
         TabContent() { this.accountTab() }
-        .tabBar(this.tabBuilder('👤', '账号', 3))
+        .tabBar(this.tabBuilder('👤', '账号', 4))
       }
       .animationDuration(200)
       .barHeight(56)
@@ -553,6 +580,10 @@ struct Index {
     }
   }
 
+  @Builder recognitionTab() {
+    FoodRecognitionTab()
+  }
+
   @Builder notificationTab() {
     Scroll() {
       Column() {
@@ -672,12 +703,20 @@ struct Index {
         .margin({ left: 16, right: 16, bottom: 10 })
         .onClick(() => { this.navigateTo(Constants.PAGE_LOGIN); })
 
-        this.accountMenuItem('🎯', '目标设置', '步数、喝水、体重、身高目标', () => { this.navigateTo(Constants.PAGE_GOAL); })
+        this.accountMenuItem('⚖️', '体重设置', '设置体重，用于计算运动热量', () => {
+          this.weightDialogController = new CustomDialogController({
+            builder: WeightDialog(),
+            autoCancel: true,
+            customStyle: true
+          });
+          this.weightDialogController.open();
+        })
+        this.accountMenuItem('🎯', '目标设置', '步数、喝水、运动、睡眠目标', () => { this.navigateTo(Constants.PAGE_GOAL); })
         this.accountMenuItem('🎨', '主题切换', '深色模式 / 浅色模式', () => { this.toggleTheme(); })
         this.accountMenuItem('📊', '健康报告', '查看周报月报', () => { this.navigateTo(Constants.PAGE_REPORT); })
         this.accountMenuItem('ℹ️', '关于', 'Harmony健康 v1.0', () => {})
         this.accountMenuItem('💾', '数据说明', '数据存储在本地数据库，无需联网。关机会保留。', () => {})
-        this.accountMenuItem('📡', '手环说明', '模拟手环数据，纯本地生成，无需真实设备。', () => {})
+        this.accountMenuItem('📡', '手环说明', '需连接真实BLE手环设备读取心率/血氧数据。', () => {})
 
         Divider().opacity(0).height(24)
       }

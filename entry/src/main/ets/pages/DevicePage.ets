@@ -1,5 +1,6 @@
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
 import { ble } from '@kit.ConnectivityKit';
+import { BusinessError } from '@kit.BasicServicesKit';
 import { BLEDevice, HealthBandData, ThemeColors } from '../common/Constants';
 
 @Entry
@@ -9,7 +10,6 @@ struct DevicePage {
   @State connectedDeviceName: string = '';
   @State isScanning: boolean = false;
   @State healthData: HealthBandData = { heartRate: 0, spo2: 0, battery: 0, connected: false };
-  private mockTimer: number = -1;
   private gattClient: ble.GattClientDevice | null = null;
   @StorageLink('currentTheme') theme: string = 'dark';
 
@@ -25,27 +25,52 @@ struct DevicePage {
     try {
       ble.on('BLEDeviceFind', (data: Array<ble.ScanResult>) => {
         for (const result of data) {
-          if (result.deviceName && result.deviceName.length > 0) {
-            const exists = this.scannedDevices.some((d: BLEDevice) => d.address === result.deviceId);
-            if (!exists) {
-              this.scannedDevices.push({
-                name: result.deviceName,
-                address: result.deviceId,
-                rssi: result.rssi
-              });
-            }
+          const addr: string = String(result.deviceId);
+          if (addr.length === 0) {
+            continue;
+          }
+          const exists = this.scannedDevices.some((d: BLEDevice) => d.address === addr);
+          if (!exists) {
+            const name: string = result.deviceName && result.deviceName.length > 0
+              ? result.deviceName
+              : this.maskAddress(addr);
+            this.scannedDevices.push({
+              name: name,
+              address: addr,
+              rssi: result.rssi
+            });
           }
         }
       });
 
-      ble.startBLEScan([], { interval: 0, dutyMode: ble.ScanDuty.SCAN_MODE_LOW_POWER, matchMode: ble.MatchMode.MATCH_MODE_AGGRESSIVE });
+      const scanOptions: ble.ScanOptions = {
+        interval: 500,
+        dutyMode: ble.ScanDuty.SCAN_MODE_LOW_POWER,
+        matchMode: ble.MatchMode.MATCH_MODE_AGGRESSIVE,
+      };
+      ble.startBLEScan([], scanOptions);
     } catch (err) {
-      console.error('BLE scan start error:', JSON.stringify(err));
+      const bErr = err as BusinessError;
+      if (bErr.code === 2900003) {
+        promptAction.showToast({ message: '请先打开手机蓝牙开关' });
+      } else if (bErr.code === 201) {
+        promptAction.showToast({ message: '需要蓝牙权限，请在设置中授权' });
+      } else {
+        console.error('BLE scan start error:', JSON.stringify(err));
+      }
     }
 
     setTimeout(() => {
       this.stopScan();
     }, 8000);
+  }
+
+  maskAddress(addr: string): string {
+    const parts: string[] = addr.split(':');
+    if (parts.length >= 3) {
+      return '未知设备 ' + parts[parts.length - 2] + ':' + parts[parts.length - 1];
+    }
+    return '未知设备';
   }
 
   stopScan(): void {
@@ -81,22 +106,12 @@ struct DevicePage {
       this.gattClient.connect();
     } catch (err) {
       console.error('BLE connect error:', JSON.stringify(err));
-      this.fallbackToMockData(device.name);
+      promptAction.showToast({ message: '连接失败，请确认设备支持BLE且可连接' });
     }
-  }
-
-  fallbackToMockData(name: string): void {
-    this.connectedDeviceName = name;
-    this.healthData = { heartRate: 0, spo2: 0, battery: 0, connected: false };
-    this.startHealthMonitoring();
   }
 
   disconnectDevice(): void {
     this.connectedDeviceName = '';
-    if (this.mockTimer !== -1) {
-      clearInterval(this.mockTimer);
-      this.mockTimer = -1;
-    }
     if (this.gattClient) {
       try {
         this.gattClient.off('BLEConnectionStateChange');
