@@ -61,7 +61,8 @@ struct SleepPage {
       // 近七天数据
       const recent = rows.slice(0, 7);
       this.weekLabels = recent.map((item: DbRow) => String(item.date).slice(5)).reverse();
-      this.weekScores = recent.map((item: DbRow) => Number(item.score)).reverse();
+      // 显示睡眠时长（分钟）
+      this.weekScores = recent.map((item: DbRow) => Number(item.total_minutes) || 0).reverse();
       if (this.weekScores.length > 0) {
         this.avgScore = Math.round(this.weekScores.reduce((a: number, b: number) => a + b, 0) / this.weekScores.length);
       }
@@ -353,7 +354,7 @@ struct SleepPage {
           Row() {
             Column() {
               Text(String(this.avgScore)).fontSize(48).fontWeight(FontWeight.Bold).fontColor('#9C27B0')
-              Text('平均睡眠评分').fontSize(13).fontColor(this.sub()).margin({ top: 4 })
+              Text('平均睡眠时长(分钟)').fontSize(13).fontColor(this.sub()).margin({ top: 4 })
             }
             Divider().vertical(true).height(70).margin({ left: 30, right: 30 })
             Column() {
@@ -476,7 +477,7 @@ struct SleepPage {
 
           // 近七天趋势图
           if (this.weekScores.length > 1) {
-            Text('近七天趋势图').fontSize(16).fontWeight(FontWeight.Bold)
+            Text('近七天睡眠时长趋势（分钟）').fontSize(16).fontWeight(FontWeight.Bold)
               .width('100%').padding({ left: 16, bottom: 8 })
             TrendChart({
               dataPoints: this.weekScores,
