@@ -264,39 +264,64 @@ struct WeightPage {
 
       Scroll() {
         Column() {
-          // 当前体重
+          // 当前数据展示
           Row() {
             Column() {
-              Text(this.currentWeight)
-                .fontSize(48)
+              Text(this.currentHeight)
+                .fontSize(36)
                 .fontWeight(FontWeight.Bold)
-              Text('kg')
-                .fontSize(16)
+              Text('身高')
+                .fontSize(14)
                 .fontColor(this.sub())
+                .margin({ top: 4 })
             }
+            .layoutWeight(1)
+
             Divider()
               .vertical(true)
               .height(60)
-              .margin({ left: 30, right: 30 })
+              .margin({ left: 10, right: 10 })
+
+            Column() {
+              Text(this.currentWeight)
+                .fontSize(36)
+                .fontWeight(FontWeight.Bold)
+              Text('体重')
+                .fontSize(14)
+                .fontColor(this.sub())
+                .margin({ top: 4 })
+            }
+            .layoutWeight(1)
+
+            Divider()
+              .vertical(true)
+              .height(60)
+              .margin({ left: 10, right: 10 })
+
             Column() {
               Text(this.bmi)
-                .fontSize(48)
+                .fontSize(36)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(this.getBmiColor())
               Text('BMI')
-                .fontSize(16)
+                .fontSize(14)
                 .fontColor(this.sub())
+                .margin({ top: 4 })
               if (this.bmiStatus.length > 0) {
                 Text(this.bmiStatus)
-                  .fontSize(13)
+                  .fontSize(12)
                   .fontColor(this.getBmiColor())
-                  .margin({ top: 4 })
+                  .margin({ top: 2 })
               }
             }
+            .layoutWeight(1)
           }
           .width('100%')
           .justifyContent(FlexAlign.Center)
           .padding(20)
+          .backgroundColor(this.card())
+          .borderRadius(16)
+          .margin({ left: 16, right: 16 })
 
           // 输入区域
           Column() {
