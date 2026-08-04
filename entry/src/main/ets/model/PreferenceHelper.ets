@@ -15,6 +15,8 @@ const KEY_LAST_ACTIVE_DATE = 'last_active_date';
 const KEY_WEIGHT_SKIP_PROMPT = 'weight_skip_prompt';
 const KEY_WEIGHT_CONFIGURED = 'weight_configured';
 const KEY_GENDER = 'gender';
+const KEY_HEALTH_CARD_ORDER = 'health_card_order';
+const KEY_QUICK_FUNCTION_ORDER = 'quick_function_order';
 
 export class PreferenceHelper {
   private pref_: preferences.Preferences | null = null;
@@ -169,5 +171,47 @@ export class PreferenceHelper {
     await this.pref.flush();
 
     return { current, best };
+  }
+
+  // 健康卡片顺序相关
+  async getHealthCardOrder(): Promise<string[]> {
+    try {
+      const orderStr = await this.pref.get(KEY_HEALTH_CARD_ORDER, 'steps,heart,sleep,water') as string;
+      return orderStr.split(',');
+    } catch (err) {
+      console.error('getHealthCardOrder error:', JSON.stringify(err));
+      return ['steps', 'heart', 'sleep', 'water'];
+    }
+  }
+
+  async setHealthCardOrder(order: string[]): Promise<void> {
+    try {
+      const orderStr = order.join(',');
+      await this.pref.put(KEY_HEALTH_CARD_ORDER, orderStr);
+      await this.pref.flush();
+    } catch (err) {
+      console.error('setHealthCardOrder error:', JSON.stringify(err));
+    }
+  }
+
+  // 快捷功能顺序相关
+  async getQuickFunctionOrder(): Promise<string[]> {
+    try {
+      const orderStr = await this.pref.get(KEY_QUICK_FUNCTION_ORDER, 'sport,weight,report,goal,diet,women,medication,mood') as string;
+      return orderStr.split(',');
+    } catch (err) {
+      console.error('getQuickFunctionOrder error:', JSON.stringify(err));
+      return ['sport', 'weight', 'report', 'goal', 'diet', 'women', 'medication', 'mood'];
+    }
+  }
+
+  async setQuickFunctionOrder(order: string[]): Promise<void> {
+    try {
+      const orderStr = order.join(',');
+      await this.pref.put(KEY_QUICK_FUNCTION_ORDER, orderStr);
+      await this.pref.flush();
+    } catch (err) {
+      console.error('setQuickFunctionOrder error:', JSON.stringify(err));
+    }
   }
 }

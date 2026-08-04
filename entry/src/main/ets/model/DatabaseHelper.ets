@@ -16,6 +16,7 @@ const TABLE_PERIOD = 'period_records';
 const TABLE_BODY_COMP = 'body_composition_records';
 const TABLE_PLAN = 'workout_plans';
 const TABLE_WATER_TIMELINE = 'water_timeline';
+const TABLE_SLEEP_START = 'sleep_start_records';
 
 export class DatabaseHelper {
   private rdbStore: relationalStore.RdbStore | null = null;
@@ -162,6 +163,12 @@ export class DatabaseHelper {
         date TEXT,
         time TEXT,
         ml INTEGER,
+        timestamp INTEGER
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_SLEEP_START} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT,
+        start_time TEXT,
         timestamp INTEGER
       )`,
     ];
@@ -374,6 +381,34 @@ export class DatabaseHelper {
     pred.orderByDesc('date');
     const result = await this.rdbStore.query(pred, ['*']);
     return this.readAllRows(result);
+  }
+
+  // 入睡记录相关方法
+  async addSleepStartRecord(date: string, startTime: string): Promise<void> {
+    if (!this.rdbStore) return;
+    const values: relationalStore.ValuesBucket = {
+      date: String(date),
+      start_time: String(startTime),
+      timestamp: Date.now()
+    };
+    await this.rdbStore.insert(TABLE_SLEEP_START, values);
+  }
+
+  async getLatestSleepStartRecord(): Promise<DbRow | null> {
+    if (!this.rdbStore) return null;
+    const pred = new relationalStore.RdbPredicates(TABLE_SLEEP_START);
+    pred.orderByDesc('timestamp');
+    pred.limitAs(1);
+    const result = await this.rdbStore.query(pred, ['*']);
+    const rows = this.readAllRows(result);
+    return rows.length > 0 ? rows[0] : null;
+  }
+
+  async deleteSleepStartRecord(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_SLEEP_START);
+    pred.equalTo('id', id);
+    await this.rdbStore.delete(pred);
   }
 
   async addDietRecord(record: DbRow): Promise<void> {
