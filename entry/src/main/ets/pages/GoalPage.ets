@@ -50,8 +50,8 @@ struct GoalPage {
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).onClick(() => { router.back(); })
-        Text('目标设置').fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 12 })
+        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { router.back(); })
+        Text('目标设置').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
       }
       .width('100%').padding({ left: 16, right: 16, top: 12 + this.statusBarHeight, bottom: 12 })
@@ -78,7 +78,7 @@ struct GoalPage {
 
   @Builder goalCard(title: string, label: string, value: string, unit: string, onChange: (v: string) => void) {
     Column() {
-      Text(title).fontSize(16).fontWeight(FontWeight.Bold)
+      Text(title).fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
         .width('100%').padding({ left: 12, top: 12 })
       Row() {
         Text(label).fontSize(15).fontColor(this.txt()).width(90)

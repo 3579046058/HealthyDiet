@@ -53,6 +53,7 @@ struct Index {
   @State stepCount: number = 0;
   @State stepGoal: number = 8000;
   @State heartRate: number = 0;
+  @State todayCalorieIntake: number = 0; // 今日摄入热量
   @StorageLink('liveSteps') liveSteps: number = 0;
   @StorageLink('bandHeartRate') bandHeartRate: number = 0;
   @StorageLink('inAppAlarm') @Watch('onInAppAlarm') inAppAlarm: string = '';
@@ -92,7 +93,7 @@ struct Index {
   @State overlayMoodDate: string = '';
 
   // 今日概览卡片拖拽排序相关
-  @State healthCardOrder: string[] = ['steps', 'heart', 'sleep', 'water']; // 卡片顺序
+  @State healthCardOrder: string[] = ['steps', 'calorie', 'sleep', 'water']; // 卡片顺序
 
   // 快捷功能拖拽排序相关
   @State quickFunctionOrder: string[] = ['sport', 'weight', 'report', 'goal', 'diet', 'women', 'medication', 'mood']; // 快捷功能顺序
@@ -100,7 +101,7 @@ struct Index {
   // 卡片配置数据
   private healthCardConfigs: HealthCardItem[] = [
     { id: 'steps', title: '步数', iconSymbol: 'ic_steps', iconColor: Constants.COLOR_STEP },
-    { id: 'heart', title: '心率', iconSymbol: 'ic_heart_rate', iconColor: Constants.COLOR_HEART },
+    { id: 'calorie', title: '热量', iconSymbol: 'ic_calories', iconColor: Constants.COLOR_DIET },
     { id: 'sleep', title: '睡眠', iconSymbol: 'ic_sleep', iconColor: Constants.COLOR_SLEEP },
     { id: 'water', title: '喝水', iconSymbol: 'ic_water', iconColor: Constants.COLOR_WATER }
   ];
@@ -197,15 +198,15 @@ struct Index {
         subText: this.getDisplaySteps() > 0 ? '完成 ' + String(Math.round(this.getDisplaySteps() / this.stepGoal * 100)) + '%' : '暂无数据',
         onCardClick: () => { this.navigateTo(Constants.PAGE_SPORT); }
       })
-    } else if (cardId === 'heart') {
+    } else if (cardId === 'calorie') {
       HealthCard({
-        title: '心率',
-        value: this.bandHeartRate > 0 ? String(this.bandHeartRate) : (this.heartRate > 0 ? String(this.heartRate) : '--'),
-        unit: 'bpm',
-        iconColor: Constants.COLOR_HEART,
-        iconName: 'ic_heart_rate',
-        subText: this.bandHeartRate > 0 ? '手环实时心率' : '静息心率',
-        onCardClick: () => {}
+        title: '热量',
+        value: this.todayCalorieIntake > 0 ? String(this.todayCalorieIntake) : '--',
+        unit: 'kcal',
+        iconColor: Constants.COLOR_DIET,
+        iconName: 'ic_calories',
+        subText: '今日摄入',
+        onCardClick: () => { this.navigateTo(Constants.PAGE_DIET); }
       })
     } else if (cardId === 'sleep') {
       HealthCard({
@@ -453,6 +454,10 @@ struct Index {
         this.diaryDate = today;
       }
       await this.loadDiaryData();
+
+      // 计算今日摄入热量
+      const todayDietRecords = await GlobalData.db.getDietRecordsRange(today, today);
+      this.todayCalorieIntake = todayDietRecords.reduce((sum: number, record: DbRow) => sum + (Number(record.calories) || 0), 0);
     } catch (err) {
       console.error('loadData error:', JSON.stringify(err));
     }
@@ -516,6 +521,7 @@ struct Index {
       AppStorage.setOrCreate('currentTheme', resolved);
     }
     this.updateThemeColors();
+    console.info('THEME toggle next=' + next + ' currentTheme=' + AppStorage.get<string>('currentTheme'));
   }
 
   navigateTo(page: string): void {
@@ -732,19 +738,19 @@ struct Index {
     Column() {
       Blank()
       Column() {
-        Text('完善你的个人信息').fontSize(20).fontWeight(FontWeight.Bold).fontColor(Color.White)
+        Text('完善你的个人信息').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           .width('100%').margin({ bottom: 8 })
 
-        Text('身高、体重、性别用于计算 BMI 和运动热量').fontSize(12).fontColor('#AAAAAA')
+        Text('身高、体重、性别用于计算 BMI 和运动热量').fontSize(12).fontColor(this.subTextColor)
           .width('100%').margin({ bottom: 20 })
 
-        Text('性别').fontSize(14).fontColor('#DDDDDD').width('100%').margin({ bottom: 8 })
+        Text('性别').fontSize(14).fontColor(this.textColor).width('100%').margin({ bottom: 8 })
         Row() {
           ForEach(this.overlayGenders, (item: string) => {
             Text(item)
               .fontSize(15)
-              .fontColor(this.overlayGender === item ? Color.White : '#AAAAAA')
-              .backgroundColor(this.overlayGender === item ? '#FF6B35' : '#2A2A3E')
+              .fontColor(this.overlayGender === item ? Color.White : this.subTextColor)
+              .backgroundColor(this.overlayGender === item ? '#FF6B35' : this.cardColor)
               .borderRadius(20).padding({ left: 28, right: 28, top: 10, bottom: 10 })
               .margin({ right: 12 })
               .onClick(() => { this.overlayGender = item; })
@@ -753,31 +759,31 @@ struct Index {
         .width('100%')
         .margin({ bottom: 18 })
 
-        Text('身高').fontSize(14).fontColor('#DDDDDD').width('100%').margin({ bottom: 8 })
+        Text('身高').fontSize(14).fontColor(this.textColor).width('100%').margin({ bottom: 8 })
         Row() {
           TextInput({ placeholder: '170', text: this.overlayHeightInput })
             .type(InputType.Number).layoutWeight(1).height(46)
-            .backgroundColor('#2A2A3E').fontColor(Color.White).placeholderColor('#888888')
+            .backgroundColor(this.cardColor).fontColor(this.textColor).placeholderColor(this.subTextColor)
             .borderRadius(10)
             .onChange((v: string) => { this.overlayHeightInput = v; })
-          Text('cm').fontSize(14).fontColor('#AAAAAA').margin({ left: 10 })
+          Text('cm').fontSize(14).fontColor(this.subTextColor).margin({ left: 10 })
         }
         .width('100%')
         .margin({ bottom: 18 })
 
-        Text('体重').fontSize(14).fontColor('#DDDDDD').width('100%').margin({ bottom: 8 })
+        Text('体重').fontSize(14).fontColor(this.textColor).width('100%').margin({ bottom: 8 })
         Row() {
           TextInput({ placeholder: '70', text: this.overlayWeightInput })
             .type(InputType.Number).layoutWeight(1).height(46)
-            .backgroundColor('#2A2A3E').fontColor(Color.White).placeholderColor('#888888')
+            .backgroundColor(this.cardColor).fontColor(this.textColor).placeholderColor(this.subTextColor)
             .borderRadius(10)
             .onChange((v: string) => { this.overlayWeightInput = v; })
-          Text('kg').fontSize(14).fontColor('#AAAAAA').margin({ left: 10 })
+          Text('kg').fontSize(14).fontColor(this.subTextColor).margin({ left: 10 })
         }
         .width('100%')
 
         Row() {
-          Text('设置后不再弹出').fontSize(13).fontColor('#AAAAAA')
+          Text('设置后不再弹出').fontSize(13).fontColor(this.subTextColor)
           Blank()
           Toggle({ type: ToggleType.Switch, isOn: this.overlaySkipNext })
             .selectedColor('#FF6B35')
@@ -805,48 +811,48 @@ struct Index {
       }
       .width('88%')
       .padding(24)
-      .backgroundColor('#1A1A2E')
+      .backgroundColor(this.cardColor)
       .borderRadius(18)
       Blank()
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#000000')
+    .backgroundColor('rgba(0,0,0,0.7)')
   }
 
   @Builder moodOverlay() {
     Column() {
       Blank()
       Column() {
-        Text('记录心情').fontSize(20).fontWeight(FontWeight.Bold).fontColor(Color.White)
+        Text('记录心情').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           .width('100%').margin({ bottom: 4 })
 
-        Text(this.overlayMoodDate.length > 0 ? this.overlayMoodDate : '--').fontSize(14).fontColor('#AAAAAA')
+        Text(this.overlayMoodDate.length > 0 ? this.overlayMoodDate : '--').fontSize(14).fontColor(this.subTextColor)
           .width('100%').margin({ bottom: 16 })
 
-        Text('今天心情怎么样？').fontSize(14).fontColor('#DDDDDD')
+        Text('今天心情怎么样？').fontSize(14).fontColor(this.textColor)
           .width('100%').margin({ bottom: 14 })
 
         Row() {
           ForEach([1, 2, 3, 4, 5], (mood: number) => {
             Column() {
               Text(this.getMoodEmoji(mood)).fontSize(32).lineHeight(40)
-              Text(this.getMoodLabel(mood)).fontSize(11).fontColor('#AAAAAA').margin({ top: 2 })
+              Text(this.getMoodLabel(mood)).fontSize(11).fontColor(this.subTextColor).margin({ top: 2 })
             }
             .width(54).height(78)
             .justifyContent(FlexAlign.Center)
             .alignItems(HorizontalAlign.Center)
             .borderRadius(10)
-            .backgroundColor(this.overlayMood === mood ? '#FFC107' : '#2A2A3E')
-            .border({ width: 2, color: this.overlayMood === mood ? '#FFC107' : '#333333', style: BorderStyle.Solid })
+            .backgroundColor(this.overlayMood === mood ? '#FFC107' : this.cardColor)
+            .border({ width: 2, color: this.overlayMood === mood ? '#FFC107' : this.cardColor, style: BorderStyle.Solid })
             .onClick(() => { this.overlayMood = mood; })
           }, (mood: number): string => mood.toString())
         }
         .width('100%').justifyContent(FlexAlign.SpaceEvenly)
 
-        TextArea({ placeholder: '说点什么吧(选填)', text: this.overlayMoodNote })
+        TextArea({ placeholder: '说点什么吧', text: this.overlayMoodNote })
           .width('100%').height(80)
-          .backgroundColor('#2A2A3E')
+          .backgroundColor(this.cardColor)
           .placeholderColor('#888888')
           .fontColor(Color.White).borderRadius(10).padding(10)
           .onChange((value: string) => { this.overlayMoodNote = value; })
@@ -854,8 +860,8 @@ struct Index {
 
         Row() {
           Button('稍后').layoutWeight(1).height(46)
-            .backgroundColor('#555555').borderRadius(23)
-            .fontColor(Color.White).fontSize(15)
+            .backgroundColor(this.cardColor).borderRadius(23)
+            .fontColor(this.textColor).fontSize(15)
             .onClick(() => { this.showMoodOverlay = false; })
           Button('保存').layoutWeight(1).height(46)
             .backgroundColor('#FFC107').fontColor('#0D0D1A')
@@ -867,13 +873,13 @@ struct Index {
       }
       .width('88%')
       .padding(24)
-      .backgroundColor('#1A1A2E')
+      .backgroundColor(this.cardColor)
       .borderRadius(18)
       Blank()
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#000000')
+    .backgroundColor('rgba(0,0,0,0.7)')
   }
 
   @Builder sharePanel() {
@@ -1308,7 +1314,7 @@ struct Index {
   }
 
   @Builder recognitionTab() {
-    FoodRecognitionTab()
+    FoodRecognitionTab({ activeTheme: this.theme })
   }
 
   @Builder accountTab() {

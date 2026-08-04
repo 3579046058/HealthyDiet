@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
-import { DbRow, ThemeColors, FoodCalories, GoalConfig } from '../common/Constants';
+import { DbRow, ThemeColors, FoodCalories, GoalConfig, Constants } from '../common/Constants';
 import { FoodRecognitionService } from '../services/FoodRecognitionService';
 
 @Entry
@@ -191,7 +191,7 @@ struct DietPage {
       .width(56)
       .height(56)
       .borderRadius(28)
-      .backgroundColor(this.mealType === type ? '#FF5722' : '#333344')
+      .backgroundColor(this.mealType === type ? Constants.COLOR_DIET : this.card())
       .fontSize(24)
       .onClick(() => {
         this.mealType = type;
@@ -228,7 +228,7 @@ struct DietPage {
             Blank()
             Text(Number(item.calories) > 0 ? String(Number(item.calories)) + ' kcal' : '未识别')
               .fontSize(12)
-              .fontColor('#FF9800')
+              .fontColor(this.txt())
             Text('🗑').fontSize(16).margin({ left: 8 })
               .onClick(() => { this.deleteDietRecord(Number(item.id)); })
           }
@@ -259,12 +259,14 @@ struct DietPage {
       Row() {
         Text('←')
           .fontSize(22)
+          .fontColor(this.txt())
           .onClick(() => {
             router.back();
           })
         Text('饮食记录')
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
+          .fontColor(this.txt())
           .margin({ left: 12 })
         Blank()
         Text(this.date)
@@ -279,7 +281,7 @@ struct DietPage {
           if (!this.showInput) {
             Button('+ 添加食物')
               .width('100%')
-              .backgroundColor('#FF5722')
+              .backgroundColor(Constants.COLOR_DIET)
               .borderRadius(10)
               .margin({ bottom: 16 })
               .onClick(() => {
@@ -290,6 +292,7 @@ struct DietPage {
               Text('添加食物')
                 .fontSize(16)
                 .fontWeight(FontWeight.Bold)
+                .fontColor(this.txt())
                 .width('100%')
                 .margin({ bottom: 12 })
 
@@ -314,7 +317,7 @@ struct DietPage {
                   })
                 Button('📖 食物库')
                   .fontSize(13)
-                  .backgroundColor('#FF9800')
+                  .backgroundColor(Constants.COLOR_DIET)
                   .borderRadius(10)
                   .height(40)
                   .margin({ left: 8 })
@@ -344,7 +347,7 @@ struct DietPage {
                           Blank()
                           Text(String(FoodCalories.getCaloriesFor(food)) + ' kcal')
                             .fontSize(12)
-                            .fontColor('#FF9800')
+                            .fontColor(this.txt())
                         }
                         .width('100%')
                         .padding({ top: 6, bottom: 6 })
@@ -379,14 +382,14 @@ struct DietPage {
               if (this.foodName.trim().length > 0 && this.amountG.trim().length > 0) {
                 Text('预计 ' + String(this.previewCalories()) + ' kcal')
                   .fontSize(13)
-                  .fontColor('#FF9800')
+                  .fontColor(this.txt())
                   .width('100%')
                   .margin({ bottom: 8 })
               }
 
               Row() {
                 Button('取消')
-                  .backgroundColor('#555555')
+                  .backgroundColor(this.card())
                   .borderRadius(20)
                   .flexGrow(1)
                   .margin({ right: 8 })
@@ -396,7 +399,7 @@ struct DietPage {
                     this.amountG = '';
                   })
                 Button('保存')
-                  .backgroundColor('#4CAF50')
+                  .backgroundColor(Constants.COLOR_EXERCISE)
                   .borderRadius(20)
                   .flexGrow(1)
                   .margin({ left: 8 })
@@ -419,6 +422,7 @@ struct DietPage {
               Text('🍽️ 今日热量统计')
                 .fontSize(16)
                 .fontWeight(FontWeight.Bold)
+                .fontColor(this.txt())
               Blank()
             }
             .width('100%')
@@ -432,6 +436,7 @@ struct DietPage {
                 Text(this.getTotalCalories().toString() + ' kcal')
                   .fontSize(17)
                   .fontWeight(FontWeight.Medium)
+                  .fontColor(this.txt())
               }
               .layoutWeight(1)
               .alignItems(HorizontalAlign.Center)
@@ -443,6 +448,7 @@ struct DietPage {
                 Text(this.recommendCalorie.toString() + ' kcal')
                   .fontSize(17)
                   .fontWeight(FontWeight.Medium)
+                  .fontColor(this.txt())
               }
               .layoutWeight(1)
               .alignItems(HorizontalAlign.Center)

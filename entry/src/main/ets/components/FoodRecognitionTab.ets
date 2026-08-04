@@ -8,8 +8,28 @@ import { FoodRecognitionService, RecognitionOutcome } from '../services/FoodReco
 
 @Component
 export struct FoodRecognitionTab {
-  @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('currentTheme') @Watch('onThemeChange') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  @Prop activeTheme: string = 'dark';
   @State previewUri: string = '';
+
+  @State bgColor: string = '#0D0D1A';
+  @State cardColor: string = '#1A1A2E';
+  @State textColor: string = '#FFFFFF';
+  @State subTextColor: string = '#AAAAAA';
+
+  onThemeChange(propName: string): void {
+    console.info('FoodRecognitionTab theme changed to=' + this.theme);
+    this.updateThemeColors();
+  }
+
+  updateThemeColors(): void {
+    this.bgColor = ThemeColors.bg(this.theme);
+    this.cardColor = ThemeColors.card(this.theme);
+    this.textColor = ThemeColors.text(this.theme);
+    this.subTextColor = ThemeColors.subText(this.theme);
+  }
+
   @State recognizedFood: string = '';
   @State isRecognizing: boolean = false;
   @State scanAnim: boolean = false;
@@ -28,11 +48,6 @@ export struct FoodRecognitionTab {
   @State autoSnackChecked: boolean = false;
 
   private uiContext: common.UIAbilityContext | null = null;
-
-  get bg(): string { return ThemeColors.bg(this.theme); }
-  get card(): string { return ThemeColors.card(this.theme); }
-  get txt(): string { return ThemeColors.text(this.theme); }
-  get sub(): string { return ThemeColors.subText(this.theme); }
 
   get currentGrams(): number {
     const v = parseFloat(this.gramsInput);
@@ -56,6 +71,8 @@ export struct FoodRecognitionTab {
 
   aboutToAppear(): void {
     this.uiContext = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    this.updateThemeColors();
+    console.info('FoodRecognitionTab theme=' + this.theme);
   }
 
   async takePhoto(): Promise<void> {
@@ -273,12 +290,12 @@ export struct FoodRecognitionTab {
     Scroll() {
       Column() {
         Row() {
-          Text('AI 识菜').fontSize(22).fontWeight(FontWeight.Bold).fontColor(this.txt)
+          Text('AI 识菜').fontSize(22).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           Blank()
         }
-        .width('100%').padding({ left: 20, right: 20, top: 16 })
+        .width('100%').padding({ left: 20, right: 20, top: 16 + this.statusBarHeight })
 
-        Text('拍照看看这是什么菜').fontSize(13).fontColor(this.sub)
+        Text('拍照看看这是什么菜').fontSize(13).fontColor(this.subTextColor)
           .width('100%').padding({ left: 20, top: 4, bottom: 16 })
 
         // 中央识别区（扫描线动画）
@@ -300,8 +317,8 @@ export struct FoodRecognitionTab {
             } else {
               Column() {
                 Text('🍽️').fontSize(72)
-                Text('对准食物拍照或选择图片').fontSize(14).fontColor(this.sub).margin({ top: 12 })
-                Text('自动识别这是什么菜').fontSize(12).fontColor(this.sub).margin({ top: 4 })
+                Text('对准食物拍照或选择图片').fontSize(14).fontColor(this.subTextColor).margin({ top: 12 })
+                Text('自动识别这是什么菜').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
               }
               .width('100%').height(220).justifyContent(FlexAlign.Center)
             }
@@ -310,7 +327,7 @@ export struct FoodRecognitionTab {
           .height(this.previewUri.length > 0 && this.imageWidth > 0 && this.imageHeight > 0 ? 
             (this.imageHeight / this.imageWidth * 320) : 220)
           .borderRadius(20)
-          .backgroundColor(this.card)
+          .backgroundColor(this.cardColor)
           .border({ width: 2, color: '#FF6B35', style: BorderStyle.Dashed })
 
           if (this.scanAnim) {
@@ -329,7 +346,7 @@ export struct FoodRecognitionTab {
                 .width(48)
                 .height(48)
                 .color('#FF6B35')
-              Text('AI 识别中...').fontSize(14).fontColor(Color.White).margin({ top: 12 })
+              Text('AI 识别中...').fontSize(14).fontColor(this.textColor).margin({ top: 12 })
             }
             .width(140).height(140).borderRadius(20)
             .backgroundColor('#000000CC')
@@ -366,7 +383,7 @@ export struct FoodRecognitionTab {
               Text('🍽️').fontSize(32)
               Column() {
                 Text(this.recognizedFood)
-                  .fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt)
+                  .fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.textColor)
                 if (this.recogSource === 'cloud') {
                   Text('☁️ 云端识别').fontSize(11).fontColor('#03A9F4')
                 } else if (this.recogSource === 'local') {
@@ -378,10 +395,10 @@ export struct FoodRecognitionTab {
             }
             .width('100%')
 
-            Divider().color('#333333').height(1).margin({ top: 12, bottom: 12 })
+            Divider().color(ThemeColors.divider(this.theme)).height(1).margin({ top: 12, bottom: 12 })
 
             // 克数滑块 + 文本输入
-            Text('食物份量').fontSize(13).fontColor(this.sub).width('100%')
+            Text('食物份量').fontSize(13).fontColor(this.subTextColor).width('100%')
             Row() {
               Slider({ value: this.gramsSlider, min: 10, max: 2000, step: 10, style: SliderStyle.OutSet })
                 .layoutWeight(1)
@@ -395,19 +412,19 @@ export struct FoodRecognitionTab {
                   }
                 })
               Text(this.gramsInput.length > 0 ? this.gramsInput + 'g' : '200g')
-                .fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.txt)
+                .fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor)
                 .margin({ left: 10 }).width(60)
             }
             .width('100%')
 
             Row() {
-              Text('或手动输入(克):').fontSize(12).fontColor(this.sub)
+              Text('或手动输入(克):').fontSize(12).fontColor(this.subTextColor)
               TextInput({ placeholder: '200', text: this.gramsInput })
                 .type(InputType.Number)
                 .width(120).height(36)
                 .backgroundColor(ThemeColors.inputBg(this.theme))
-                .fontColor(this.txt)
-                .placeholderColor(this.sub)
+                .fontColor(this.textColor)
+                .placeholderColor(this.subTextColor)
                 .onChange((v: string) => {
                   this.gramsInput = v;
                   const num = parseFloat(v);
@@ -425,31 +442,31 @@ export struct FoodRecognitionTab {
                     this.cloudCalories = 0;
                   }
                 })
-              Text('g').fontSize(12).fontColor(this.sub).margin({ left: 6 })
+              Text('g').fontSize(12).fontColor(this.subTextColor).margin({ left: 6 })
             }
             .width('100%').margin({ top: 8 })
 
             // 卡路里显示（云端计算）
             Row() {
-              Text('预计热量: ').fontSize(14).fontColor(this.sub)
+              Text('预计热量: ').fontSize(14).fontColor(this.subTextColor)
               Blank()
               if (this.isCalcCalories) {
-                Text('计算中...').fontSize(16).fontColor(this.sub)
+                Text('计算中...').fontSize(16).fontColor(this.subTextColor)
               } else if (this.cloudCalories > 0) {
                 Text(String(this.cloudCalories) + ' 千卡')
                   .fontSize(18).fontWeight(FontWeight.Bold).fontColor('#FF6B35')
               } else {
-                Text('-- 千卡').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.sub)
+                Text('-- 千卡').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.subTextColor)
               }
             }
             .width('100%').margin({ top: 12 })
 
             // 自动归类餐次（AI 判定零食优先，否则按时间）
             Row() {
-              Text('⏰ 将记录为: ').fontSize(13).fontColor(this.sub)
+              Text('⏰ 将记录为: ').fontSize(13).fontColor(this.subTextColor)
               Text(this.getFinalMealLabel())
                 .fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FF6B35')
-              Text('（' + this.getTimeStr() + '）').fontSize(12).fontColor(this.sub).margin({ left: 4 })
+              Text('（' + this.getTimeStr() + '）').fontSize(12).fontColor(this.subTextColor).margin({ left: 4 })
               Blank()
             }
             .width('100%').margin({ top: 10 })
@@ -467,7 +484,7 @@ export struct FoodRecognitionTab {
             .width('100%').margin({ top: 10 })
 
             if (this.isAskingSnack) {
-              Text('AI 正在判断是否属于零食...').fontSize(12).fontColor(this.sub).width('100%').margin({ top: 6 })
+              Text('AI 正在判断是否属于零食...').fontSize(12).fontColor(this.subTextColor).width('100%').margin({ top: 6 })
             } else if (this.snackAnswer.length > 0) {
               Row() {
                 Text(this.snackAnswerIsSnack ? '🍪 AI判定：零食，归入零食' : '🍽️ AI判定：正餐，按时间归类')
@@ -475,7 +492,7 @@ export struct FoodRecognitionTab {
                   .fontColor(this.snackAnswerIsSnack ? '#FF9800' : '#4CAF50')
               }
               .width('100%').margin({ top: 6 })
-              Text(this.snackAnswer).fontSize(12).fontColor(this.sub).width('100%').margin({ top: 4 })
+              Text(this.snackAnswer).fontSize(12).fontColor(this.subTextColor).width('100%').margin({ top: 4 })
             }
 
             // 添加记录按钮 + 重新识别按钮
@@ -489,7 +506,7 @@ export struct FoodRecognitionTab {
 
               Button('🔄 重新识别')
                 .layoutWeight(1).height(48)
-                .backgroundColor('#666666')
+                .backgroundColor(this.subTextColor)
                 .borderRadius(24)
                 .fontColor(Color.White).fontSize(15)
                 .margin({ left: 12 })
@@ -503,10 +520,10 @@ export struct FoodRecognitionTab {
             }
           }
           .width('100%').padding(16)
-          .backgroundColor(this.card).borderRadius(14)
+          .backgroundColor(this.cardColor).borderRadius(14)
           .margin({ left: 16, right: 16, top: 20 })
         } else {
-          Text(this.resultMsg).fontSize(12).fontColor(this.sub)
+          Text(this.resultMsg).fontSize(12).fontColor(this.subTextColor)
             .width('100%').padding({ left: 20, right: 20, top: 16 })
         }
 
@@ -514,5 +531,7 @@ export struct FoodRecognitionTab {
       }
       .width('100%').alignItems(HorizontalAlign.Start)
     }
+    .backgroundColor(this.bgColor)
+    .width('100%').height('100%')
   }
 }

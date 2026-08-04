@@ -25,6 +25,13 @@ struct WomenHealthPage {
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
+  bg(): string { return ThemeColors.pageBg(this.theme); }
+  card(): string { return ThemeColors.cardBg(this.theme); }
+  txt(): string { return ThemeColors.textPrimary(this.theme); }
+  sub(): string { return ThemeColors.textSecondary(this.theme); }
+  divider(): string { return ThemeColors.divider(this.theme); }
+  inputBg(): string { return ThemeColors.inputBg(this.theme); }
+
   aboutToAppear(): void {
     this.loadData();
   }
@@ -150,14 +157,14 @@ struct WomenHealthPage {
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).fontColor('#fff')
+        Text('←').fontSize(22).fontColor(this.txt())
           .onClick(() => {
             router.back();
           })
         Text('女性健康')
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#fff')
+          .fontColor(this.txt())
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
@@ -165,27 +172,27 @@ struct WomenHealthPage {
       Scroll() {
         Column() {
           Column() {
-            Text('预计下次经期').fontSize(14).fontColor('#cccccc')
+            Text('预计下次经期').fontSize(14).fontColor(this.sub())
             Text(this.predictedNext)
               .fontSize(24)
               .fontColor('#E91E63')
               .fontWeight(FontWeight.Bold)
               .margin({ top: 4 })
-            Divider().width('100%').height(1).backgroundColor('#333333').margin({ top: 12, bottom: 12 })
-            Text('预计排卵日（下次经期前14天）').fontSize(14).fontColor('#cccccc')
+            Divider().width('100%').height(1).backgroundColor(this.divider()).margin({ top: 12, bottom: 12 })
+            Text('预计排卵日（下次经期前14天）').fontSize(14).fontColor(this.sub())
             Text(this.predictedOvulation)
               .fontSize(20)
-              .fontColor('#ffffff')
+              .fontColor(this.txt())
               .fontWeight(FontWeight.Medium)
               .margin({ top: 4 })
-            Divider().width('100%').height(1).backgroundColor('#333333').margin({ top: 12, bottom: 12 })
+            Divider().width('100%').height(1).backgroundColor(this.divider()).margin({ top: 12, bottom: 12 })
             Text(`历史平均周期：${this.avgCycle}天 | 平均经期：${this.avgPeriod}天`)
               .fontSize(13)
-              .fontColor('#aaaaaa')
+              .fontColor(this.sub())
           }
           .width('100%')
           .padding(16)
-          .backgroundColor('#222222')
+          .backgroundColor(this.card())
           .borderRadius(12)
           .margin({ bottom: 16 })
 
@@ -205,17 +212,17 @@ struct WomenHealthPage {
               Text('记录本次经期')
                 .fontSize(24)
                 .fontWeight(FontWeight.Bold)
-                .fontColor('#fff')
+                .fontColor(this.txt())
                 .margin({ bottom: 16 })
 
-              Text('月经开始日期').fontSize(14).fontColor('#cccccc')
+              Text('月经开始日期').fontSize(14).fontColor(this.sub())
               DatePicker({ selected: this.tempStart })
                 .onDateChange((d: Date) => {
                   this.tempStart = d;
                 })
                 .margin({ bottom: 12 })
 
-              Text('月经结束日期').fontSize(14).fontColor('#cccccc')
+              Text('月经结束日期').fontSize(14).fontColor(this.sub())
               DatePicker({ selected: this.tempEnd })
                 .onDateChange((d: Date) => {
                   this.tempEnd = d;
@@ -226,7 +233,7 @@ struct WomenHealthPage {
                 Button('取消')
                   .layoutWeight(1)
                   .height(40)
-                  .backgroundColor('#333333')
+                  .backgroundColor('#555555')
                   .fontColor('#fff')
                   .borderRadius(20)
                   .margin({ right: 8 })
@@ -250,17 +257,17 @@ struct WomenHealthPage {
             }
             .width('100%')
             .padding(16)
-            .backgroundColor('#222222')
+            .backgroundColor(this.card())
             .borderRadius(12)
             .margin({ bottom: 16 })
           }
 
-          Text('历史经期记录').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#fff').margin({ bottom: 12 })
+          Text('历史经期记录').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ bottom: 12 })
           ForEach(this.records, (record: DbRowExt) => {
             Row() {
               Column() {
-                Text(`${record.start_date} ~ ${record.end_date}`).fontSize(14).fontColor('#fff')
-                Text(`本次经期${record.period_length}天`).fontSize(12).fontColor('#aaaaaa').margin({ top: 2 })
+                Text(`${record.start_date} ~ ${record.end_date}`).fontSize(14).fontColor(this.txt())
+                Text(`本次经期${record.period_length}天`).fontSize(12).fontColor(this.sub()).margin({ top: 2 })
               }
               .alignItems(0)
               .layoutWeight(1)
@@ -279,7 +286,7 @@ struct WomenHealthPage {
             }
             .width('100%')
             .padding(12)
-            .backgroundColor('#222222')
+            .backgroundColor(this.card())
             .borderRadius(8)
             .margin({ bottom: 8 })
           }, (record: DbRowExt): string => String(record.start_date))
@@ -291,6 +298,6 @@ struct WomenHealthPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#111111')
+    .backgroundColor(this.bg())
   }
 }

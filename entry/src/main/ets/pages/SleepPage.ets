@@ -369,8 +369,8 @@ struct SleepPage {
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).onClick(() => { router.back(); })
-        Text('睡眠分析').fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 12 })
+        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { router.back(); })
+        Text('睡眠分析').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
         Button('+')
           .fontSize(24)
@@ -462,10 +462,10 @@ struct SleepPage {
           // 记录输入
           if (this.showInput) {
             Column() {
-              Text('添加睡眠记录').fontSize(16).fontWeight(FontWeight.Bold).margin({ bottom: 12 })
+              Text('添加睡眠记录').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ bottom: 12 })
 
               Row() {
-                Text('入睡日期: ').fontSize(14).width(90)
+                Text('入睡日期: ').fontSize(14).fontColor(this.sub()).width(90)
                 DatePicker({ selected: new Date(this.startDate) })
                   .width(160)
                   .onChange((value: DatePickerResult) => {
@@ -476,7 +476,7 @@ struct SleepPage {
               }.width('100%').padding({ bottom: 8 })
 
               Row() {
-                Text('入睡时间: ').fontSize(14).width(90)
+                Text('入睡时间: ').fontSize(14).fontColor(this.sub()).width(90)
                 TimePicker({ selected: this.parseTimeToDate(this.startTime) })
                   .useMilitaryTime(true)
                   .width(160)
@@ -486,7 +486,7 @@ struct SleepPage {
               }.width('100%').padding({ bottom: 8 })
 
               Row() {
-                Text('醒来日期: ').fontSize(14).width(90)
+                Text('醒来日期: ').fontSize(14).fontColor(this.sub()).width(90)
                 DatePicker({ selected: new Date(this.endDate) })
                   .width(160)
                   .onChange((value: DatePickerResult) => {
@@ -497,7 +497,7 @@ struct SleepPage {
               }.width('100%').padding({ bottom: 8 })
 
               Row() {
-                Text('醒来时间: ').fontSize(14).width(90)
+                Text('醒来时间: ').fontSize(14).fontColor(this.sub()).width(90)
                 TimePicker({ selected: this.parseTimeToDate(this.endTime) })
                   .useMilitaryTime(true)
                   .width(160)
@@ -511,20 +511,20 @@ struct SleepPage {
               }.width('100%').padding({ bottom: 8 })
 
               Row() {
-                Text('深睡 ≈ ').fontSize(14)
-                Text(String(this.autoDeepMin())).fontSize(14).fontWeight(FontWeight.Bold)
+                Text('深睡 ≈ ').fontSize(14).fontColor(this.sub())
+                Text(String(this.autoDeepMin())).fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.txt())
                 Text(' min').fontSize(12).fontColor(this.sub())
-                Text('  浅睡 ≈ ').fontSize(14).margin({ left: 8 })
-                Text(String(this.autoLightMin())).fontSize(14).fontWeight(FontWeight.Bold)
+                Text('  浅睡 ≈ ').fontSize(14).fontColor(this.sub()).margin({ left: 8 })
+                Text(String(this.autoLightMin())).fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.txt())
                 Text(' min').fontSize(12).fontColor(this.sub())
               }.width('100%').padding({ bottom: 4 })
 
               Row() {
-                Text('REM ≈ ').fontSize(14)
-                Text(String(this.autoRemMin())).fontSize(14).fontWeight(FontWeight.Bold)
+                Text('REM ≈ ').fontSize(14).fontColor(this.sub())
+                Text(String(this.autoRemMin())).fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.txt())
                 Text(' min').fontSize(12).fontColor(this.sub())
-                Text('  总时长 ').fontSize(14).margin({ left: 8 })
-                Text(String(this.autoTotalMin())).fontSize(14).fontWeight(FontWeight.Bold)
+                Text('  总时长 ').fontSize(14).fontColor(this.sub()).margin({ left: 8 })
+                Text(String(this.autoTotalMin())).fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.txt())
                 Text(' min').fontSize(12).fontColor(this.sub())
               }.width('100%').padding({ bottom: 8 })
 
@@ -538,7 +538,7 @@ struct SleepPage {
 
           // 近七天趋势图
           if (this.weekScores.length > 1) {
-            Text('近七天睡眠时长趋势（分钟）').fontSize(16).fontWeight(FontWeight.Bold)
+            Text('近七天睡眠时长趋势（分钟）').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
               .width('100%').padding({ left: 16, bottom: 8 })
             TrendChart({
               dataPoints: this.weekScores,
@@ -550,7 +550,7 @@ struct SleepPage {
 
           // 历史记录
           Row() {
-            Text('历史记录').fontSize(16).fontWeight(FontWeight.Bold)
+            Text('历史记录').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
             Blank()
             Text('共 ' + this.records.length + ' 条记录').fontSize(12).fontColor(this.sub())
           }

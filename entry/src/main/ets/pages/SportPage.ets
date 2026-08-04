@@ -350,8 +350,8 @@ struct SportPage {
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).onClick(() => { router.back(); })
-        Text('运动记录').fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 12 })
+        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { router.back(); })
+        Text('运动记录').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
         Text('＋ 手动添加').fontSize(14).fontColor('#FF6B35')
           .onClick(() => {
@@ -369,7 +369,7 @@ struct SportPage {
           // 手动添加记录面板
           if (this.showManualAdd) {
             Column() {
-              Text('手动添加记录').fontSize(16).fontWeight(FontWeight.Bold).margin({ bottom: 12 })
+              Text('手动添加记录').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ bottom: 12 })
 
               Text('运动类型').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
               Flex({ wrap: FlexWrap.Wrap }) {
@@ -434,7 +434,7 @@ struct SportPage {
 
           if (!this.isTracking) {
             Text('选择运动类型')
-              .fontSize(16).fontWeight(FontWeight.Bold)
+              .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
               .width('100%').padding({ left: 16, bottom: 8 })
 
             Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
@@ -504,34 +504,34 @@ struct SportPage {
                 if (this.isGpsSport()) {
                   // GPS 运动：显示距离
                   Column() {
-                    Text(this.distanceKm.toFixed(2)).fontSize(24).fontWeight(FontWeight.Bold)
+                    Text(this.distanceKm.toFixed(2)).fontSize(24).fontWeight(FontWeight.Bold).fontColor(this.txt())
                     Text(this.useGps ? '公里(GPS)' : '公里').fontSize(12).fontColor(this.sub())
                   }
                 } else if (this.isStationarySport()) {
                   // 原地运动：显示强度
                   Column() {
-                    Text(this.intensity.replace('强度', '')).fontSize(24).fontWeight(FontWeight.Bold)
+                    Text(this.intensity.replace('强度', '')).fontSize(24).fontWeight(FontWeight.Bold).fontColor(this.txt())
                     Text('运动强度').fontSize(12).fontColor(this.sub())
                   }
                 } else {
                   // 其他运动：显示距离（如果有的话）
                   Column() {
-                    Text(this.distanceKm.toFixed(2)).fontSize(24).fontWeight(FontWeight.Bold)
+                    Text(this.distanceKm.toFixed(2)).fontSize(24).fontWeight(FontWeight.Bold).fontColor(this.txt())
                     Text('公里').fontSize(12).fontColor(this.sub())
                   }
                 }
                 Divider().vertical(true).height(50).margin({ left: 24, right: 24 })
                 Column() {
                   if (this.isCalcCalories) {
-                    Text('...').fontSize(24).fontWeight(FontWeight.Bold)
+                    Text('...').fontSize(24).fontWeight(FontWeight.Bold).fontColor(this.txt())
                   } else {
-                    Text(String(this.calorieBurn)).fontSize(24).fontWeight(FontWeight.Bold)
+                    Text(String(this.calorieBurn)).fontSize(24).fontWeight(FontWeight.Bold).fontColor(this.txt())
                   }
                   Text('千卡').fontSize(12).fontColor(this.sub())
                 }
                 Divider().vertical(true).height(50).margin({ left: 24, right: 24 })
                 Column() {
-                  Text(String(this.heartRateAvg)).fontSize(24).fontWeight(FontWeight.Bold)
+                  Text(String(this.heartRateAvg)).fontSize(24).fontWeight(FontWeight.Bold).fontColor(this.txt())
                   Text('bpm').fontSize(12).fontColor(this.sub())
                 }
               }
@@ -579,7 +579,7 @@ struct SportPage {
             .margin({ left: 16, right: 16, top: 16 })
           }
 
-          Text('运动历史').fontSize(16).fontWeight(FontWeight.Bold)
+          Text('运动历史').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
             .width('100%').padding({ left: 16, top: 24, bottom: 8 })
 
           List() {
@@ -589,12 +589,12 @@ struct SportPage {
                   Column() {
                     Text(String(record.date)).fontSize(12).fontColor(this.sub())
                     Text(this.getSportLabel(String(record.sport_type)))
-                      .fontSize(16).fontWeight(FontWeight.Bold)
+                      .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
                   }
                   .alignItems(HorizontalAlign.Start)
                   Blank()
                   Column() {
-                    Text(String(record.duration_min) + 'min').fontSize(14)
+                    Text(String(record.duration_min) + 'min').fontSize(14).fontColor(this.txt())
                     Text(String(record.calories) + '千卡').fontSize(12).fontColor(this.sub())
                   }
                   .alignItems(HorizontalAlign.End)
