@@ -1,4 +1,5 @@
-import { router, promptAction } from '@kit.ArkUI';import { GlobalData } from '../common/GlobalData';
+import { router, promptAction } from '@kit.ArkUI';
+import { GlobalData } from '../common/GlobalData';
 import { DbRow, ThemeColors } from '../common/Constants';
 
 interface DbRowExt extends DbRow {
@@ -39,6 +40,7 @@ struct WomenHealthPage {
     }
   }
 
+  // 自动计算历史平均周期、平均经期
   calcAverageData(): void {
     if (this.records.length === 0) {
       this.avgCycle = 28;
@@ -98,9 +100,28 @@ struct WomenHealthPage {
       promptAction.showToast({ message: '请填写开始和结束日期' });
       return;
     }
+
+    // 新增：校验开始日期 ≤ 结束日期
+    const startDay = this.parseDate(this.startDate).getTime();
+    const endDay = this.parseDate(this.endDate).getTime();
+    if (startDay > endDay) {
+      promptAction.showToast({ message: '经期开始日期不能晚于结束日期' });
+      return;
+    }
+
     try {
-      const cycleLen: number = parseInt(this.cycleLength) || this.avgCycle;
-      const periodLen: number = parseInt(this.periodLength) || this.avgPeriod;
+      // 自动计算本次经期天数
+      const periodLen = Math.round((endDay - startDay) / (24 * 60 * 60 * 1000)) + 1;
+
+      // 自动计算周期天数
+      let cycleLen = this.avgCycle;
+      if (this.records.length > 0) {
+        const idx = this.records.length - 1;
+        const lastRecord = this.records[idx];
+        const lastStartStr = String(lastRecord.start_date);
+        const lastStartDay = this.parseDate(lastStartStr).getTime();
+        cycleLen = Math.round((startDay - lastStartDay) / (24 * 60 * 60 * 1000));
+      }
 
       let baseRecord: DbRow = {} as DbRow;
       baseRecord.start_date = this.startDate;
@@ -221,7 +242,6 @@ struct WomenHealthPage {
                   .fontColor('#fff')
                   .borderRadius(20)
                   .onClick(() => {
-                    // 点击保存再赋值，规避组件回调this限制
                     this.startDate = this.formatDate(this.tempStart);
                     this.endDate = this.formatDate(this.tempEnd);
                     this.saveRecord();
