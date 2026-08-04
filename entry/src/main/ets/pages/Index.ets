@@ -440,9 +440,6 @@ struct Index {
         }
         .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding({ left: 16, right: 16 })
 
-        Text('更多功能').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-          .width('100%').padding({ left: 20, top: 20, bottom: 8 })
-
         Row() {
           this.quickButton('🍎', '饮食', Constants.PAGE_DIET)
           this.quickButton('🌸', '健康', Constants.PAGE_WOMEN)
