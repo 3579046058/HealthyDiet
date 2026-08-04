@@ -1,3 +1,15 @@
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M19.5 6C17.57 6 16 7.57 16 9.5C16 11.26 17.31 12.72 19 12.96V19C19 20.1 18.1 21 17 21H7C5.9 21 5 20.1 5 19V12.96C6.69 12.72 8 11.26 8 9.5C8 7.57 6.43 6 4.5 6C2.57 6 1 7.57 1 9.5C1 11.43 2.57 13 4.5 13C4.67 13 4.84 12.99 5 12.96V19C5 20.66 6.34 22 8 22H16C17.66 22 19 20.66 19 19V12.96C19.16 12.99 19.33 13 19.5 13C21.43 13 23 11.43 23 9.5C23 7.57 21.43 6 19.5 6Z" fill="currentColor"/>
+  <defs>
+    <linearGradient id="medGrad" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="currentColor" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="currentColor"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="8" width="16" height="8" rx="4" fill="url(#medGrad)" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M8 8V6C8 4.5 9 3 12 3C15 3 16 4.5 16 6V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M8 16V18C8 19.5 9 21 12 21C15 21 16 19.5 16 18V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M8 12H16" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  <circle cx="10" cy="12" r="1" fill="white" opacity="0.5"/>
+  <circle cx="14" cy="12" r="1" fill="white" opacity="0.5"/>
+  <path d="M6 10C6 10 7 9 8 9M16 9C16 9 17 10 18 10" stroke="white" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
 </svg>

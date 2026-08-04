@@ -1,0 +1,11 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="homeGrad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="currentColor" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="currentColor" stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+  <path d="M10 20V14H14V20H19V12H22L12 3L2 12H5V20H10Z" fill="url(#homeGrad)"/>
+  <path d="M10 20V14H14V20H19V12H22L12 3L2 12H5V20H10Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+  <circle cx="12" cy="10" r="2" fill="currentColor" opacity="0.6"/>
+</svg>

@@ -1,0 +1,14 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="proteinGrad" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4ECDC4" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#4ECDC4"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="12" cy="12" rx="8" ry="10" fill="url(#proteinGrad)"/>
+  <ellipse cx="12" cy="12" rx="8" ry="10" stroke="#4ECDC4" stroke-width="1.5" fill="none"/>
+  <path d="M8 10C8 10 10 8 12 8C14 8 16 10 16 10" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <path d="M8 14C8 14 10 16 12 16C14 16 16 14 16 14" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <circle cx="10" cy="12" r="1" fill="white" opacity="0.4"/>
+  <circle cx="14" cy="12" r="1" fill="white" opacity="0.4"/>
+</svg>
