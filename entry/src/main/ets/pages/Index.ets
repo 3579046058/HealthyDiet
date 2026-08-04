@@ -6,6 +6,14 @@ import { HealthCard } from '../components/HealthCard';
 import { FoodRecognitionTab } from '../components/FoodRecognitionTab';
 import { WeightDialog } from '../components/WeightDialog';
 
+// 健康卡片类型定义
+interface HealthCardItem {
+  id: string;
+  title: string;
+  iconSymbol: string;
+  iconColor: string;
+}
+
 @Entry
 @Component
 struct Index {
@@ -45,6 +53,17 @@ struct Index {
   readonly accentColor: string = '#FF6B35';
   private weightDialogController: CustomDialogController | null = null;
 
+  // 今日概览卡片拖拽排序相关
+  @State healthCardOrder: string[] = ['steps', 'heart', 'sleep', 'water']; // 卡片顺序
+
+  // 卡片配置数据
+  private healthCardConfigs: HealthCardItem[] = [
+    { id: 'steps', title: '步数', iconSymbol: '👟', iconColor: Constants.COLOR_STEP },
+    { id: 'heart', title: '心率', iconSymbol: '❤️', iconColor: Constants.COLOR_HEART },
+    { id: 'sleep', title: '睡眠', iconSymbol: '😴', iconColor: Constants.COLOR_SLEEP },
+    { id: 'water', title: '喝水', iconSymbol: '💧', iconColor: Constants.COLOR_WATER }
+  ];
+
   updateThemeColors(): void {
     this.bgColor = ThemeColors.bg(this.theme);
     this.cardColor = ThemeColors.card(this.theme);
@@ -56,10 +75,96 @@ struct Index {
     this.loadAllData();
     this.startAutoRefresh();
     this.checkWeightPrompt();
+    this.loadHealthCardOrder(); // 加载卡片顺序
   }
 
   aboutToDisappear(): void {
     this.stopAutoRefresh();
+  }
+
+  // 加载卡片顺序
+  async loadHealthCardOrder(): Promise<void> {
+    try {
+      const savedOrder = await GlobalData.prefs.getHealthCardOrder();
+      if (savedOrder && savedOrder.length === 4) {
+        this.healthCardOrder = savedOrder;
+      }
+    } catch (err) {
+      console.error('loadHealthCardOrder error:', JSON.stringify(err));
+    }
+  }
+
+  // 保存卡片顺序
+  async saveHealthCardOrder(): Promise<void> {
+    try {
+      await GlobalData.prefs.setHealthCardOrder(this.healthCardOrder);
+    } catch (err) {
+      console.error('saveHealthCardOrder error:', JSON.stringify(err));
+    }
+  }
+
+  // 获取卡片配置
+  getCardConfig(cardId: string): HealthCardItem | undefined {
+    return this.healthCardConfigs.find(card => card.id === cardId);
+  }
+
+  // 渲染健康卡片
+  @Builder
+  healthCardBuilder(cardId: string) {
+    if (cardId === 'steps') {
+      HealthCard({
+        title: '步数',
+        value: this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--',
+        unit: '/ ' + String(this.stepGoal),
+        iconColor: Constants.COLOR_STEP,
+        iconSymbol: '👟',
+        subText: this.getDisplaySteps() > 0 ? '完成 ' + String(Math.round(this.getDisplaySteps() / this.stepGoal * 100)) + '%' : '暂无数据',
+        onCardClick: () => { this.navigateTo(Constants.PAGE_SPORT); }
+      })
+    } else if (cardId === 'heart') {
+      HealthCard({
+        title: '心率',
+        value: this.bandHeartRate > 0 ? String(this.bandHeartRate) : (this.heartRate > 0 ? String(this.heartRate) : '--'),
+        unit: 'bpm',
+        iconColor: Constants.COLOR_HEART,
+        iconSymbol: '❤️',
+        subText: this.bandHeartRate > 0 ? '手环实时心率' : '静息心率',
+        onCardClick: () => {}
+      })
+    } else if (cardId === 'sleep') {
+      HealthCard({
+        title: '睡眠',
+        value: this.sleepHours !== '0.0' && this.sleepHours !== '0' ? this.sleepHours : '--',
+        unit: '小时',
+        iconColor: Constants.COLOR_SLEEP,
+        iconSymbol: '😴',
+        subText: this.sleepScore > 0 ? '评分 ' + String(this.sleepScore) : '暂无数据',
+        onCardClick: () => { this.navigateTo(Constants.PAGE_SLEEP); }
+      })
+    } else if (cardId === 'water') {
+      HealthCard({
+        title: '喝水',
+        value: this.waterMl > 0 ? String(this.waterMl) : '--',
+        unit: 'ml',
+        iconColor: Constants.COLOR_WATER,
+        iconSymbol: '💧',
+        subText: '目标 ' + String(this.waterGoal) + 'ml',
+        onCardClick: () => { this.navigateTo(Constants.PAGE_WATER); }
+      })
+    }
+  }
+
+  // 拖拽时显示的卡片
+  @Builder
+  dragCardBuilder(cardId: string) {
+    Column() {
+      this.healthCardBuilder(cardId)
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor(this.cardColor)
+    .borderRadius(16)
+    .opacity(0.8)
   }
 
   async checkWeightPrompt(): Promise<void> {
@@ -414,20 +519,29 @@ struct Index {
           .width('100%').padding({ left: 20, top: 20, bottom: 8 })
 
         Grid() {
-          GridItem() {
-            HealthCard({ title: '步数', value: this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--', unit: '/ ' + String(this.stepGoal), iconColor: Constants.COLOR_STEP, iconSymbol: '👟', subText: this.getDisplaySteps() > 0 ? '完成 ' + String(Math.round(this.getDisplaySteps() / this.stepGoal * 100)) + '%' : '暂无数据', onCardClick: () => { this.navigateTo(Constants.PAGE_SPORT); } })
-          }
-          GridItem() {
-            HealthCard({ title: '心率', value: this.bandHeartRate > 0 ? String(this.bandHeartRate) : (this.heartRate > 0 ? String(this.heartRate) : '--'), unit: 'bpm', iconColor: Constants.COLOR_HEART, iconSymbol: '❤️', subText: this.bandHeartRate > 0 ? '手环实时心率' : '静息心率', onCardClick: () => {} })
-          }
-          GridItem() {
-            HealthCard({ title: '睡眠', value: this.sleepHours !== '0.0' && this.sleepHours !== '0' ? this.sleepHours : '--', unit: '小时', iconColor: Constants.COLOR_SLEEP, iconSymbol: '😴', subText: this.sleepScore > 0 ? '评分 ' + String(this.sleepScore) : '暂无数据', onCardClick: () => { this.navigateTo(Constants.PAGE_SLEEP); } })
-          }
-          GridItem() {
-            HealthCard({ title: '喝水', value: this.waterMl > 0 ? String(this.waterMl) : '--', unit: 'ml', iconColor: Constants.COLOR_WATER, iconSymbol: '💧', subText: '目标 ' + String(this.waterGoal) + 'ml', onCardClick: () => { this.navigateTo(Constants.PAGE_WATER); } })
-          }
+          ForEach(this.healthCardOrder, (cardId: string, index: number) => {
+            GridItem() {
+              this.healthCardBuilder(cardId)
+            }
+          }, (cardId: string) => cardId)
         }
         .columnsTemplate('1fr 1fr').columnsGap(12).rowsGap(12).padding({ left: 16, right: 16 })
+        .editMode(true)
+        .supportAnimation(true)
+        .onItemDragStart((event: ItemDragInfo, itemIndex: number) => {
+          return this.dragCardBuilder(this.healthCardOrder[itemIndex]);
+        })
+        .onItemDrop((event: ItemDragInfo, itemIndex: number, insertIndex: number, isSuccess: boolean) => {
+          if (!isSuccess || insertIndex >= this.healthCardOrder.length || itemIndex === insertIndex) {
+            return;
+          }
+          // 交换数组元素
+          const temp = this.healthCardOrder[itemIndex];
+          this.healthCardOrder[itemIndex] = this.healthCardOrder[insertIndex];
+          this.healthCardOrder[insertIndex] = temp;
+          // 保存新的顺序
+          this.saveHealthCardOrder();
+        })
 
         Text('快捷功能').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           .width('100%').padding({ left: 20, top: 20, bottom: 8 })
