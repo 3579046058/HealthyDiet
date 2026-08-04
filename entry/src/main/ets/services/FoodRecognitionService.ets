@@ -12,6 +12,11 @@ export interface RecognitionOutcome {
   error?: string;
 }
 
+export interface SnackJudge {
+  isSnack: boolean;
+  reason: string;
+}
+
 export class RecognitionMode {
   static readonly LOCAL: string = 'local';
   static readonly CLOUD: string = 'cloud';
@@ -367,6 +372,69 @@ export class FoodRecognitionService {
       text = text.substring(0, 20);
     }
     return text;
+  }
+
+  /**
+   * 询问 AI 某食物是否属于零食
+   * 返回结构：{ isSnack, reason }
+   */
+  async askIsSnack(foodName: string): Promise<SnackJudge> {
+    const result: SnackJudge = { isSnack: false, reason: '' };
+    if (!this.isCloudConfigured() || foodName.trim().length === 0) {
+      return result;
+    }
+    try {
+      const promptText = '判断"' + foodName.trim() + '"是否属于零食（非正餐的小吃、甜点、加餐食品）。' +
+        '用以下格式回答，不要多余文字：' +
+        '是或不是' + '|' + '简要理由（20字以内）';
+      const textContent: GlmContent = { type: 'text', text: promptText };
+      const contents: Array<GlmContent> = [textContent];
+      const message: GlmMessage = { role: 'user', content: contents };
+      const messages: Array<GlmMessage> = [message];
+      const requestBody: GlmRequestBody = {
+        model: FoodRecognitionService.GLM_MODEL,
+        messages: messages,
+        temperature: 0
+      };
+
+      const request = http.createHttp();
+      const response = await request.request(FoodRecognitionService.GLM_URL, {
+        method: http.RequestMethod.POST,
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + FoodRecognitionService.GLM_API_KEY
+        },
+        extraData: JSON.stringify(requestBody),
+        connectTimeout: 15000,
+        readTimeout: 30000
+      });
+      request.destroy();
+
+      const code: number = response.responseCode;
+      if (code !== 200) {
+        console.error('askIsSnack http failed code=' + String(code));
+        return result;
+      }
+      const resp: string = typeof response.result === 'string' ? response.result : JSON.stringify(response.result);
+      const parsed: Record<string, Object> = JSON.parse(resp) as Record<string, Object>;
+      const choicesObj = parsed['choices'];
+      if (choicesObj !== undefined && Array.isArray(choicesObj)) {
+        const choicesArr = choicesObj as Array<Record<string, Object>>;
+        if (choicesArr.length > 0) {
+          const messageObj = choicesArr[0]['message'] as Record<string, Object>;
+          const content: string = String(messageObj['content'] ?? '');
+          const parts: string[] = content.split('|');
+          const answer: string = parts.length > 0 ? parts[0].trim() : '';
+          result.isSnack = answer.indexOf('是') >= 0 && answer.indexOf('不是') < 0;
+          result.reason = parts.length > 1 ? parts[1].trim() : content;
+        }
+      }
+      return result;
+    } catch (err) {
+      const e = err as BusinessError;
+      console.error('askIsSnack error: ' + e.code + ' ' + e.message);
+      return result;
+    }
   }
 
   /**

@@ -146,6 +146,16 @@ struct DietPage {
     return String(v);
   }
 
+  getAddTime(item: DbRow): string {
+    const ts = item.timestamp;
+    const num: number = typeof ts === 'number' ? ts : Number(ts);
+    if (isNaN(num) || num <= 0) {
+      return '--:--';
+    }
+    const d = new Date(num);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
   @Builder
   mealButton(emoji: string, type: string): void {
     Button(emoji)
@@ -180,10 +190,12 @@ struct DietPage {
             Column() {
               Text(String(item.food_name))
                 .fontSize(14)
-              Text(this.getAmountText(item) + 'g')
-                .fontSize(12)
+              Text(this.getAmountText(item) + 'g' + ' · ' + this.getAddTime(item))
+                .fontSize(11)
                 .fontColor(this.sub())
+                .margin({ top: 2 })
             }
+            .alignItems(HorizontalAlign.Start)
             Blank()
             Text(Number(item.calories) > 0 ? String(Number(item.calories)) + ' kcal' : '未识别')
               .fontSize(12)

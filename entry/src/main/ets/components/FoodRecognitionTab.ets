@@ -22,6 +22,10 @@ export struct FoodRecognitionTab {
   @State isCalcCalories: boolean = false;
   @State imageWidth: number = 0;
   @State imageHeight: number = 0;
+  @State isAskingSnack: boolean = false;
+  @State snackAnswer: string = '';
+  @State snackAnswerIsSnack: boolean = false;
+  @State autoSnackChecked: boolean = false;
 
   private uiContext: common.UIAbilityContext | null = null;
 
@@ -115,6 +119,9 @@ export struct FoodRecognitionTab {
       this.recognizedFood = '';
       this.recogSource = '';
       this.cloudCalories = 0;
+      this.snackAnswer = '';
+      this.snackAnswerIsSnack = false;
+      this.autoSnackChecked = false;
       this.resultMsg = outcome.error && outcome.error.length > 0 ? outcome.error : '未识别出菜品，换个角度或光线试试';
       return;
     }
@@ -123,11 +130,76 @@ export struct FoodRecognitionTab {
     this.gramsInput = '200';
     this.gramsSlider = 200;
     this.cloudCalories = 0;
+    this.snackAnswer = '';
+    this.snackAnswerIsSnack = false;
+    this.autoSnackChecked = false;
     this.refreshCloudCalories();
     if (outcome.source === 'cloud') {
       this.resultMsg = '云端 AI 识别完成';
     } else if (outcome.source === 'local') {
       this.resultMsg = '本地识别完成';
+    }
+    // 识别完成后自动询问 AI 是否零食，用于归类餐次
+    this.askIsSnack();
+  }
+
+  getCurrentMealType(): string {
+    const hour: number = new Date().getHours();
+    if (hour < 10) {
+      return 'breakfast';
+    }
+    if (hour < 14) {
+      return 'lunch';
+    }
+    if (hour < 18) {
+      return 'dinner';
+    }
+    return 'snack';
+  }
+
+  getMealTypeLabel(mealType: string): string {
+    if (mealType === 'breakfast') {
+      return '早餐';
+    }
+    if (mealType === 'lunch') {
+      return '午餐';
+    }
+    if (mealType === 'dinner') {
+      return '晚餐';
+    }
+    return '零食';
+  }
+
+  getFinalMealLabel(): string {
+    if (this.autoSnackChecked && this.snackAnswerIsSnack) {
+      return '零食';
+    }
+    return this.getMealTypeLabel(this.getCurrentMealType());
+  }
+
+  getTimeStr(): string {
+    const now = new Date();
+    return String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  }
+
+  async askIsSnack(): Promise<void> {
+    if (this.recognizedFood.length === 0) {
+      promptAction.showToast({ message: '请先识别食物' });
+      return;
+    }
+    this.isAskingSnack = true;
+    this.snackAnswer = '';
+    try {
+      const judge = await FoodRecognitionService.getInstance().askIsSnack(this.recognizedFood);
+      this.snackAnswerIsSnack = judge.isSnack;
+      this.snackAnswer = judge.reason;
+    } catch (err) {
+      console.error('askIsSnack error:', JSON.stringify(err));
+      this.snackAnswerIsSnack = false;
+      this.snackAnswer = 'AI 判断失败，按时间归类';
+    } finally {
+      this.isAskingSnack = false;
+      this.autoSnackChecked = true;
     }
   }
 
@@ -152,21 +224,29 @@ export struct FoodRecognitionTab {
       calories = cloud >= 0 ? cloud : 0;
     }
     const today = await GlobalData.getTodayDate();
+    // 归类餐次：AI 判定为零食则归入零食，否则按当前时间归入早/中/晚餐
+    let mealType: string;
+    if (this.autoSnackChecked && this.snackAnswerIsSnack) {
+      mealType = 'snack';
+    } else {
+      mealType = this.getCurrentMealType();
+    }
+    const now = Date.now();
     const record: DbRow = {
       date: today,
-      meal_type: 'snack',
+      meal_type: mealType,
       food_name: this.recognizedFood,
       amount_g: grams,
       calories: calories,
       protein: 0,
       fat: 0,
       carbs: 0,
-      timestamp: Date.now()
+      timestamp: now
     };
     try {
       await GlobalData.db.addDietRecord(record);
       this.savedSuccess = true;
-      promptAction.showToast({ message: '已添加到饮食记录' });
+      promptAction.showToast({ message: '已添加到' + this.getMealTypeLabel(mealType) + '记录' });
     } catch (err) {
       console.error('saveToDiet error:', JSON.stringify(err));
       promptAction.showToast({ message: '保存失败' });
@@ -183,6 +263,10 @@ export struct FoodRecognitionTab {
     this.resultMsg = '对准食物拍照或从相册选择，看看它是什么菜';
     this.imageWidth = 0;
     this.imageHeight = 0;
+    this.snackAnswer = '';
+    this.snackAnswerIsSnack = false;
+    this.isAskingSnack = false;
+    this.autoSnackChecked = false;
   }
 
   build() {
@@ -359,6 +443,40 @@ export struct FoodRecognitionTab {
               }
             }
             .width('100%').margin({ top: 12 })
+
+            // 自动归类餐次（AI 判定零食优先，否则按时间）
+            Row() {
+              Text('⏰ 将记录为: ').fontSize(13).fontColor(this.sub)
+              Text(this.getFinalMealLabel())
+                .fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FF6B35')
+              Text('（' + this.getTimeStr() + '）').fontSize(12).fontColor(this.sub).margin({ left: 4 })
+              Blank()
+            }
+            .width('100%').margin({ top: 10 })
+
+            // AI 零食判断（自动执行，可重新询问）
+            Row() {
+              Button(this.snackAnswer.length > 0 ? '🔄 重新判断' : '🤔 AI判断中...')
+                .layoutWeight(1).height(40)
+                .backgroundColor('#7B68EE')
+                .borderRadius(20)
+                .fontColor(Color.White).fontSize(14)
+                .enabled(!this.isAskingSnack)
+                .onClick(() => { this.askIsSnack(); })
+            }
+            .width('100%').margin({ top: 10 })
+
+            if (this.isAskingSnack) {
+              Text('AI 正在判断是否属于零食...').fontSize(12).fontColor(this.sub).width('100%').margin({ top: 6 })
+            } else if (this.snackAnswer.length > 0) {
+              Row() {
+                Text(this.snackAnswerIsSnack ? '🍪 AI判定：零食，归入零食' : '🍽️ AI判定：正餐，按时间归类')
+                  .fontSize(14).fontWeight(FontWeight.Bold)
+                  .fontColor(this.snackAnswerIsSnack ? '#FF9800' : '#4CAF50')
+              }
+              .width('100%').margin({ top: 6 })
+              Text(this.snackAnswer).fontSize(12).fontColor(this.sub).width('100%').margin({ top: 4 })
+            }
 
             // 添加记录按钮 + 重新识别按钮
             Row() {
