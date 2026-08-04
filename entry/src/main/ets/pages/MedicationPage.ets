@@ -17,6 +17,7 @@ struct MedicationPage {
   @State todayMeds: DbRow[] = [];
   @State checkedIds: number[] = [];
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.loadData();
@@ -157,7 +158,7 @@ struct MedicationPage {
           .fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt())
           .margin({ left: 12 })
       }
-      .width('100%').padding({ top: 12, bottom: 12, left: 16, right: 16 })
+      .width('100%').padding({ top: 12 + this.statusBarHeight, bottom: 12, left: 16, right: 16 })
 
       Scroll() {
         Column() {

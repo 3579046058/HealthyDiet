@@ -14,6 +14,7 @@ struct DietPage {
   @State amountG: string = '';
   @State showFoodList: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.initDate();
@@ -230,7 +231,7 @@ struct DietPage {
           .fontColor(this.sub())
       }
       .width('100%')
-      .padding(16)
+      .padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
       Scroll() {
         Column() {

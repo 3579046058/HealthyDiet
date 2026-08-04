@@ -14,6 +14,7 @@ struct WomenHealthPage {
   @State predictedNext: string = '';
   @State predictedOvulation: string = '';
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.loadData();
@@ -109,7 +110,7 @@ struct WomenHealthPage {
           .fontSize(20).fontColor(this.txt()).fontWeight(FontWeight.Bold)
           .margin({ left: 12 })
       }
-      .width('100%').padding({ left: 16, right: 16, top: 16, bottom: 16 })
+      .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
       Scroll() {
         Column() {

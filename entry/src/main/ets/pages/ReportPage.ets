@@ -23,6 +23,7 @@ struct ReportPage {
   @State weekWaterData: number[] = [];
   @State weekSleepData: number[] = [];
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.loadWeekData();
@@ -136,7 +137,7 @@ struct ReportPage {
         Text('数据报告').fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 12 })
         Blank()
       }
-      .width('100%').padding(16)
+      .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
       Scroll() {
         Column() {

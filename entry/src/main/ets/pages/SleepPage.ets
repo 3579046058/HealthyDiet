@@ -18,6 +18,7 @@ struct SleepPage {
   @State avgScore: number = 0;
   @State lastRecord: string = '暂无数据';
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.loadData();
@@ -253,7 +254,7 @@ struct SleepPage {
         Text('+ 记录').fontSize(14).fontColor('#9C27B0')
           .onClick(() => { this.showInput = !this.showInput; })
       }
-      .width('100%').padding(16)
+      .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
       Scroll() {
         Column() {

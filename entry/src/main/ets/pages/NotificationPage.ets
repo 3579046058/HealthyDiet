@@ -7,6 +7,7 @@ import { ReminderScheduler } from '../services/ReminderScheduler';
 @Component
 struct NotificationPage {
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
   @State waterReminderEnabled: boolean = false;
   @State sedentaryReminderEnabled: boolean = false;
   @State waterReminderTime: string = '10:00';
@@ -63,7 +64,7 @@ struct NotificationPage {
         Text('通知设置').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
       }
-      .width('100%').padding(16)
+      .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
       Scroll() {
         Column() {

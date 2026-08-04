@@ -21,6 +21,7 @@ struct WeightPage {
   @State records: DbRow[] = [];
   @State heightRecords: DbRow[] = [];
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.loadData();
@@ -260,7 +261,7 @@ struct WeightPage {
         Blank()
       }
       .width('100%')
-      .padding(16)
+      .padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
       Scroll() {
         Column() {

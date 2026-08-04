@@ -12,6 +12,7 @@ struct WaterPage {
   @State goalInput: string = '';
   @State timeline: DbRow[] = [];
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.loadData();
@@ -90,7 +91,7 @@ struct WaterPage {
         Text('设置目标').fontSize(14).fontColor('#03A9F4')
           .onClick(() => { this.showGoalInput = !this.showGoalInput; })
       }
-      .width('100%').padding(16)
+      .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
       Scroll() {
         Column() {

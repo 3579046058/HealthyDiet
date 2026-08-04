@@ -11,6 +11,7 @@ struct MoodPage {
   @State weekAvg: number = 0;
   @State expandedId: number = -1;
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.loadData();
@@ -133,7 +134,7 @@ struct MoodPage {
           .fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt())
           .margin({ left: 12 })
       }
-      .width('100%').padding({ left: 16, right: 16, top: 16, bottom: 8 })
+      .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 8 })
 
       Scroll() {
         Column() {

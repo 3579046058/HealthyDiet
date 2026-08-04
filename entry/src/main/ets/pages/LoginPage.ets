@@ -17,6 +17,7 @@ struct LoginPage {
   @State unionId: string = '';
   @State loginError: string = '';
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.checkLoginStatus();
@@ -139,7 +140,7 @@ struct LoginPage {
         Blank()
         Text('').width(22)
       }
-      .width('100%').padding({ left: 16, right: 16, top: 12, bottom: 12 })
+      .width('100%').padding({ left: 16, right: 16, top: 12 + this.statusBarHeight, bottom: 12 })
 
       if (!this.isLoggedIn) {
         Column() {

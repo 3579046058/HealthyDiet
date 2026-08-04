@@ -10,6 +10,7 @@ struct GoalPage {
   @State sportDays: string = '3';
   @State sleepHours: string = '8';
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.loadGoals();
@@ -52,7 +53,7 @@ struct GoalPage {
         Text('目标设置').fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 12 })
         Blank()
       }
-      .width('100%').padding(16)
+      .width('100%').padding({ left: 16, right: 16, top: 12 + this.statusBarHeight, bottom: 12 })
 
       Scroll() {
         Column() {

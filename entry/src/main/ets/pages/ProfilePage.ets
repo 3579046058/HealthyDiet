@@ -6,6 +6,7 @@ import { GlobalData } from '../common/GlobalData';
 @Component
 struct ProfilePage {
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
   @State heightCm: string = '';
   @State weightKg: string = '';
   @State gender: string = '男';
@@ -61,7 +62,7 @@ struct ProfilePage {
         Text('个人信息').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
       }
-      .width('100%').padding(16)
+      .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
       Scroll() {
         Column() {
