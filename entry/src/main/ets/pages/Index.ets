@@ -14,6 +14,14 @@ interface HealthCardItem {
   iconColor: string;
 }
 
+// 快捷功能类型定义
+interface QuickFunctionItem {
+  id: string;
+  icon: string;
+  label: string;
+  page: string;
+}
+
 @Entry
 @Component
 struct Index {
@@ -56,12 +64,27 @@ struct Index {
   // 今日概览卡片拖拽排序相关
   @State healthCardOrder: string[] = ['steps', 'heart', 'sleep', 'water']; // 卡片顺序
 
+  // 快捷功能拖拽排序相关
+  @State quickFunctionOrder: string[] = ['sport', 'weight', 'report', 'goal', 'diet', 'women', 'medication', 'mood']; // 快捷功能顺序
+
   // 卡片配置数据
   private healthCardConfigs: HealthCardItem[] = [
     { id: 'steps', title: '步数', iconSymbol: '👟', iconColor: Constants.COLOR_STEP },
     { id: 'heart', title: '心率', iconSymbol: '❤️', iconColor: Constants.COLOR_HEART },
     { id: 'sleep', title: '睡眠', iconSymbol: '😴', iconColor: Constants.COLOR_SLEEP },
     { id: 'water', title: '喝水', iconSymbol: '💧', iconColor: Constants.COLOR_WATER }
+  ];
+
+  // 快捷功能配置数据
+  private quickFunctionConfigs: QuickFunctionItem[] = [
+    { id: 'sport', icon: '🏃', label: '运动', page: Constants.PAGE_SPORT },
+    { id: 'weight', icon: '⚖️', label: '体重', page: Constants.PAGE_WEIGHT },
+    { id: 'report', icon: '📊', label: '周报', page: Constants.PAGE_REPORT },
+    { id: 'goal', icon: '🎯', label: '目标', page: Constants.PAGE_GOAL },
+    { id: 'diet', icon: '🍎', label: '饮食', page: Constants.PAGE_DIET },
+    { id: 'women', icon: '🌸', label: '健康', page: Constants.PAGE_WOMEN },
+    { id: 'medication', icon: '💊', label: '用药', page: Constants.PAGE_MEDICATION },
+    { id: 'mood', icon: '😊', label: '情绪', page: Constants.PAGE_MOOD }
   ];
 
   updateThemeColors(): void {
@@ -76,6 +99,7 @@ struct Index {
     this.startAutoRefresh();
     this.checkWeightPrompt();
     this.loadHealthCardOrder(); // 加载卡片顺序
+    this.loadQuickFunctionOrder(); // 加载快捷功能顺序
   }
 
   aboutToDisappear(): void {
@@ -100,6 +124,27 @@ struct Index {
       await GlobalData.prefs.setHealthCardOrder(this.healthCardOrder);
     } catch (err) {
       console.error('saveHealthCardOrder error:', JSON.stringify(err));
+    }
+  }
+
+  // 加载快捷功能顺序
+  async loadQuickFunctionOrder(): Promise<void> {
+    try {
+      const savedOrder = await GlobalData.prefs.getQuickFunctionOrder();
+      if (savedOrder && savedOrder.length === 8) {
+        this.quickFunctionOrder = savedOrder;
+      }
+    } catch (err) {
+      console.error('loadQuickFunctionOrder error:', JSON.stringify(err));
+    }
+  }
+
+  // 保存快捷功能顺序
+  async saveQuickFunctionOrder(): Promise<void> {
+    try {
+      await GlobalData.prefs.setQuickFunctionOrder(this.quickFunctionOrder);
+    } catch (err) {
+      console.error('saveQuickFunctionOrder error:', JSON.stringify(err));
     }
   }
 
@@ -546,21 +591,33 @@ struct Index {
         Text('快捷功能').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           .width('100%').padding({ left: 20, top: 20, bottom: 8 })
 
-        Row() {
-          this.quickButton('🏃', '运动', Constants.PAGE_SPORT)
-          this.quickButton('⚖️', '体重', Constants.PAGE_WEIGHT)
-          this.quickButton('📊', '周报', Constants.PAGE_REPORT)
-          this.quickButton('🎯', '目标', Constants.PAGE_GOAL)
+        Grid() {
+          ForEach(this.quickFunctionOrder, (funcId: string, index: number) => {
+            GridItem() {
+              this.quickFunctionBuilder(funcId)
+            }
+          }, (funcId: string) => funcId)
         }
-        .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding({ left: 16, right: 16 })
-
-        Row() {
-          this.quickButton('🍎', '饮食', Constants.PAGE_DIET)
-          this.quickButton('🌸', '健康', Constants.PAGE_WOMEN)
-          this.quickButton('💊', '用药', Constants.PAGE_MEDICATION)
-          this.quickButton('😊', '情绪', Constants.PAGE_MOOD)
-        }
-        .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding({ left: 16, right: 16 })
+        .columnsTemplate('1fr 1fr 1fr 1fr')
+        .rowsGap(12)
+        .columnsGap(12)
+        .padding({ left: 16, right: 16 })
+        .editMode(true)
+        .supportAnimation(true)
+        .onItemDragStart((event: ItemDragInfo, itemIndex: number) => {
+          return this.dragQuickFunctionBuilder(this.quickFunctionOrder[itemIndex]);
+        })
+        .onItemDrop((event: ItemDragInfo, itemIndex: number, insertIndex: number, isSuccess: boolean) => {
+          if (!isSuccess || insertIndex >= this.quickFunctionOrder.length || itemIndex === insertIndex) {
+            return;
+          }
+          // 交换数组元素
+          const temp = this.quickFunctionOrder[itemIndex];
+          this.quickFunctionOrder[itemIndex] = this.quickFunctionOrder[insertIndex];
+          this.quickFunctionOrder[insertIndex] = temp;
+          // 保存新的顺序
+          this.saveQuickFunctionOrder();
+        })
 
         Divider().opacity(0).height(24)
       }
@@ -717,6 +774,162 @@ struct Index {
     .backgroundColor(this.cardColor).borderRadius(35)
     .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
     .onClick(() => { this.navigateTo(page); })
+  }
+
+  // 渲染快捷功能
+  @Builder
+  quickFunctionBuilder(funcId: string) {
+    if (funcId === 'sport') {
+      Column() {
+        Text('🏃').fontSize(28)
+        Text('运动').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .onClick(() => { this.navigateTo(Constants.PAGE_SPORT); })
+    } else if (funcId === 'weight') {
+      Column() {
+        Text('⚖️').fontSize(28)
+        Text('体重').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .onClick(() => { this.navigateTo(Constants.PAGE_WEIGHT); })
+    } else if (funcId === 'report') {
+      Column() {
+        Text('📊').fontSize(28)
+        Text('周报').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .onClick(() => { this.navigateTo(Constants.PAGE_REPORT); })
+    } else if (funcId === 'goal') {
+      Column() {
+        Text('🎯').fontSize(28)
+        Text('目标').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .onClick(() => { this.navigateTo(Constants.PAGE_GOAL); })
+    } else if (funcId === 'diet') {
+      Column() {
+        Text('🍎').fontSize(28)
+        Text('饮食').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .onClick(() => { this.navigateTo(Constants.PAGE_DIET); })
+    } else if (funcId === 'women') {
+      Column() {
+        Text('🌸').fontSize(28)
+        Text('健康').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .onClick(() => { this.navigateTo(Constants.PAGE_WOMEN); })
+    } else if (funcId === 'medication') {
+      Column() {
+        Text('💊').fontSize(28)
+        Text('用药').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .onClick(() => { this.navigateTo(Constants.PAGE_MEDICATION); })
+    } else if (funcId === 'mood') {
+      Column() {
+        Text('😊').fontSize(28)
+        Text('情绪').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .onClick(() => { this.navigateTo(Constants.PAGE_MOOD); })
+    }
+  }
+
+  // 拖拽时显示的快捷功能
+  @Builder
+  dragQuickFunctionBuilder(funcId: string) {
+    if (funcId === 'sport') {
+      Column() {
+        Text('🏃').fontSize(28)
+        Text('运动').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .opacity(0.8)
+    } else if (funcId === 'weight') {
+      Column() {
+        Text('⚖️').fontSize(28)
+        Text('体重').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .opacity(0.8)
+    } else if (funcId === 'report') {
+      Column() {
+        Text('📊').fontSize(28)
+        Text('周报').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .opacity(0.8)
+    } else if (funcId === 'goal') {
+      Column() {
+        Text('🎯').fontSize(28)
+        Text('目标').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .opacity(0.8)
+    } else if (funcId === 'diet') {
+      Column() {
+        Text('🍎').fontSize(28)
+        Text('饮食').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .opacity(0.8)
+    } else if (funcId === 'women') {
+      Column() {
+        Text('🌸').fontSize(28)
+        Text('健康').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .opacity(0.8)
+    } else if (funcId === 'medication') {
+      Column() {
+        Text('💊').fontSize(28)
+        Text('用药').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .opacity(0.8)
+    } else if (funcId === 'mood') {
+      Column() {
+        Text('😊').fontSize(28)
+        Text('情绪').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
+      }
+      .width(70).height(70)
+      .backgroundColor(this.cardColor).borderRadius(35)
+      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+      .opacity(0.8)
+    }
   }
 
   pageTransition() {
