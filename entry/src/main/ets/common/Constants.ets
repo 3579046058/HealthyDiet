@@ -105,6 +105,8 @@ export interface GoalConfig {
   sleepHours: number;
   weightKg: number;
   heightCm: number;
+  dailyCalorie: number;
+  targetWeightKg?: number;
 }
 
 export interface DietRecord {

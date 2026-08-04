@@ -37,6 +37,7 @@ struct GoalPage {
       sleepHours: parseFloat(this.sleepHours) || 8,
       weightKg: current.weightKg,
       heightCm: current.heightCm,
+      dailyCalorie: current.dailyCalorie, // 保留由体重页计算的热量值，不从本页修改
     });
     router.back();
   }

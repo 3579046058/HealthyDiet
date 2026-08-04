@@ -8,6 +8,9 @@ import { TrendChart } from '../components/TrendChart';
 struct WeightPage {
   @State weightInput: string = '';
   @State heightInput: string = '';
+  @State targetWeightInput: string = '';
+  @State recommendCalorieText: string = '';
+  @State targetEstimateText: string = '';
   @State currentWeight: string = '--';
   @State currentHeight: string = '--';
   @State bmi: string = '--';
@@ -107,7 +110,7 @@ struct WeightPage {
 
       // 构建体重历史数据（按 timestamp 排序，保留最新的记录）
       const sortedWeightRows = weightRows.slice().sort((a: DbRow, b: DbRow) =>
-        Number(a.timestamp) - Number(b.timestamp)
+      Number(a.timestamp) - Number(b.timestamp)
       );
       const weightMap = new Map<string, number>();
       sortedWeightRows.forEach((item: DbRow) => {
@@ -116,7 +119,7 @@ struct WeightPage {
 
       // 构建身高历史数据（按 timestamp 排序，保留最新的记录）
       const sortedHeightRows = heightRows.slice().sort((a: DbRow, b: DbRow) =>
-        Number(a.timestamp) - Number(b.timestamp)
+      Number(a.timestamp) - Number(b.timestamp)
       );
       const heightMap = new Map<string, number>();
       sortedHeightRows.forEach((item: DbRow) => {
@@ -202,12 +205,10 @@ struct WeightPage {
     // 保存体重
     const weightVal = parseFloat(this.weightInput);
     if (!isNaN(weightVal) && weightVal > 0) {
-      // 先删除今天的旧体重记录
       const existingWeight = await GlobalData.db.getWeightRecords(today, today);
       for (const record of existingWeight) {
         await GlobalData.db.deleteWeightRecord(Number(record.id));
       }
-      // 添加新记录
       await GlobalData.db.addWeightRecord(today, weightVal);
       this.weightInput = '';
     }
@@ -215,14 +216,11 @@ struct WeightPage {
     // 保存身高
     const heightVal = parseFloat(this.heightInput);
     if (!isNaN(heightVal) && heightVal > 0) {
-      // 先删除今天的旧身高记录
       const existingHeight = await GlobalData.db.getHeightRecords(today, today);
       for (const record of existingHeight) {
         await GlobalData.db.deleteHeightRecord(Number(record.id));
       }
-      // 添加新记录
       await GlobalData.db.addHeightRecord(today, heightVal);
-      // 同时更新配置中的身高
       const cfg = await GlobalData.prefs.getGoalConfig();
       cfg.heightCm = heightVal;
       await GlobalData.prefs.saveGoalConfig(cfg);
@@ -242,6 +240,78 @@ struct WeightPage {
     await this.loadData();
   }
 
+  calcRecommendCalorie(heightCm: number, currentWeightKg: number, age: number, isMale: boolean): number {
+    let bmr: number;
+    if (isMale) {
+      bmr = 10 * currentWeightKg + 6.25 * heightCm - 5 * age + 5;
+    } else {
+      bmr = 10 * currentWeightKg + 6.25 * heightCm - 5 * age - 161;
+    }
+    const tdee = bmr * 1.375;
+    let targetCal = tdee - 550;
+    if (!isMale) {
+      targetCal = Math.max(1200, targetCal);
+    } else {
+      targetCal = Math.max(1500, targetCal);
+    }
+    return Math.round(targetCal);
+  }
+
+  calcEstimateTime(currentW: number, targetW: number, recCal: number, heightCm: number, age: number, isMale: boolean): string {
+    const deltaWeight = currentW - targetW;
+    if (Math.abs(deltaWeight) < 0.2) {
+      return "你的体重已经接近目标体重";
+    }
+    let bmr: number;
+    if (isMale) {
+      bmr = 10 * currentW + 6.25 * heightCm - 5 * age + 5;
+    } else {
+      bmr = 10 * currentW + 6.25 * heightCm - 5 * age - 161;
+    }
+    const tdee = bmr * 1.375;
+    const dailyGap = tdee - recCal;
+
+    if (dailyGap <= 0 && deltaWeight > 0) {
+      return "当前推荐热量无法制造减重缺口，请适当降低摄入或增加运动";
+    }
+    if (deltaWeight < 0) {
+      const totalNeedCal = Math.abs(deltaWeight) * 7700;
+      const dayNeed = Math.round(totalNeedCal / (recCal - tdee));
+      const weekNeed = (dayNeed / 7).toFixed(1);
+      return `按推荐热量饮食，预计${dayNeed}天（约${weekNeed}周）可以达到目标体重（增重）`;
+    } else {
+      const totalNeedCal = deltaWeight * 7700;
+      const dayNeed = Math.round(totalNeedCal / dailyGap);
+      const weekNeed = (dayNeed / 7).toFixed(1);
+      const monthNeed = (dayNeed / 30).toFixed(1);
+      return `按推荐热量饮食，预计${dayNeed}天（约${weekNeed}周 / ${monthNeed}个月）可以达到目标体重`;
+    }
+  }
+
+  async onClickCalcCalorie() {
+    const goalCfg = await GlobalData.prefs.getGoalConfig();
+    const h = goalCfg.heightCm;
+    const latestWeightRow = await GlobalData.db.getLatestWeight();
+    if (!latestWeightRow) {
+      this.recommendCalorieText = "请先记录当前体重";
+      return;
+    }
+    const currentW = Number(latestWeightRow.weight_kg);
+    const isMale = this.gender === "男";
+    const age = 25;
+    const recCal = this.calcRecommendCalorie(h, currentW, age, isMale);
+    this.recommendCalorieText = `推荐每日摄入：${recCal} kcal`;
+    goalCfg.dailyCalorie = recCal;
+    await GlobalData.prefs.saveGoalConfig(goalCfg);
+
+    const targetW = parseFloat(this.targetWeightInput);
+    if (!isNaN(targetW) && targetW >= 30 && targetW <= 220) {
+      this.targetEstimateText = this.calcEstimateTime(currentW, targetW, recCal, h, age, isMale);
+    } else {
+      this.targetEstimateText = "";
+    }
+  }
+
   bg(): string { return ThemeColors.pageBg(this.theme); }
   card(): string { return ThemeColors.cardBg(this.theme); }
   txt(): string { return ThemeColors.textPrimary(this.theme); }
@@ -249,7 +319,6 @@ struct WeightPage {
 
   build() {
     Column() {
-      // 顶部导航
       Row() {
         Text('←')
           .fontSize(22)
@@ -324,7 +393,7 @@ struct WeightPage {
           .borderRadius(16)
           .margin({ left: 16, right: 16 })
 
-          // 输入区域
+          // 记录数据卡片
           Column() {
             Text('记录数据')
               .fontSize(16)
@@ -363,6 +432,69 @@ struct WeightPage {
           .backgroundColor(this.card())
           .borderRadius(16)
           .margin({ left: 16, right: 16, top: 8 })
+
+          // 目标体重卡片
+          Column() {
+            Text('目标体重')
+              .fontSize(16)
+              .fontWeight(FontWeight.Bold)
+              .width('100%')
+              .margin({ bottom: 12 })
+
+            Row() {
+              TextInput({ placeholder: "请输入目标体重(kg)", text: this.targetWeightInput })
+                .layoutWeight(1)
+                .type(InputType.Number)
+                .backgroundColor(ThemeColors.inputBg(this.theme))
+                .fontColor(this.txt())
+                .placeholderColor(ThemeColors.textSecondary(this.theme))
+                .onChange((v: string) => {
+                  this.targetWeightInput = v;
+                })
+            }
+            if (this.targetEstimateText.length > 0) {
+              Text(this.targetEstimateText)
+                .fontSize(14)
+                .fontColor("#2196F3")
+                .margin({ top: 10 })
+                .width('100%')
+            }
+          }
+          .width('100%')
+          .padding(16)
+          .backgroundColor(this.card())
+          .borderRadius(16)
+          .margin({ left: 16, right: 16, top: 12 })
+
+          // 热量推荐卡片
+          Column() {
+            Text('热量推荐')
+              .fontSize(16)
+              .fontWeight(FontWeight.Bold)
+              .width('100%')
+              .margin({ bottom: 12 })
+
+            Row() {
+              Button("计算推荐热量")
+                .backgroundColor(Constants.COLOR_WEIGHT)
+                .fontColor("#ffffff")
+                .borderRadius(20)
+                .onClick(() => { this.onClickCalcCalorie(); })
+              Blank()
+            }
+            if (this.recommendCalorieText.length > 0) {
+              Text(this.recommendCalorieText)
+                .fontSize(15)
+                .fontColor("#4CAF50")
+                .margin({ top: 10 })
+                .width('100%')
+            }
+          }
+          .width('100%')
+          .padding(16)
+          .backgroundColor(this.card())
+          .borderRadius(16)
+          .margin({ left: 16, right: 16, top: 12 })
 
           // 趋势图
           if (this.historyHeights.length > 1) {
