@@ -1,18 +1,26 @@
-import { router, promptAction } from '@kit.ArkUI';
-import { GlobalData } from '../common/GlobalData';
+import { router, promptAction } from '@kit.ArkUI';import { GlobalData } from '../common/GlobalData';
 import { DbRow, ThemeColors } from '../common/Constants';
+
+interface DbRowExt extends DbRow {
+  cycle_length: number;
+  period_length: number;
+}
 
 @Entry
 @Component
 struct WomenHealthPage {
   @State startDate: string = '';
   @State endDate: string = '';
+  @State tempStart: Date = new Date();
+  @State tempEnd: Date = new Date();
   @State cycleLength: string = '';
   @State periodLength: string = '';
   @State showInput: boolean = false;
-  @State records: DbRow[] = [];
+  @State records: DbRowExt[] = [];
   @State predictedNext: string = '';
   @State predictedOvulation: string = '';
+  @State avgCycle: number = 28;
+  @State avgPeriod: number = 5;
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
@@ -22,46 +30,67 @@ struct WomenHealthPage {
 
   async loadData(): Promise<void> {
     try {
-      this.records = await GlobalData.db.getPeriodRecords();
+      const raw = await GlobalData.db.getPeriodRecords();
+      this.records = raw as DbRowExt[];
+      this.calcAverageData();
       this.calculatePredictions();
     } catch (err) {
       console.error('WomenHealthPage loadData error:', JSON.stringify(err));
     }
   }
 
-  calculatePredictions(): void {
-    if (this.records.length > 0 && this.cycleLength.length > 0) {
-      const lastRecord: DbRow = this.records[this.records.length - 1];
-      const startDateStr: string = String(lastRecord.start_date);
-      const cycleDays: number = parseInt(this.cycleLength);
-      if (!isNaN(cycleDays) && cycleDays > 0) {
-        const startDateObj: Date = new Date(startDateStr);
-        const nextDate: Date = new Date(startDateObj.getTime() + cycleDays * 24 * 60 * 60 * 1000);
-        this.predictedNext = this.formatDate(nextDate);
-        const ovulationDate: Date = new Date(nextDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-        this.predictedOvulation = this.formatDate(ovulationDate);
-      }
+  calcAverageData(): void {
+    if (this.records.length === 0) {
+      this.avgCycle = 28;
+      this.avgPeriod = 5;
+      return;
     }
+    let sumCycle = 0;
+    let sumPeriod = 0;
+    this.records.forEach((item: DbRowExt) => {
+      sumCycle += item.cycle_length;
+      sumPeriod += item.period_length;
+    })
+    this.avgCycle = Math.round(sumCycle / this.records.length);
+    this.avgPeriod = Math.round(sumPeriod / this.records.length);
+    this.cycleLength = String(this.avgCycle);
+    this.periodLength = String(this.avgPeriod);
+  }
+
+  calculatePredictions(): void {
+    if (this.records.length === 0) {
+      this.predictedNext = "--";
+      this.predictedOvulation = "--";
+      return;
+    }
+    const lastRecord: DbRowExt = this.records[this.records.length - 1];
+    const dateStr = String(lastRecord.start_date);
+    const lastStartDate = this.parseDate(dateStr);
+
+    let targetCycle = parseInt(this.cycleLength);
+    if (isNaN(targetCycle) || targetCycle <= 0) {
+      targetCycle = this.avgCycle;
+    }
+    const nextPeriodDate = new Date(lastStartDate.getTime() + targetCycle * 24 * 60 * 60 * 1000);
+    this.predictedNext = this.formatDate(nextPeriodDate);
+    const ovulationDate = new Date(nextPeriodDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+    this.predictedOvulation = this.formatDate(ovulationDate);
   }
 
   formatDate(date: Date): string {
-    const year: number = date.getFullYear();
-    const month: number = date.getMonth() + 1;
-    const day: number = date.getDate();
-    const monthStr: string = month < 10 ? '0' + month : '' + month;
-    const dayStr: string = day < 10 ? '0' + day : '' + day;
-    return year + '-' + monthStr + '-' + dayStr;
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
   parseDate(dateStr: string): Date {
-    if (dateStr.length === 0) {
-      return new Date();
-    }
-    const parts: string[] = dateStr.split('-');
-    const y: number = parseInt(parts[0]) || 2026;
-    const m: number = parseInt(parts[1]) || 1;
-    const d: number = parseInt(parts[2]) || 1;
-    return new Date(y, m - 1, d);
+    if (!dateStr) return new Date();
+    const arr = dateStr.split('-');
+    const year = parseInt(arr[0]);
+    const month = parseInt(arr[1]) - 1;
+    const day = parseInt(arr[2]);
+    return new Date(year, month, day);
   }
 
   async saveRecord(): Promise<void> {
@@ -70,144 +99,178 @@ struct WomenHealthPage {
       return;
     }
     try {
-      const cycleLen: number = parseInt(this.cycleLength) || 28;
-      const periodLen: number = parseInt(this.periodLength) || 5;
-      const record: DbRow = {
-        start_date: this.startDate,
-        end_date: this.endDate,
-        cycle_length: cycleLen,
-        period_length: periodLen,
-      };
-      await GlobalData.db.addPeriodRecord(record);
+      const cycleLen: number = parseInt(this.cycleLength) || this.avgCycle;
+      const periodLen: number = parseInt(this.periodLength) || this.avgPeriod;
+
+      let baseRecord: DbRow = {} as DbRow;
+      baseRecord.start_date = this.startDate;
+      baseRecord.end_date = this.endDate;
+
+      const record = baseRecord as DbRowExt;
+      record.cycle_length = cycleLen;
+      record.period_length = periodLen;
+
+      await GlobalData.db.addPeriodRecord(record as DbRow);
       this.startDate = '';
       this.endDate = '';
-      this.cycleLength = '';
-      this.periodLength = '';
       this.showInput = false;
-      promptAction.showToast({ message: '保存成功' });
+      promptAction.showToast({ message: '保存成功，已更新预测日期' });
       await this.loadData();
     } catch (err) {
-      console.error('WomenHealthPage saveRecord error:', JSON.stringify(err));
+      console.error('saveRecord error:', JSON.stringify(err));
     }
   }
 
-  async deleteRecord(id: number): Promise<void> {
-    await GlobalData.db.deletePeriodRecord(id);
-    await this.loadData();
+  deleteRecord(id: number): void {
+    GlobalData.db.deletePeriodRecord(id);
+    this.loadData();
   }
-
-  bg(): string { return ThemeColors.pageBg(this.theme); }
-  card(): string { return ThemeColors.cardBg(this.theme); }
-  txt(): string { return ThemeColors.textPrimary(this.theme); }
-  sub(): string { return ThemeColors.textSecondary(this.theme); }
 
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).fontColor(this.txt())
-          .onClick(() => { router.back(); })
+        Text('←').fontSize(22).fontColor('#fff')
+          .onClick(() => {
+            router.back();
+          })
         Text('女性健康')
-          .fontSize(20).fontColor(this.txt()).fontWeight(FontWeight.Bold)
-          .margin({ left: 12 })
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#fff')
       }
-      .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
       Scroll() {
         Column() {
           Column() {
-            Text('预计下次经期').fontSize(14).fontColor(this.sub())
-            Text(this.predictedNext.length > 0 ? this.predictedNext : '--')
-              .fontSize(24).fontColor('#E91E63').fontWeight(FontWeight.Bold).margin({ top: 4 })
-            Divider().height(1).color('#333333').margin({ top: 12, bottom: 12 })
-            Text('排卵窗口').fontSize(14).fontColor(this.sub())
-            Text(this.predictedOvulation.length > 0 ? this.predictedOvulation : '--')
-              .fontSize(20).fontColor(this.txt()).fontWeight(FontWeight.Medium).margin({ top: 4 })
+            Text('预计下次经期').fontSize(14).fontColor('#cccccc')
+            Text(this.predictedNext)
+              .fontSize(24)
+              .fontColor('#E91E63')
+              .fontWeight(FontWeight.Bold)
+              .margin({ top: 4 })
+            Divider().width('100%').height(1).backgroundColor('#333333').margin({ top: 12, bottom: 12 })
+            Text('预计排卵日（下次经期前14天）').fontSize(14).fontColor('#cccccc')
+            Text(this.predictedOvulation)
+              .fontSize(20)
+              .fontColor('#ffffff')
+              .fontWeight(FontWeight.Medium)
+              .margin({ top: 4 })
+            Divider().width('100%').height(1).backgroundColor('#333333').margin({ top: 12, bottom: 12 })
+            Text(`历史平均周期：${this.avgCycle}天 | 平均经期：${this.avgPeriod}天`)
+              .fontSize(13)
+              .fontColor('#aaaaaa')
           }
-          .width('100%').padding(16)
-          .backgroundColor(this.card()).borderRadius(12)
+          .width('100%')
+          .padding(16)
+          .backgroundColor('#222222')
+          .borderRadius(12)
           .margin({ bottom: 16 })
 
           if (!this.showInput) {
             Button('添加经期记录')
-              .width('100%').height(48)
-              .backgroundColor('#E91E63').fontColor(this.txt()).borderRadius(24)
-              .onClick(() => { this.showInput = true; })
+              .width('100%')
+              .height(48)
+              .backgroundColor('#E91E63')
+              .fontSize(16)
+              .fontColor('#ffffff')
+              .borderRadius(24)
+              .onClick(() => {
+                this.showInput = true;
+              })
           } else {
             Column() {
-              Text('记录经期').fontSize(16).fontColor(this.txt()).fontWeight(FontWeight.Bold).margin({ bottom: 16 })
+              Text('记录本次经期')
+                .fontSize(24)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#fff')
+                .margin({ bottom: 16 })
 
-              Text('开始日期').fontSize(12).fontColor(this.sub())
-              DatePicker({ selected: this.parseDate(this.startDate) })
-                .onDateChange((value: Date) => { this.startDate = this.formatDate(value); })
+              Text('月经开始日期').fontSize(14).fontColor('#cccccc')
+              DatePicker({ selected: this.tempStart })
+                .onDateChange((d: Date) => {
+                  this.tempStart = d;
+                })
                 .margin({ bottom: 12 })
 
-              Text('结束日期').fontSize(12).fontColor(this.sub())
-              DatePicker({ selected: this.parseDate(this.endDate) })
-                .onDateChange((value: Date) => { this.endDate = this.formatDate(value); })
-                .margin({ bottom: 12 })
-
-              Text('周期长度 (天)').fontSize(12).fontColor(this.sub())
-              TextInput({ placeholder: '28', text: this.cycleLength })
-                .type(InputType.Number)
-                .backgroundColor(ThemeColors.inputBg(this.theme))
-                .fontColor(this.txt())
-                .placeholderColor(ThemeColors.textSecondary(this.theme))
-                .onChange((value: string) => { this.cycleLength = value; })
-                .margin({ bottom: 12 })
-
-              Text('经期长度 (天)').fontSize(12).fontColor(this.sub())
-              TextInput({ placeholder: '5', text: this.periodLength })
-                .type(InputType.Number)
-                .backgroundColor(ThemeColors.inputBg(this.theme))
-                .fontColor(this.txt())
-                .placeholderColor(ThemeColors.textSecondary(this.theme))
-                .onChange((value: string) => { this.periodLength = value; })
+              Text('月经结束日期').fontSize(14).fontColor('#cccccc')
+              DatePicker({ selected: this.tempEnd })
+                .onDateChange((d: Date) => {
+                  this.tempEnd = d;
+                })
                 .margin({ bottom: 16 })
 
               Row() {
-                Button('取消').height(40).backgroundColor('#333333').fontColor(this.txt()).borderRadius(20)
-                  .layoutWeight(1).onClick(() => { this.showInput = false; })
-                Button('保存').height(40).backgroundColor('#E91E63').fontColor(this.txt()).borderRadius(20)
-                  .layoutWeight(1).margin({ left: 12 })
-                  .onClick(() => { this.saveRecord(); })
+                Button('取消')
+                  .layoutWeight(1)
+                  .height(40)
+                  .backgroundColor('#333333')
+                  .fontColor('#fff')
+                  .borderRadius(20)
+                  .margin({ right: 8 })
+                  .onClick(() => {
+                    this.showInput = false;
+                    this.startDate = '';
+                    this.endDate = '';
+                  })
+                Button('保存记录')
+                  .layoutWeight(1)
+                  .height(40)
+                  .backgroundColor('#E91E63')
+                  .fontColor('#fff')
+                  .borderRadius(20)
+                  .onClick(() => {
+                    // 点击保存再赋值，规避组件回调this限制
+                    this.startDate = this.formatDate(this.tempStart);
+                    this.endDate = this.formatDate(this.tempEnd);
+                    this.saveRecord();
+                  })
               }
             }
-            .width('100%').padding(16)
-            .backgroundColor(this.card()).borderRadius(12).margin({ bottom: 16 })
+            .width('100%')
+            .padding(16)
+            .backgroundColor('#222222')
+            .borderRadius(12)
+            .margin({ bottom: 16 })
           }
 
-          Text('经期历史').fontSize(16).fontColor(this.txt()).fontWeight(FontWeight.Bold).margin({ bottom: 12 })
-
-          ForEach(this.records, (record: DbRow) => {
+          Text('历史经期记录').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#fff').margin({ bottom: 12 })
+          ForEach(this.records, (record: DbRowExt) => {
             Row() {
               Column() {
-                Text(String(record.start_date)).fontSize(14).fontColor(this.txt())
-                Text(String(record.end_date)).fontSize(12).fontColor(this.sub()).margin({ top: 2 })
+                Text(`${record.start_date} ~ ${record.end_date}`).fontSize(14).fontColor('#fff')
+                Text(`本次经期${record.period_length}天`).fontSize(12).fontColor('#aaaaaa').margin({ top: 2 })
               }
-              .alignItems(HorizontalAlign.Start).layoutWeight(1)
+              .alignItems(0)
+              .layoutWeight(1)
 
-              Column() {
-                Text(String(record.cycle_length) + ' 天周期').fontSize(12).fontColor('#E91E63')
-                Text(String(record.period_length) + ' 天').fontSize(12).fontColor(this.sub()).margin({ top: 2 })
+              Row() {
+                Text(`${record.cycle_length}天周期`).fontSize(12).fontColor('#E91E63').margin({ right: 8 })
+                Text('🗑').fontSize(16)
+                  .onClick(() => {
+                    if (record.id) {
+                      const idNum = Number(record.id);
+                      this.deleteRecord(idNum);
+                    }
+                  })
               }
-              .alignItems(HorizontalAlign.End)
-              Text('🗑').fontSize(16).margin({ left: 10 })
-                .onClick(() => { this.deleteRecord(Number(record.id)); })
+              .alignItems(2)
             }
-            .width('100%').padding(12)
-            .backgroundColor(this.card()).borderRadius(8)
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#222222')
+            .borderRadius(8)
             .margin({ bottom: 8 })
-          }, (record: DbRow): string => String(record.start_date))
+          }, (record: DbRowExt): string => String(record.start_date))
         }
-        .width('100%').padding(16)
+        .width('100%')
+        .padding(16)
       }
       .layoutWeight(1)
     }
-    .width('100%').height('100%')    .backgroundColor(this.bg())
-  }
-
-  pageTransition() {
-    PageTransitionEnter({ duration: 300, curve: Curve.Friction }).slide(SlideEffect.Right)
-    PageTransitionExit({ duration: 200, curve: Curve.FastOutLinearIn }).slide(SlideEffect.Left)
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#111111')
   }
 }
