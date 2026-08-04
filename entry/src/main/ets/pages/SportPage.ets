@@ -2,6 +2,7 @@ import { router, promptAction } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { Constants, DbRow, SportTypeDef, ThemeColors } from '../common/Constants';
 import { FoodRecognitionService } from '../services/FoodRecognitionService';
+import { LocationTrackerService } from '../services/LocationTrackerService';
 
 @Entry
 @Component
@@ -21,10 +22,17 @@ struct SportPage {
   @State manualMin: string = '30';
   @State isCalcCalories: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  @State useGps: boolean = false;
+  @State gpsStatus: string = '';
 
   aboutToAppear(): void {
     this.loadWeight();
     this.loadHistory();
+  }
+
+  isGpsSport(): boolean {
+    return this.currentSport === 'walk' || this.currentSport === 'run' || this.currentSport === 'cycle';
   }
 
   async loadWeight(): Promise<void> {
@@ -94,6 +102,24 @@ struct SportPage {
     const maxHr: number = Constants.MAX_HR;
     const restHr: number = Constants.REST_HR;
     this.heartRateAvg = Math.min(maxHr, restHr + Math.round(met * 8));
+    if (this.isGpsSport()) {
+      const tracker = LocationTrackerService.getInstance();
+      tracker.reset();
+      tracker.onDistanceChanged((distanceM: number) => {
+        this.distanceKm = parseFloat((distanceM / 1000).toFixed(2));
+      });
+      tracker.start();
+      this.useGps = true;
+      this.gpsStatus = '正在定位...';
+      setTimeout(() => {
+        if (this.isTracking && this.useGps) {
+          this.gpsStatus = tracker.getPointCount() > 0 ? 'GPS 定位中' : '未获取到定位，正在重试';
+        }
+      }, 5000);
+    } else {
+      this.useGps = false;
+      this.gpsStatus = '';
+    }
     this.startTimer();
   }
 
@@ -102,11 +128,17 @@ struct SportPage {
       clearInterval(this.timerId);
       this.timerId = -1;
     }
+    if (this.useGps) {
+      LocationTrackerService.getInstance().pause();
+    }
     this.isPaused = true;
   }
 
   resumeTracking(): void {
     if (this.isTracking && this.isPaused) {
+      if (this.useGps) {
+        LocationTrackerService.getInstance().resume();
+      }
       this.isPaused = false;
       this.startTimer();
     }
@@ -123,9 +155,12 @@ struct SportPage {
   }
 
   private updateMetrics(): void {
+    if (!this.useGps) {
+      const met: number = Constants.MET_VALUES.get(this.currentSport) ?? 4.0;
+      const spd = Constants.SPEED_KMH.get(this.currentSport) ?? 5;
+      this.distanceKm = parseFloat(((this.durationSec / 3600) * spd).toFixed(2));
+    }
     const met: number = Constants.MET_VALUES.get(this.currentSport) ?? 4.0;
-    const spd = Constants.SPEED_KMH.get(this.currentSport) ?? 5;
-    this.distanceKm = parseFloat(((this.durationSec / 3600) * spd).toFixed(2));
     const hours: number = this.durationSec / 3600;
     this.calorieBurn = Math.round(met * this.bodyWeight * hours);
   }
@@ -137,6 +172,11 @@ struct SportPage {
     }
     this.isTracking = false;
     this.isPaused = false;
+    if (this.useGps) {
+      LocationTrackerService.getInstance().stop();
+      this.useGps = false;
+      this.gpsStatus = '';
+    }
   }
 
   adjustTime(deltaSec: number): void {
@@ -249,7 +289,7 @@ struct SportPage {
         Text('＋ 手动添加').fontSize(14).fontColor('#FF6B35')
           .onClick(() => { this.showManualAdd = !this.showManualAdd; })
       }
-      .width('100%').padding(16)
+      .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
       Scroll() {
         Column() {
@@ -345,6 +385,10 @@ struct SportPage {
             .width(200).height(56).backgroundColor('#FF6B35').borderRadius(28)
             .margin({ top: 20 })
             .onClick(() => { this.startTracking(); })
+            if (this.isGpsSport()) {
+              Text('🚶 走路/跑步/骑行将使用 GPS 记录真实路程').fontSize(11)
+                .fontColor(this.sub()).margin({ top: 8 })
+            }
           } else {
             Column() {
               Text(this.formatDuration(this.durationSec))
@@ -367,7 +411,7 @@ struct SportPage {
               Row() {
                 Column() {
                   Text(this.distanceKm.toFixed(2)).fontSize(24).fontWeight(FontWeight.Bold)
-                  Text('公里').fontSize(12).fontColor(this.sub())
+                  Text(this.useGps ? '公里(GPS)' : '公里').fontSize(12).fontColor(this.sub())
                 }
                 Divider().vertical(true).height(50).margin({ left: 24, right: 24 })
                 Column() {
@@ -388,6 +432,12 @@ struct SportPage {
 
               Text('卡路里按体重 ' + this.bodyWeight.toFixed(0) + 'kg 估算')
                 .fontSize(11).fontColor(this.sub()).margin({ top: 8 })
+
+              if (this.useGps) {
+                Text('📡 ' + this.gpsStatus).fontSize(11)
+                  .fontColor(this.gpsStatus.includes('定位') ? '#FF9800' : '#4CAF50')
+                  .margin({ top: 6 })
+              }
 
               Row() {
                 if (this.isPaused) {

@@ -24,6 +24,8 @@ export class PermissionService {
     const perms: Permissions[] = [
       'ohos.permission.ACTIVITY_MOTION',
       'ohos.permission.ACCESS_BLUETOOTH',
+      'ohos.permission.LOCATION',
+      'ohos.permission.APPROXIMATELY_LOCATION',
     ];
     try {
       const result = await atManager.requestPermissionsFromUser(context, perms);
