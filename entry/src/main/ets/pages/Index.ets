@@ -4,8 +4,6 @@ import { Constants, GoalConfig, StreakData, DbRow, ThemeColors } from '../common
 import { RingProgress } from '../components/RingProgress';
 import { HealthCard } from '../components/HealthCard';
 import { FoodRecognitionTab } from '../components/FoodRecognitionTab';
-import { ReminderScheduler } from '../services/ReminderScheduler';
-import { NotificationService } from '../services/NotificationService';
 import { WeightDialog } from '../components/WeightDialog';
 
 @Entry
@@ -40,13 +38,6 @@ struct Index {
   @State diarySportRecords: DbRow[] = [];
   @State diarySleepRecords: DbRow[] = [];
   @State diaryMoodRecords: DbRow[] = [];
-  @State waterReminderEnabled: boolean = false;
-  @State sedentaryReminderEnabled: boolean = false;
-  @State waterReminderTime: string = '10:00';
-  @State sedentaryReminderTime: string = '14:00';
-  @State showWaterTimePicker: boolean = false;
-  @State showSedentaryTimePicker: boolean = false;
-
   @State bgColor: string = '#121212';
   @State cardColor: string = '#1E1E2E';
   @State textColor: string = '#FFFFFF';
@@ -187,15 +178,6 @@ struct Index {
       const nameRaw: string | number | boolean = await GlobalData.prefs.get('user_name', '');
       this.userName = String(nameRaw);
 
-      const waterRaw: string | number | boolean = await GlobalData.prefs.get('water_reminder_enabled', 'false');
-      this.waterReminderEnabled = String(waterRaw) === 'true';
-      const sedentaryRaw: string | number | boolean = await GlobalData.prefs.get('sedentary_reminder_enabled', 'false');
-      this.sedentaryReminderEnabled = String(sedentaryRaw) === 'true';
-      const waterTimeRaw: string | number | boolean = await GlobalData.prefs.get('water_reminder_time', '10:00');
-      this.waterReminderTime = String(waterTimeRaw);
-      const sedentaryTimeRaw: string | number | boolean = await GlobalData.prefs.get('sedentary_reminder_time', '14:00');
-      this.sedentaryReminderTime = String(sedentaryTimeRaw);
-
       const end = new Date();
       const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
       this.diaryDietRecords = await GlobalData.db.getDietRecordsRange(
@@ -295,23 +277,6 @@ struct Index {
     }
   }
 
-  parseReminderTime(timeStr: string): Date {
-    const parts: string[] = timeStr.split(':');
-    const h: number = parseInt(parts[0]) || 10;
-    const m: number = parseInt(parts[1]) || 0;
-    const d: Date = new Date();
-    d.setHours(h, m, 0, 0);
-    return d;
-  }
-
-  formatReminderTime(value: TimePickerResult): string {
-    const h: number = value.hour;
-    const m: number = value.minute;
-    const hStr: string = h < 10 ? '0' + h : '' + h;
-    const mStr: string = m < 10 ? '0' + m : '' + m;
-    return hStr + ':' + mStr;
-  }
-
   onPageShow(): void {
     this.loadAllData();
   }
@@ -347,11 +312,8 @@ struct Index {
         TabContent() { this.recognitionTab() }
         .tabBar(this.tabBuilder('📷', '识图', 2))
 
-        TabContent() { this.notificationTab() }
-        .tabBar(this.tabBuilder('🔔', '通知', 3))
-
         TabContent() { this.accountTab() }
-        .tabBar(this.tabBuilder('👤', '账号', 4))
+        .tabBar(this.tabBuilder('👤', '账号', 3))
       }
       .animationDuration(200)
       .barHeight(56)
@@ -422,7 +384,7 @@ struct Index {
             HealthCard({ title: '步数', value: this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--', unit: '/ ' + String(this.stepGoal), iconColor: Constants.COLOR_STEP, iconSymbol: '👟', subText: this.getDisplaySteps() > 0 ? '完成 ' + String(Math.round(this.getDisplaySteps() / this.stepGoal * 100)) + '%' : '暂无数据', onCardClick: () => { this.navigateTo(Constants.PAGE_SPORT); } })
           }
           GridItem() {
-            HealthCard({ title: '心率', value: this.bandHeartRate > 0 ? String(this.bandHeartRate) : (this.heartRate > 0 ? String(this.heartRate) : '--'), unit: 'bpm', iconColor: Constants.COLOR_HEART, iconSymbol: '❤️', subText: this.bandHeartRate > 0 ? '手环实时心率' : '静息心率', onCardClick: () => { this.navigateTo(Constants.PAGE_DEVICE); } })
+            HealthCard({ title: '心率', value: this.bandHeartRate > 0 ? String(this.bandHeartRate) : (this.heartRate > 0 ? String(this.heartRate) : '--'), unit: 'bpm', iconColor: Constants.COLOR_HEART, iconSymbol: '❤️', subText: this.bandHeartRate > 0 ? '手环实时心率' : '静息心率', onCardClick: () => {} })
           }
           GridItem() {
             HealthCard({ title: '睡眠', value: this.sleepHours !== '0.0' && this.sleepHours !== '0' ? this.sleepHours : '--', unit: '小时', iconColor: Constants.COLOR_SLEEP, iconSymbol: '😴', subText: this.sleepScore > 0 ? '评分 ' + String(this.sleepScore) : '暂无数据', onCardClick: () => { this.navigateTo(Constants.PAGE_SLEEP); } })
@@ -493,14 +455,6 @@ struct Index {
           this.quickButton('😊', '情绪', Constants.PAGE_MOOD)
         }
         .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding({ left: 16, right: 16 })
-
-        Row() {
-          this.quickButton('🏋️', '成分', Constants.PAGE_BODY)
-          this.quickButton('📋', '计划', Constants.PAGE_PLAN)
-          this.quickButton('⌚', '设备', Constants.PAGE_DEVICE)
-          this.quickButton('💤', '睡眠', Constants.PAGE_SLEEP)
-        }
-        .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding({ left: 16, right: 16, top: 12 })
 
         Divider().opacity(0).height(24)
       }
@@ -592,94 +546,6 @@ struct Index {
     FoodRecognitionTab()
   }
 
-  @Builder notificationTab() {
-    Scroll() {
-      Column() {
-        Row() {
-          Text('通知设置').fontSize(22).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-          Blank()
-        }
-        .width('100%').padding({ left: 20, right: 20, top: 16, bottom: 16 })
-
-        this.notifCard('💧 喝水提醒', '每天 ' + this.waterReminderTime + ' 提醒喝水', this.waterReminderEnabled, (on: boolean) => {
-          this.waterReminderEnabled = on;
-          ReminderScheduler.getInstance().toggleWaterReminder(on);
-        })
-        Row() {
-          Text('⏰ 设置时间').fontSize(14).fontColor(this.subTextColor).layoutWeight(1)
-          Text(this.waterReminderTime)
-            .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-            .onClick(() => { this.showWaterTimePicker = !this.showWaterTimePicker; })
-          Text('✏️').fontSize(16).margin({ left: 8 })
-            .onClick(() => { this.showWaterTimePicker = !this.showWaterTimePicker; })
-        }
-        .width('100%').padding({ left: 16, right: 16, bottom: 4 })
-
-        if (this.showWaterTimePicker) {
-          TimePicker({ selected: this.parseReminderTime(this.waterReminderTime) })
-            .useMilitaryTime(true)
-            .width(200).height(120)
-            .onChange((value: TimePickerResult) => {
-              this.waterReminderTime = this.formatReminderTime(value);
-              ReminderScheduler.getInstance().setWaterTime(this.waterReminderTime);
-            })
-            .margin({ left: 16, bottom: 8 })
-        }
-
-        this.notifCard('🪑 久坐提醒', '每天 ' + this.sedentaryReminderTime + ' 提醒起身活动', this.sedentaryReminderEnabled, (on: boolean) => {
-          this.sedentaryReminderEnabled = on;
-          ReminderScheduler.getInstance().toggleSedentaryReminder(on);
-        })
-        Row() {
-          Text('⏰ 设置时间').fontSize(14).fontColor(this.subTextColor).layoutWeight(1)
-          Text(this.sedentaryReminderTime)
-            .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-            .onClick(() => { this.showSedentaryTimePicker = !this.showSedentaryTimePicker; })
-          Text('✏️').fontSize(16).margin({ left: 8 })
-            .onClick(() => { this.showSedentaryTimePicker = !this.showSedentaryTimePicker; })
-        }
-        .width('100%').padding({ left: 16, right: 16, bottom: 4 })
-
-        if (this.showSedentaryTimePicker) {
-          TimePicker({ selected: this.parseReminderTime(this.sedentaryReminderTime) })
-            .useMilitaryTime(true)
-            .width(200).height(120)
-            .onChange((value: TimePickerResult) => {
-              this.sedentaryReminderTime = this.formatReminderTime(value);
-              ReminderScheduler.getInstance().setSedentaryTime(this.sedentaryReminderTime);
-            })
-            .margin({ left: 16, bottom: 8 })
-        }
-
-        this.notifCard('💊 用药提醒', '根据设定的时间提醒你服药', false, (on: boolean) => {
-          console.info('Medication reminder toggle: ' + String(on));
-        })
-
-        Text('⏰ 闹钟功能需在用药页面添加用药计划后生效')
-          .fontSize(12).fontColor(this.subTextColor)
-          .padding({ left: 16, right: 16, top: 8 })
-
-        Divider().opacity(0).height(24)
-      }
-      .width('100%')
-    }
-  }
-
-  @Builder notifCard(title: string, desc: string, enabled: boolean, onChange: (on: boolean) => void) {
-    Row() {
-      Column() {
-        Text(title).fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.textColor)
-        Text(desc).fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .alignItems(HorizontalAlign.Start).layoutWeight(1)
-      Toggle({ type: ToggleType.Switch, isOn: enabled })
-        .selectedColor(this.accentColor)
-        .onChange((isOn: boolean) => { onChange(isOn); })
-    }
-    .width('100%').padding(16).backgroundColor(this.cardColor).borderRadius(12)
-    .margin({ left: 16, right: 16, bottom: 10 })
-  }
-
   @Builder accountTab() {
     Scroll() {
       Column() {
@@ -711,20 +577,9 @@ struct Index {
         .margin({ left: 16, right: 16, bottom: 10 })
         .onClick(() => { this.navigateTo(Constants.PAGE_LOGIN); })
 
-        this.accountMenuItem('⚖️', '体重设置', '设置体重，用于计算运动热量', () => {
-          this.weightDialogController = new CustomDialogController({
-            builder: WeightDialog(),
-            autoCancel: true,
-            customStyle: true
-          });
-          this.weightDialogController.open();
-        })
-        this.accountMenuItem('🎯', '目标设置', '步数、喝水、运动、睡眠目标', () => { this.navigateTo(Constants.PAGE_GOAL); })
-        this.accountMenuItem('🎨', '主题切换', '深色模式 / 浅色模式', () => { this.toggleTheme(); })
+        this.accountMenuItem('👤', '个人信息', '身高、体重、性别设置', () => { this.navigateTo(Constants.PAGE_PROFILE); })
+        this.accountMenuItem('⚙️', '设置', '通知、目标、主题、关于', () => { this.navigateTo(Constants.PAGE_SETTINGS); })
         this.accountMenuItem('📊', '健康报告', '查看周报月报', () => { this.navigateTo(Constants.PAGE_REPORT); })
-        this.accountMenuItem('ℹ️', '关于', 'Harmony健康 v1.0', () => {})
-        this.accountMenuItem('💾', '数据说明', '数据存储在本地数据库，无需联网。关机会保留。', () => {})
-        this.accountMenuItem('📡', '手环说明', '需连接真实BLE手环设备读取心率/血氧数据。', () => {})
 
         Divider().opacity(0).height(24)
       }

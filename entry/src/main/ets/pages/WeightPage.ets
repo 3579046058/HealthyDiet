@@ -9,6 +9,8 @@ struct WeightPage {
   @State weightInput: string = '';
   @State currentWeight: string = '--';
   @State bmi: string = '--';
+  @State bmiStatus: string = '';
+  @State gender: string = '男';
   @State heightCm: number = 170;
   @State historyDates: string[] = [];
   @State historyWeights: number[] = [];
@@ -46,10 +48,16 @@ struct WeightPage {
     try {
       const goalConfig: GoalConfig = await GlobalData.prefs.getGoalConfig();
       this.heightCm = goalConfig.heightCm;
+      const g = await GlobalData.prefs.getGender();
+      if (g.length > 0) {
+        this.gender = g;
+      }
       const latest = await GlobalData.db.getLatestWeight();
       if (latest) {
         this.currentWeight = Number(latest.weight_kg).toFixed(1);
-        this.bmi = this.calcBMI(Number(latest.weight_kg));
+        const bmiVal = this.calcBMI(Number(latest.weight_kg));
+        this.bmi = bmiVal.toFixed(1);
+        this.bmiStatus = this.getBmiStatus(Number(bmiVal));
       }
 
       // 获取最近30天记录
@@ -66,10 +74,47 @@ struct WeightPage {
     }
   }
 
-  calcBMI(weightKg: number): string {
+  calcBMI(weightKg: number): number {
     const h = this.heightCm;
-    const bmiVal = weightKg / ((h / 100) * (h / 100));
-    return bmiVal.toFixed(1);
+    if (h <= 0) {
+      return 0;
+    }
+    return weightKg / ((h / 100) * (h / 100));
+  }
+
+  getBmiStatus(bmiVal: number): string {
+    if (bmiVal <= 0) {
+      return '';
+    }
+    let low = 18.5;
+    let high = 24;
+    if (this.gender === '男') {
+      low = 18.5;
+      high = 24;
+    } else if (this.gender === '女') {
+      low = 18;
+      high = 23;
+    }
+    if (bmiVal < low) {
+      return '偏瘦';
+    }
+    if (bmiVal <= high) {
+      return '正常';
+    }
+    if (bmiVal < 28) {
+      return '偏胖';
+    }
+    return '肥胖';
+  }
+
+  getBmiColor(): string {
+    if (this.bmiStatus === '正常') {
+      return '#4CAF50';
+    }
+    if (this.bmiStatus === '偏瘦' || this.bmiStatus === '偏胖') {
+      return '#FF9800';
+    }
+    return '#F44336';
   }
 
   async saveWeight(): Promise<void> {
@@ -127,10 +172,16 @@ struct WeightPage {
               Text(this.bmi)
                 .fontSize(48)
                 .fontWeight(FontWeight.Bold)
-                .fontColor('#4CAF50')
+                .fontColor(this.getBmiColor())
               Text('BMI')
                 .fontSize(16)
                 .fontColor(this.sub())
+              if (this.bmiStatus.length > 0) {
+                Text(this.bmiStatus)
+                  .fontSize(13)
+                  .fontColor(this.getBmiColor())
+                  .margin({ top: 4 })
+              }
             }
           }
           .width('100%')
