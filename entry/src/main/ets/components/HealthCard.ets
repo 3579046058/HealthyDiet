@@ -11,6 +11,7 @@ export struct HealthCard {
   @Prop subText: string = '';
   @Prop iconColor: string = '#FF9800';
   @Prop iconSymbol: string = '';
+  @Prop iconName: string = ''; // 新增：SVG图标名称
   onCardClick?: () => void;
   @StorageLink('currentTheme') theme: string = 'dark';
 
@@ -19,8 +20,15 @@ export struct HealthCard {
       Row() {
         // 图标区域
         Row() {
-          Text(this.iconSymbol)
-            .fontSize(20)
+          if (this.iconName) {
+            Image($r(`app.media.${this.iconName}`))
+              .width(20)
+              .height(20)
+              .fillColor(this.iconColor)
+          } else {
+            Text(this.iconSymbol)
+              .fontSize(20)
+          }
         }
         .width(40)
         .height(40)

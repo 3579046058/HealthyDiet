@@ -24,6 +24,7 @@ interface HealthCardItem {
 interface QuickFunctionItem {
   id: string;
   icon: string;
+  iconName: string; // SVG图标名称
   label: string;
   page: string;
 }
@@ -83,22 +84,22 @@ struct Index {
 
   // 卡片配置数据
   private healthCardConfigs: HealthCardItem[] = [
-    { id: 'steps', title: '步数', iconSymbol: '👟', iconColor: Constants.COLOR_STEP },
-    { id: 'heart', title: '心率', iconSymbol: '❤️', iconColor: Constants.COLOR_HEART },
-    { id: 'sleep', title: '睡眠', iconSymbol: '😴', iconColor: Constants.COLOR_SLEEP },
-    { id: 'water', title: '喝水', iconSymbol: '💧', iconColor: Constants.COLOR_WATER }
+    { id: 'steps', title: '步数', iconSymbol: 'ic_steps', iconColor: Constants.COLOR_STEP },
+    { id: 'heart', title: '心率', iconSymbol: 'ic_heart_rate', iconColor: Constants.COLOR_HEART },
+    { id: 'sleep', title: '睡眠', iconSymbol: 'ic_sleep', iconColor: Constants.COLOR_SLEEP },
+    { id: 'water', title: '喝水', iconSymbol: 'ic_water', iconColor: Constants.COLOR_WATER }
   ];
 
   // 快捷功能配置数据
   private quickFunctionConfigs: QuickFunctionItem[] = [
-    { id: 'sport', icon: '🏃', label: '运动', page: Constants.PAGE_SPORT },
-    { id: 'weight', icon: '⚖️', label: '体重', page: Constants.PAGE_WEIGHT },
-    { id: 'report', icon: '📊', label: '周报', page: Constants.PAGE_REPORT },
-    { id: 'goal', icon: '🎯', label: '目标', page: Constants.PAGE_GOAL },
-    { id: 'diet', icon: '🍎', label: '饮食', page: Constants.PAGE_DIET },
-    { id: 'women', icon: '🌸', label: '健康', page: Constants.PAGE_WOMEN },
-    { id: 'medication', icon: '💊', label: '用药', page: Constants.PAGE_MEDICATION },
-    { id: 'mood', icon: '😊', label: '情绪', page: Constants.PAGE_MOOD }
+    { id: 'sport', icon: '🏃', iconName: 'ic_sport', label: '运动', page: Constants.PAGE_SPORT },
+    { id: 'weight', icon: '⚖️', iconName: 'ic_weight', label: '体重', page: Constants.PAGE_WEIGHT },
+    { id: 'report', icon: '📊', iconName: 'ic_report', label: '周报', page: Constants.PAGE_REPORT },
+    { id: 'goal', icon: '🎯', iconName: 'ic_goal', label: '目标', page: Constants.PAGE_GOAL },
+    { id: 'diet', icon: '🍎', iconName: 'ic_diet', label: '饮食', page: Constants.PAGE_DIET },
+    { id: 'women', icon: '🌸', iconName: 'ic_women', label: '健康', page: Constants.PAGE_WOMEN },
+    { id: 'medication', icon: '💊', iconName: 'ic_medication', label: '用药', page: Constants.PAGE_MEDICATION },
+    { id: 'mood', icon: '😊', iconName: 'ic_mood', label: '情绪', page: Constants.PAGE_MOOD }
   ];
 
   updateThemeColors(): void {
@@ -176,7 +177,7 @@ struct Index {
         value: this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--',
         unit: '/ ' + String(this.stepGoal),
         iconColor: Constants.COLOR_STEP,
-        iconSymbol: '👟',
+        iconName: 'ic_steps',
         subText: this.getDisplaySteps() > 0 ? '完成 ' + String(Math.round(this.getDisplaySteps() / this.stepGoal * 100)) + '%' : '暂无数据',
         onCardClick: () => { this.navigateTo(Constants.PAGE_SPORT); }
       })
@@ -186,7 +187,7 @@ struct Index {
         value: this.bandHeartRate > 0 ? String(this.bandHeartRate) : (this.heartRate > 0 ? String(this.heartRate) : '--'),
         unit: 'bpm',
         iconColor: Constants.COLOR_HEART,
-        iconSymbol: '❤️',
+        iconName: 'ic_heart_rate',
         subText: this.bandHeartRate > 0 ? '手环实时心率' : '静息心率',
         onCardClick: () => {}
       })
@@ -196,7 +197,7 @@ struct Index {
         value: this.sleepHours !== '0.0' && this.sleepHours !== '0' ? this.sleepHours : '--',
         unit: '小时',
         iconColor: Constants.COLOR_SLEEP,
-        iconSymbol: '😴',
+        iconName: 'ic_sleep',
         subText: this.sleepScore > 0 ? '评分 ' + String(this.sleepScore) : '暂无数据',
         onCardClick: () => { this.navigateTo(Constants.PAGE_SLEEP); }
       })
@@ -206,7 +207,7 @@ struct Index {
         value: this.waterMl > 0 ? String(this.waterMl) : '--',
         unit: 'ml',
         iconColor: Constants.COLOR_WATER,
-        iconSymbol: '💧',
+        iconName: 'ic_water',
         subText: '目标 ' + String(this.waterGoal) + 'ml',
         onCardClick: () => { this.navigateTo(Constants.PAGE_WATER); }
       })
@@ -538,16 +539,16 @@ struct Index {
       Column() {
         Tabs({ barPosition: BarPosition.End, index: this.currentTabIndex }) {
           TabContent() { this.healthTab() }
-          .tabBar(this.tabBuilder('🏥', '健康', 0))
+          .tabBar(this.tabBuilder('ic_health', '健康', 0))
 
           TabContent() { this.diaryTab() }
-          .tabBar(this.tabBuilder('📓', '记录', 1))
+          .tabBar(this.tabBuilder('ic_diary', '记录', 1))
 
           TabContent() { this.recognitionTab() }
-          .tabBar(this.tabBuilder('📷', '识图', 2))
+          .tabBar(this.tabBuilder('ic_camera', '识图', 2))
 
           TabContent() { this.accountTab() }
-          .tabBar(this.tabBuilder('👤', '账号', 3))
+          .tabBar(this.tabBuilder('ic_account', '账号', 3))
         }
         .animationDuration(200)
         .barHeight(56)
@@ -643,6 +644,7 @@ struct Index {
             Text('健康评分').fontSize(11).fontColor(this.subTextColor)
             Text(String(this.getHealthScore())).fontSize(30).fontWeight(FontWeight.Bold).fontColor(this.getScoreColor(this.getHealthScore()))
           }
+          .onClick(() => { this.navigateTo(Constants.PAGE_REPORT); })
           Column() {
             Text('步数').fontSize(11).fontColor(this.subTextColor)
             Text(this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
@@ -715,10 +717,12 @@ struct Index {
     .borderRadius(16)
   }
 
-  @Builder tabBuilder(icon: string, label: string, index: number) {
+  @Builder tabBuilder(iconName: string, label: string, index: number) {
     Column() {
-      Text(icon)
-        .fontSize(this.currentTabIndex === index ? 26 : 20)
+      Image($r(`app.media.${iconName}`))
+        .width(this.currentTabIndex === index ? 26 : 20)
+        .height(this.currentTabIndex === index ? 26 : 20)
+        .fillColor(this.currentTabIndex === index ? this.accentColor : this.subTextColor)
         .animation({ duration: 250, curve: Curve.EaseInOut })
       Text(label)
         .fontSize(10)
@@ -787,6 +791,7 @@ struct Index {
             .width('100%')
             .alignItems(VerticalAlign.Center)
           }
+          .onClick(() => { this.navigateTo(Constants.PAGE_REPORT); })
           .alignItems(HorizontalAlign.Start)
           .layoutWeight(1)
         }
@@ -1017,7 +1022,10 @@ struct Index {
   quickFunctionBuilder(funcId: string) {
     if (funcId === 'sport') {
       Column() {
-        Text('🏃').fontSize(28)
+        Image($r('app.media.ic_sport'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('运动').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1026,7 +1034,10 @@ struct Index {
       .onClick(() => { this.navigateTo(Constants.PAGE_SPORT); })
     } else if (funcId === 'weight') {
       Column() {
-        Text('⚖️').fontSize(28)
+        Image($r('app.media.ic_weight'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('体重').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1035,7 +1046,10 @@ struct Index {
       .onClick(() => { this.navigateTo(Constants.PAGE_WEIGHT); })
     } else if (funcId === 'report') {
       Column() {
-        Text('📊').fontSize(28)
+        Image($r('app.media.ic_report'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('周报').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1044,7 +1058,10 @@ struct Index {
       .onClick(() => { this.navigateTo(Constants.PAGE_REPORT); })
     } else if (funcId === 'goal') {
       Column() {
-        Text('🎯').fontSize(28)
+        Image($r('app.media.ic_goal'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('目标').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1053,7 +1070,10 @@ struct Index {
       .onClick(() => { this.navigateTo(Constants.PAGE_GOAL); })
     } else if (funcId === 'diet') {
       Column() {
-        Text('🍎').fontSize(28)
+        Image($r('app.media.ic_diet'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('饮食').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1062,7 +1082,10 @@ struct Index {
       .onClick(() => { this.navigateTo(Constants.PAGE_DIET); })
     } else if (funcId === 'women') {
       Column() {
-        Text('🌸').fontSize(28)
+        Image($r('app.media.ic_women'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('健康').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1071,7 +1094,10 @@ struct Index {
       .onClick(() => { this.navigateTo(Constants.PAGE_WOMEN); })
     } else if (funcId === 'medication') {
       Column() {
-        Text('💊').fontSize(28)
+        Image($r('app.media.ic_medication'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('用药').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1080,7 +1106,10 @@ struct Index {
       .onClick(() => { this.navigateTo(Constants.PAGE_MEDICATION); })
     } else if (funcId === 'mood') {
       Column() {
-        Text('😊').fontSize(28)
+        Image($r('app.media.ic_mood'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('情绪').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1095,7 +1124,10 @@ struct Index {
   dragQuickFunctionBuilder(funcId: string) {
     if (funcId === 'sport') {
       Column() {
-        Text('🏃').fontSize(28)
+        Image($r('app.media.ic_sport'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('运动').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1104,7 +1136,10 @@ struct Index {
       .opacity(0.8)
     } else if (funcId === 'weight') {
       Column() {
-        Text('⚖️').fontSize(28)
+        Image($r('app.media.ic_weight'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('体重').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1113,7 +1148,10 @@ struct Index {
       .opacity(0.8)
     } else if (funcId === 'report') {
       Column() {
-        Text('📊').fontSize(28)
+        Image($r('app.media.ic_report'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('周报').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1122,7 +1160,10 @@ struct Index {
       .opacity(0.8)
     } else if (funcId === 'goal') {
       Column() {
-        Text('🎯').fontSize(28)
+        Image($r('app.media.ic_goal'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('目标').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1131,7 +1172,10 @@ struct Index {
       .opacity(0.8)
     } else if (funcId === 'diet') {
       Column() {
-        Text('🍎').fontSize(28)
+        Image($r('app.media.ic_diet'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('饮食').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1140,7 +1184,10 @@ struct Index {
       .opacity(0.8)
     } else if (funcId === 'women') {
       Column() {
-        Text('🌸').fontSize(28)
+        Image($r('app.media.ic_women'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('健康').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1149,7 +1196,10 @@ struct Index {
       .opacity(0.8)
     } else if (funcId === 'medication') {
       Column() {
-        Text('💊').fontSize(28)
+        Image($r('app.media.ic_medication'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('用药').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
@@ -1158,7 +1208,10 @@ struct Index {
       .opacity(0.8)
     } else if (funcId === 'mood') {
       Column() {
-        Text('😊').fontSize(28)
+        Image($r('app.media.ic_mood'))
+          .width(28)
+          .height(28)
+          .fillColor(this.accentColor)
         Text('情绪').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
       }
       .width(70).height(70)
