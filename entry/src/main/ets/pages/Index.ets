@@ -342,7 +342,7 @@ struct Index {
         .tabBar(this.tabBuilder('🏥', '健康', 0))
 
         TabContent() { this.diaryTab() }
-        .tabBar(this.tabBuilder('📓', '日记', 1))
+        .tabBar(this.tabBuilder('📓', '记录', 1))
 
         TabContent() { this.recognitionTab() }
         .tabBar(this.tabBuilder('📷', '识图', 2))
