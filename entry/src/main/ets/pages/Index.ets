@@ -825,10 +825,9 @@ struct Index {
           if (!isSuccess || insertIndex >= this.healthCardOrder.length || itemIndex === insertIndex) {
             return;
           }
-          // 交换数组元素
-          const temp = this.healthCardOrder[itemIndex];
-          this.healthCardOrder[itemIndex] = this.healthCardOrder[insertIndex];
-          this.healthCardOrder[insertIndex] = temp;
+          // 插队式移动：先移除原位置元素，再插入到目标位置
+          const movedItem = this.healthCardOrder.splice(itemIndex, 1)[0];
+          this.healthCardOrder.splice(insertIndex, 0, movedItem);
           // 保存新的顺序
           this.saveHealthCardOrder();
         })
@@ -856,10 +855,9 @@ struct Index {
           if (!isSuccess || insertIndex >= this.quickFunctionOrder.length || itemIndex === insertIndex) {
             return;
           }
-          // 交换数组元素
-          const temp = this.quickFunctionOrder[itemIndex];
-          this.quickFunctionOrder[itemIndex] = this.quickFunctionOrder[insertIndex];
-          this.quickFunctionOrder[insertIndex] = temp;
+          // 插队式移动：先移除原位置元素，再插入到目标位置
+          const movedItem = this.quickFunctionOrder.splice(itemIndex, 1)[0];
+          this.quickFunctionOrder.splice(insertIndex, 0, movedItem);
           // 保存新的顺序
           this.saveQuickFunctionOrder();
         })

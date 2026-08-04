@@ -20,6 +20,8 @@ export struct FoodRecognitionTab {
   @State savedSuccess: boolean = false;
   @State cloudCalories: number = 0;
   @State isCalcCalories: boolean = false;
+  @State imageWidth: number = 0;
+  @State imageHeight: number = 0;
 
   private uiContext: common.UIAbilityContext | null = null;
 
@@ -179,6 +181,8 @@ export struct FoodRecognitionTab {
     this.gramsInput = '200';
     this.gramsSlider = 200;
     this.resultMsg = '对准食物拍照或从相册选择，看看它是什么菜';
+    this.imageWidth = 0;
+    this.imageHeight = 0;
   }
 
   build() {
@@ -187,10 +191,6 @@ export struct FoodRecognitionTab {
         Row() {
           Text('AI 识菜').fontSize(22).fontWeight(FontWeight.Bold).fontColor(this.txt)
           Blank()
-          if (this.previewUri.length > 0) {
-            Text('重新识别').fontSize(13).fontColor('#FF6B35')
-              .onClick(() => { this.resetAll(); })
-          }
         }
         .width('100%').padding({ left: 20, right: 20, top: 16 })
 
@@ -202,7 +202,17 @@ export struct FoodRecognitionTab {
           Column() {
             if (this.previewUri.length > 0) {
               Image(this.previewUri)
-                .width('100%').height(220).objectFit(ImageFit.Cover).borderRadius(20)
+                .width('100%')
+                .height(this.imageWidth > 0 && this.imageHeight > 0 ? 
+                  (this.imageHeight / this.imageWidth * 320) : 220)
+                .objectFit(ImageFit.Contain)
+                .borderRadius(20)
+                .onComplete((msg) => {
+                  if (msg && msg.width && msg.height) {
+                    this.imageWidth = msg.width;
+                    this.imageHeight = msg.height;
+                  }
+                })
             } else {
               Column() {
                 Text('🍽️').fontSize(72)
@@ -212,7 +222,10 @@ export struct FoodRecognitionTab {
               .width('100%').height(220).justifyContent(FlexAlign.Center)
             }
           }
-          .width('100%').height(220).borderRadius(20)
+          .width('100%')
+          .height(this.previewUri.length > 0 && this.imageWidth > 0 && this.imageHeight > 0 ? 
+            (this.imageHeight / this.imageWidth * 320) : 220)
+          .borderRadius(20)
           .backgroundColor(this.card)
           .border({ width: 2, color: '#FF6B35', style: BorderStyle.Dashed })
 
@@ -220,21 +233,29 @@ export struct FoodRecognitionTab {
             Column()
               .width('100%').height(3)
               .backgroundColor('#FF6B35')
-              .offset({ y: this.scanAnim ? 0 : 210 })
+              .offset({ y: this.scanAnim ? 0 : (this.imageWidth > 0 && this.imageHeight > 0 ? 
+                (this.imageHeight / this.imageWidth * 320 - 10) : 210) })
               .animation({ duration: 1200, curve: Curve.Linear, iterations: -1 })
           }
 
           if (this.isRecognizing) {
             Column() {
-              Text('🔍').fontSize(48)
-              Text('识别中...').fontSize(14).fontColor(this.txt).margin({ top: 8 })
+              // 旋转加载动画
+              LoadingProgress()
+                .width(48)
+                .height(48)
+                .color('#FF6B35')
+              Text('AI 识别中...').fontSize(14).fontColor(Color.White).margin({ top: 12 })
             }
-            .width(120).height(120).borderRadius(60)
-            .backgroundColor('#000000AA')
+            .width(140).height(140).borderRadius(20)
+            .backgroundColor('#000000CC')
             .justifyContent(FlexAlign.Center)
+            .shadow({ radius: 20, color: '#00000066', offsetX: 0, offsetY: 4 })
           }
         }
-        .width('100%').height(220)
+        .width('calc(100% - 32vp)')
+        .height(this.previewUri.length > 0 && this.imageWidth > 0 && this.imageHeight > 0 ? 
+          (this.imageHeight / this.imageWidth * 320) : 220)
         .margin({ left: 16, right: 16 })
 
         // 操作按钮
@@ -339,14 +360,24 @@ export struct FoodRecognitionTab {
             }
             .width('100%').margin({ top: 12 })
 
-            // 添加记录按钮
-            Button('➕ 添加到饮食记录')
-              .width('100%').height(48)
-              .backgroundColor(this.savedSuccess ? '#4CAF50' : '#FF6B35')
-              .borderRadius(24)
-              .fontColor(Color.White).fontSize(15)
-              .margin({ top: 12 })
-              .onClick(() => { this.saveToDiet(); })
+            // 添加记录按钮 + 重新识别按钮
+            Row() {
+              Button('➕ 添加到饮食记录')
+                .layoutWeight(1).height(48)
+                .backgroundColor(this.savedSuccess ? '#4CAF50' : '#FF6B35')
+                .borderRadius(24)
+                .fontColor(Color.White).fontSize(15)
+                .onClick(() => { this.saveToDiet(); })
+
+              Button('🔄 重新识别')
+                .layoutWeight(1).height(48)
+                .backgroundColor('#666666')
+                .borderRadius(24)
+                .fontColor(Color.White).fontSize(15)
+                .margin({ left: 12 })
+                .onClick(() => { this.resetAll(); })
+            }
+            .width('100%').margin({ top: 12 })
 
             if (this.savedSuccess) {
               Text('✅ 已记录到今天的饮食，可在饮食页查看')
