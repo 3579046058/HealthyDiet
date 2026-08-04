@@ -3,6 +3,7 @@ import { Constants, DbRow } from '../common/Constants';
 
 const TABLE_DAILY = 'daily_summary';
 const TABLE_WEIGHT = 'weight_records';
+const TABLE_HEIGHT = 'height_records';
 const TABLE_WATER = 'water_records';
 const TABLE_SPORT = 'sport_records';
 const TABLE_SLEEP = 'sleep_records';
@@ -50,6 +51,12 @@ export class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT,
         weight_kg REAL,
+        timestamp INTEGER
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_HEIGHT} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT,
+        height_cm REAL,
         timestamp INTEGER
       )`,
       `CREATE TABLE IF NOT EXISTS ${TABLE_WATER} (
@@ -233,6 +240,42 @@ export class DatabaseHelper {
     pred.orderByAsc('date');
     const result = await this.rdbStore.query(pred, ['*']);
     return this.readAllRows(result);
+  }
+
+  async getLatestHeight(): Promise<DbRow | null> {
+    if (!this.rdbStore) return null;
+    const pred = new relationalStore.RdbPredicates(TABLE_HEIGHT);
+    pred.orderByDesc('timestamp');
+    const result = await this.rdbStore.query(pred, ['*']);
+    if (result.rowCount > 0 && result.goToFirstRow()) {
+      return result.getRow();
+    }
+    return null;
+  }
+
+  async addHeightRecord(date: string, heightCm: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const values: relationalStore.ValuesBucket = {
+      date: date, height_cm: heightCm, timestamp: Date.now()
+    };
+    await this.rdbStore.insert(TABLE_HEIGHT, values);
+  }
+
+  async getHeightRecords(startDate: string, endDate: string): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const pred = new relationalStore.RdbPredicates(TABLE_HEIGHT);
+    pred.greaterThanOrEqualTo('date', startDate);
+    pred.lessThanOrEqualTo('date', endDate);
+    pred.orderByAsc('date');
+    const result = await this.rdbStore.query(pred, ['*']);
+    return this.readAllRows(result);
+  }
+
+  async deleteHeightRecord(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const pred = new relationalStore.RdbPredicates(TABLE_HEIGHT);
+    pred.equalTo('id', id);
+    await this.rdbStore.delete(pred);
   }
 
   async getWaterRecord(date: string): Promise<DbRow | null> {
