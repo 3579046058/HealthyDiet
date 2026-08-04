@@ -189,11 +189,19 @@ export class PreferenceHelper {
   // 健康卡片顺序相关
   async getHealthCardOrder(): Promise<string[]> {
     try {
-      const orderStr = await this.pref.get(KEY_HEALTH_CARD_ORDER, 'steps,heart,sleep,water') as string;
-      return orderStr.split(',');
+      const orderStr = await this.pref.get(KEY_HEALTH_CARD_ORDER, 'steps,calorie,sleep,water') as string;
+      const arr: string[] = orderStr.split(',');
+      // 校验：若存储的是旧版含 heart 的顺序，迁移为热量卡片
+      if (arr.indexOf('heart') >= 0) {
+        const migrated: string[] = arr.map((id: string) => id === 'heart' ? 'calorie' : id);
+        await this.pref.put(KEY_HEALTH_CARD_ORDER, migrated.join(','));
+        await this.pref.flush();
+        return migrated;
+      }
+      return arr;
     } catch (err) {
       console.error('getHealthCardOrder error:', JSON.stringify(err));
-      return ['steps', 'heart', 'sleep', 'water'];
+      return ['steps', 'calorie', 'sleep', 'water'];
     }
   }
 

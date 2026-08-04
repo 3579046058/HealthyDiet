@@ -1,4 +1,4 @@
-import { geoLocationManager } from '@kit.LocationKit';
+﻿import { geoLocationManager } from '@kit.LocationKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 
@@ -54,7 +54,7 @@ export class LocationTrackerService {
     this.lastPoint = null;
     try {
       const request: geoLocationManager.ContinuousLocationRequest = {
-        interval: 2,
+        interval: 1,
         locationScenario: geoLocationManager.UserActivityScenario.SPORT
       };
       geoLocationManager.on('locationChange', request, this.locationCallback);
@@ -86,7 +86,7 @@ export class LocationTrackerService {
     }
     try {
       const request: geoLocationManager.ContinuousLocationRequest = {
-        interval: 2,
+        interval: 1,
         locationScenario: geoLocationManager.UserActivityScenario.SPORT
       };
       geoLocationManager.on('locationChange', request, this.locationCallback);
@@ -126,7 +126,7 @@ export class LocationTrackerService {
     if (lat === 0 && lng === 0) {
       return;
     }
-    if (acc > 60) {
+    if (acc > 100) {
       return;
     }
     const now = Date.now();
@@ -145,18 +145,36 @@ export class LocationTrackerService {
       }
       const d: number = this.haversineM(this.lastPoint.latitude, this.lastPoint.longitude, lat, lng);
       const dtSec: number = dt / 1000;
-      // 首次定位/信号漂移防护：速度超过 40m/s（144km/h，远超骑行）视为异常点，
-      // 不累计距离。若漂移持续超过 8s 则重新校准基准点，避免连续误判
+      // 首次定位/信号漂移防护：模拟器为离散跳变，真机 GPS 也可能初始跳变。
+      // 使用两级判定：超过 200m/s（720km/h，远超任何运动）视为定位异常直接丢弃；
+      // 超过 40m/s 但处于运动早期（点数 < 5）视为收敛过程，重新校准基准点不累计
       const speed: number = dtSec > 0 ? d / dtSec : Number.POSITIVE_INFINITY;
-      if (speed > 40) {
-        hilog.warn(DOMAIN, TAG, 'Drop drifting point, d=%{public}d m, speed=%{public}d m/s',
+      if (speed > 200) {
+        hilog.warn(DOMAIN, TAG, 'Drop invalid point, d=%{public}d m, speed=%{public}d m/s',
           Math.round(d), Math.round(speed));
-        if (dt >= 8000) {
+        if (dt >= 5000) {
           this.lastPoint = point;
         }
         return;
       }
-      if (d >= 3) {
+      if (speed > 40) {
+        if (this.points.length < 5) {
+          // 收敛早期：更新基准但不累计，避免初始跳变污染
+          this.lastPoint = point;
+          this.points.push(point);
+        } else {
+          hilog.warn(DOMAIN, TAG, 'Drop drifting point, d=%{public}d m, speed=%{public}d m/s',
+            Math.round(d), Math.round(speed));
+          if (dt >= 8000) {
+            this.lastPoint = point;
+          }
+        }
+        return;
+      }
+      // 距离累计：结合 GPS 精度判断。真实移动距离即使很小（慢速步行）也应计入；
+      // 只有距离小于精度的一半时视为定位噪声丢弃
+      const minDistM: number = Math.max(1, acc * 0.5);
+      if (d >= minDistM) {
         this.totalDistanceM += d;
         this.points.push(point);
         if (this.distanceListener !== null) {

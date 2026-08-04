@@ -154,7 +154,7 @@ struct MedicationPage {
       Row() {
         Text('←').fontSize(22).fontColor(this.txt())
           .onClick(() => { router.back(); })
-        Text('💊 用药提醒')
+        Text('用药提醒')
           .fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt())
           .margin({ left: 12 })
       }
@@ -178,7 +178,7 @@ struct MedicationPage {
                     .fontSize(24)
                     .onClick(() => { this.toggleCheck(Number(item.id)); })
                   Column() {
-                    Text('💊 ' + String(item.name)).fontSize(16).fontColor(this.txt())
+                    Text(String(item.name)).fontSize(16).fontColor(this.txt())
                     Text(String(item.dosage) + ' - ' + String(item.time))
                       .fontSize(13).fontColor(this.sub())
                   }
@@ -255,8 +255,7 @@ struct MedicationPage {
 
           if (this.records.length === 0) {
             Column() {
-              Text('💊').fontSize(48)
-              Text('暂无用药记录').fontSize(16).fontColor(this.sub()).margin({ top: 8 })
+              Text('暂无用药记录').fontSize(16).fontColor(this.sub())
             }
             .width('100%').alignItems(HorizontalAlign.Center)
             .padding({ top: 32, bottom: 32 })
@@ -265,7 +264,7 @@ struct MedicationPage {
               ForEach(this.records, (item: DbRow) => {
                 Row() {
                   Column() {
-                    Text('💊 ' + String(item.name)).fontSize(16).fontColor(this.txt())
+                    Text(String(item.name)).fontSize(16).fontColor(this.txt())
                     Text(String(item.dosage) + ' | ' + String(item.time) + ' | ' + String(item.frequency))
                       .fontSize(13).fontColor(this.sub())
                     Text(String(item.start_date) + ' ~ ' + String(item.end_date))

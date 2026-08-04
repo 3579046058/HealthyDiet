@@ -355,10 +355,12 @@ struct WeightPage {
       Row() {
         Text('←')
           .fontSize(22)
+          .fontColor(this.txt())
           .onClick(() => { router.back(); })
         Text('体重记录')
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
+          .fontColor(this.txt())
           .margin({ left: 12 })
         Blank()
       }
@@ -431,6 +433,7 @@ struct WeightPage {
             Text('记录数据')
               .fontSize(16)
               .fontWeight(FontWeight.Bold)
+              .fontColor(this.txt())
               .width('100%')
               .margin({ bottom: 12 })
 
@@ -467,12 +470,13 @@ struct WeightPage {
           .margin({ left: 16, right: 16, top: 8 })
 
           // 目标体重卡片
-          Column() {
-            Text('目标体重')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .width('100%')
-              .margin({ bottom: 12 })
+Column() {
+Text('目标体重')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.margin({ bottom: 12 })
 
             Row() {
               TextInput({ placeholder: "请输入目标体重(kg)", text: this.targetWeightInput })
@@ -488,7 +492,7 @@ struct WeightPage {
             if (this.targetEstimateText.length > 0) {
               Text(this.targetEstimateText)
                 .fontSize(14)
-                .fontColor("#2196F3")
+                .fontColor(this.txt())
                 .margin({ top: 10 })
                 .width('100%')
             }
@@ -500,12 +504,13 @@ struct WeightPage {
           .margin({ left: 16, right: 16, top: 12 })
 
           // 热量推荐卡片
-          Column() {
-            Text('热量推荐')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .width('100%')
-              .margin({ bottom: 12 })
+Column() {
+Text('热量推荐')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.margin({ bottom: 12 })
 
             if (this.recommendCalorieText.length > 0) {
               Text(this.recommendCalorieText)
@@ -525,12 +530,13 @@ struct WeightPage {
 
           // 趋势图
           if (this.historyHeights.length > 1) {
-            Column() {
-              Text('身高趋势 (30天)')
-                .fontSize(16)
-                .fontWeight(FontWeight.Bold)
-                .width('100%')
-                .padding({ left: 16, bottom: 8 })
+Column() {
+Text('身高趋势 (30天)')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.padding({ left: 16, bottom: 8 })
               TrendChart({
                 dataPoints: this.historyHeights,
                 lineColor: '#2196F3',
@@ -545,12 +551,13 @@ struct WeightPage {
           }
 
           if (this.historyWeights.length > 1) {
-            Column() {
-              Text('体重趋势 (30天)')
-                .fontSize(16)
-                .fontWeight(FontWeight.Bold)
-                .width('100%')
-                .padding({ left: 16, bottom: 8 })
+Column() {
+Text('体重趋势 (30天)')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.padding({ left: 16, bottom: 8 })
               TrendChart({
                 dataPoints: this.historyWeights,
                 lineColor: Constants.COLOR_WEIGHT,
@@ -565,12 +572,13 @@ struct WeightPage {
           }
 
           if (this.historyBmis.length > 1) {
-            Column() {
-              Text('BMI趋势 (30天)')
-                .fontSize(16)
-                .fontWeight(FontWeight.Bold)
-                .width('100%')
-                .padding({ left: 16, bottom: 8 })
+Column() {
+Text('BMI趋势 (30天)')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.padding({ left: 16, bottom: 8 })
               TrendChart({
                 dataPoints: this.historyBmis,
                 lineColor: '#FF9800',
@@ -584,12 +592,13 @@ struct WeightPage {
             .margin({ top: 16 })
           }
 
-          // 历史记录
-          Text('历史记录')
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .width('100%')
-            .padding({ left: 16, top: 20, bottom: 8 })
+// 历史记录
+Text('历史记录')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.padding({ left: 16, top: 20, bottom: 8 })
 
           List() {
             ForEach(this.historyDates, (date: string, index: number) => {
@@ -601,18 +610,20 @@ struct WeightPage {
 
                   Text(this.historyHeights[index] > 0 ? this.historyHeights[index].toFixed(0) + ' cm' : '--')
                     .fontSize(14)
+                    .fontColor(this.txt())
                     .width(70)
                     .textAlign(TextAlign.Center)
 
                   Text(this.historyWeights[index] > 0 ? this.historyWeights[index].toFixed(1) + ' kg' : '--')
                     .fontSize(14)
                     .fontWeight(FontWeight.Bold)
+                    .fontColor(this.txt())
                     .width(70)
                     .textAlign(TextAlign.Center)
 
                   Text(this.historyBmis[index] > 0 ? this.historyBmis[index].toFixed(1) : '--')
                     .fontSize(14)
-                    .fontColor('#4CAF50')
+                    .fontColor(this.txt())
                     .width(50)
                     .textAlign(TextAlign.Center)
                 }
