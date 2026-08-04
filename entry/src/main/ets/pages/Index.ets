@@ -464,6 +464,13 @@ struct Index {
     return this.stepCount;
   }
 
+  formatLargeNumber(n: number): string {
+    if (n >= 10000) {
+      return (n / 10000).toFixed(1) + '万';
+    }
+    return String(n);
+  }
+
   getHealthScore(): number {
     let score: number = 0;
     if (this.stepCount > 0) {
@@ -645,7 +652,9 @@ struct Index {
           }
           Column() {
             Text('步数').fontSize(11).fontColor(this.subTextColor)
-            Text(this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+            Text(this.getDisplaySteps() > 0 ? this.formatLargeNumber(this.getDisplaySteps()) : '--')
+              .fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+              .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
           }
           Column() {
             Text('运动').fontSize(11).fontColor(this.subTextColor)

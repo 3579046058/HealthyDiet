@@ -3,6 +3,7 @@ import { fileIo } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { http } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
+import { FoodCalories } from '../common/Constants';
 
 export interface RecognitionOutcome {
   foodName: string;
@@ -30,6 +31,7 @@ interface GlmMessage {
 interface GlmRequestBody {
   model: string;
   messages: Array<GlmMessage>;
+  temperature?: number;
 }
 
 /**
@@ -47,6 +49,8 @@ export class FoodRecognitionService {
   private static readonly GLM_API_KEY: string = '114f70a49f924bf895668890a1ced59a.Gi4Yz9MNpRbHnCru';
   private static readonly GLM_URL: string = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
   private static readonly GLM_MODEL: string = 'glm-4v-flash';
+  // 每100克热量缓存：同一食物首次云端计算后固定，避免多次识别数值漂移
+  private per100Cache: Map<string, number> = new Map<string, number>();
 
   static getInstance(): FoodRecognitionService {
     if (!FoodRecognitionService.instance) {
@@ -169,7 +173,20 @@ export class FoodRecognitionService {
     if (grams <= 0) {
       return -1;
     }
+    const key: string = foodName.trim();
+    if (key === '') {
+      return -1;
+    }
+    // 命中缓存：同一食物热量固定，避免多次识别数值漂移
+    if (this.per100Cache.has(key)) {
+      const cachedPer100: number = this.per100Cache.get(key) ?? -1;
+      if (cachedPer100 > 0) {
+        return Math.round(cachedPer100 * grams / 100);
+      }
+    }
     try {
+      // 本地食物库参考值（每100克千卡），用于校验云端结果是否异常偏离
+      const localPer100: number = FoodCalories.lookupCaloriesPer100g(foodName);
       // 让 GLM 只返回每100克热量，本地再乘克数，避免大克数计算误差
       const promptText = '"' + foodName + '"每100克的热量是多少千卡？' +
         '只回答一个数字（每100克的千卡数），不要任何其他文字。';
@@ -179,7 +196,8 @@ export class FoodRecognitionService {
       const messages: Array<GlmMessage> = [message];
       const requestBody: GlmRequestBody = {
         model: FoodRecognitionService.GLM_MODEL,
-        messages: messages
+        messages: messages,
+        temperature: 0
       };
 
       const request = http.createHttp();
@@ -210,7 +228,19 @@ export class FoodRecognitionService {
           const content: string = String(messageObj['content'] ?? '');
           const per100 = this.parseCalories(content);
           if (per100 >= 0) {
-            return Math.round(per100 * grams / 100);
+            // 云端结果与本地参考值偏差超过 60% 时，以本地为准，避免跳变
+            let finalPer100: number = per100;
+            if (localPer100 > 0) {
+              const diff: number = Math.abs(per100 - localPer100) / localPer100;
+              if (diff > 0.6) {
+                console.warn('calculateCalories cloud=' + String(per100) +
+                  ' local=' + String(localPer100) + ' use local');
+                finalPer100 = localPer100;
+              }
+            }
+            // 写入缓存，后续同食物直接复用
+            this.per100Cache.set(key, finalPer100);
+            return Math.round(finalPer100 * grams / 100);
           }
         }
       }
@@ -223,32 +253,70 @@ export class FoodRecognitionService {
   }
 
   private parseCalories(raw: string): number {
-    const match = raw.match(/\d+/);
-    if (match && match.length > 0) {
-      return parseInt(match[0]);
+    const text: string = raw.trim();
+    if (text === '') {
+      return -1;
+    }
+    // 优先识别范围格式："60-120" / "80~160" / "约70到140"，取中间值
+    const range = text.match(/(\d+)\s*[-~至到]\s*(\d+)/);
+    if (range && range.length >= 3) {
+      const a: number = parseInt(range[1]);
+      const b: number = parseInt(range[2]);
+      const mid: number = Math.round((a + b) / 2);
+      if (this.isReasonablePer100(mid)) {
+        return mid;
+      }
+    }
+    // 识别所有数字，选取位于合理范围（1~900 千卡/100g）的那个
+    const numbers: number[] = [];
+    const re = /\d+/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      numbers.push(parseInt(m[0]));
+    }
+    if (numbers.length === 0) {
+      return -1;
+    }
+    const candidates = numbers.filter((n: number) => this.isReasonablePer100(n));
+    if (candidates.length > 0) {
+      return candidates[candidates.length - 1];
     }
     return -1;
   }
 
+  private isReasonablePer100(n: number): boolean {
+    return n > 0 && n <= 900;
+  }
+
   /**
-   * 云端计算运动热量：根据运动类型 + 时长 + 烈度 + 体重，让 GLM 估算
+   * 云端计算运动热量：根据运动类型 + 时长 + 烈度 + 体重 + 距离，让 GLM 估算
+   * distanceKm 为实际 GPS 路程（走路/跑步/骑行），无定位时传 0
    * 返回 -1 表示计算失败
    */
-  async calculateSportCalories(sportType: string, minutes: number, intensity: string, weightKg: number): Promise<number> {
+  async calculateSportCalories(sportType: string, minutes: number, intensity: string, weightKg: number, distanceKm: number = 0): Promise<number> {
     if (!this.isCloudConfigured()) {
       return -1;
     }
     try {
-      const promptText = '我做了' + sportType + '运动，时长' + String(minutes) +
-        '分钟，强度为' + intensity + '，体重' + String(Math.round(weightKg)) +
-        '公斤。请估算这次运动消耗的千卡数。只回答一个数字（总千卡数），不要任何其他文字。';
+      let promptText: string;
+      if (distanceKm > 0) {
+        promptText = '我做了' + sportType + '运动，时长' + String(minutes) +
+          '分钟，实际路程' + distanceKm.toFixed(2) + '公里，强度为' + intensity +
+          '，体重' + String(Math.round(weightKg)) +
+          '公斤。请结合路程和体重估算这次运动消耗的千卡数。只回答一个数字（总千卡数），不要任何其他文字。';
+      } else {
+        promptText = '我做了' + sportType + '运动，时长' + String(minutes) +
+          '分钟，强度为' + intensity + '，体重' + String(Math.round(weightKg)) +
+          '公斤。请估算这次运动消耗的千卡数。只回答一个数字（总千卡数），不要任何其他文字。';
+      }
       const textContent: GlmContent = { type: 'text', text: promptText };
       const contents: Array<GlmContent> = [textContent];
       const message: GlmMessage = { role: 'user', content: contents };
       const messages: Array<GlmMessage> = [message];
       const requestBody: GlmRequestBody = {
         model: FoodRecognitionService.GLM_MODEL,
-        messages: messages
+        messages: messages,
+        temperature: 0
       };
 
       const request = http.createHttp();

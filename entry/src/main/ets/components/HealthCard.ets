@@ -33,14 +33,27 @@ export struct HealthCard {
           Text(this.title)
             .fontSize(13)
             .fontColor(ThemeColors.textSecondary(this.theme))
-          Text(this.value + ' ' + (this.unit || ''))
-            .fontSize(22)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(ThemeColors.textPrimary(this.theme))
-            .margin({ top: 2 })
+          Row() {
+            Text(this.value)
+              .fontSize(22)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(ThemeColors.textPrimary(this.theme))
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            if (this.unit) {
+              Text(this.unit)
+                .fontSize(11)
+                .fontColor(ThemeColors.textSecondary(this.theme))
+                .margin({ left: 4 })
+                .maxLines(1)
+            }
+          }
+          .margin({ top: 2 })
+          .constraintSize({ maxWidth: '100%' })
         }
         .margin({ left: 12 })
         .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
       }
       .padding(14)
       .width('100%')
