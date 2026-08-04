@@ -1,18 +1,36 @@
 import { router } from '@kit.ArkUI';
 import { ThemeColors } from '../common/Constants';
+import { GlobalData } from '../common/GlobalData';
 
 @Entry
 @Component
 struct SettingsPage {
+  @StorageLink('themeMode') themeMode: string = 'follow';
+  @StorageLink('systemDark') systemDark: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   bg(): string { return ThemeColors.pageBg(this.theme); }
   card(): string { return ThemeColors.cardBg(this.theme); }
   txt(): string { return ThemeColors.textPrimary(this.theme); }
   sub(): string { return ThemeColors.textSecondary(this.theme); }
 
+  themeLabel(): string {
+    if (this.themeMode === 'dark') { return '深色模式'; }
+    if (this.themeMode === 'light') { return '浅色模式'; }
+    return '跟随系统';
+  }
+
   toggleTheme(): void {
-    this.theme = this.theme === 'dark' ? 'light' : 'dark';
+    const next: string = this.themeMode === 'dark' ? 'light' : (this.themeMode === 'light' ? 'follow' : 'dark');
+    this.themeMode = next;
+    GlobalData.prefs.setTheme(next);
+    if (next === 'follow') {
+      this.theme = this.systemDark ? 'dark' : 'light';
+    } else {
+      this.theme = next;
+    }
+    AppStorage.setOrCreate('currentTheme', this.theme);
   }
 
   build() {
@@ -22,7 +40,7 @@ struct SettingsPage {
         Text('设置').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
       }
-      .width('100%').padding(16)
+      .width('100%').padding({ left: 16, right: 16, top: 12 + this.statusBarHeight, bottom: 12 })
 
       Scroll() {
         Column() {
@@ -31,7 +49,7 @@ struct SettingsPage {
 
           this.settingItem('🔔', '通知设置', '喝水、久坐、用药提醒', () => { this.navigate('pages/NotificationPage'); })
           this.settingItem('🎯', '目标设置', '步数、喝水、运动、睡眠目标', () => { this.navigate('pages/GoalPage'); })
-          this.settingItem('🎨', '主题切换', '当前：' + (this.theme === 'dark' ? '深色模式' : '浅色模式'), () => { this.toggleTheme(); })
+          this.settingItem('🎨', '主题切换', '当前：' + this.themeLabel(), () => { this.toggleTheme(); })
 
           Text('关于').fontSize(14).fontColor(this.sub()).width('100%')
             .padding({ left: 20, top: 20, bottom: 8 })
