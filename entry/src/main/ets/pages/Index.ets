@@ -1,4 +1,10 @@
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
+import { componentSnapshot } from '@kit.ArkUI';
+import { systemShare } from '@kit.ShareKit';
+import { uniformTypeDescriptor as utd } from '@kit.ArkData';
+import { common } from '@kit.AbilityKit';
+import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
+import { image } from '@kit.ImageKit';
 import { GlobalData } from '../common/GlobalData';
 import { Constants, GoalConfig, StreakData, DbRow, ThemeColors } from '../common/Constants';
 import { RingProgress } from '../components/RingProgress';
@@ -9,6 +15,14 @@ import { WeightDialog } from '../components/WeightDialog';
 @Entry
 @Component
 struct Index {
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  @State showSharePanel: boolean = false;
+  @State shareDiet: boolean = true;
+  @State shareSport: boolean = true;
+  @State shareSleep: boolean = true;
+  @State shareMood: boolean = true;
+  @State shareOverview: boolean = true;
+  @State isGeneratingShare: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
   @State moveProgress: number = 0;
   @State exerciseProgress: number = 0;
@@ -164,8 +178,9 @@ struct Index {
       else { this.greeting = '晚上好'; }
 
       const savedTheme: string = await GlobalData.prefs.getTheme();
-      this.theme = savedTheme;
-      AppStorage.setOrCreate('currentTheme', savedTheme);
+      this.themeMode = savedTheme;
+      this.theme = this.resolveTheme(savedTheme);
+      AppStorage.setOrCreate('currentTheme', this.theme);
       this.updateThemeColors();
 
       const streak: StreakData = await GlobalData.prefs.getStreakData();
@@ -197,11 +212,32 @@ struct Index {
     }
   }
 
+  @StorageLink('themeMode') themeMode: string = 'follow';
+  @StorageLink('systemDark') systemDark: boolean = false;
+
+  resolveTheme(savedTheme: string): string {
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      return savedTheme;
+    }
+    if (this.systemDark) {
+      return 'dark';
+    }
+    return 'light';
+  }
+
   toggleTheme(): void {
-    this.theme = this.theme === 'dark' ? 'light' : 'dark';
-    AppStorage.setOrCreate('currentTheme', this.theme);
+    const next: string = this.themeMode === 'dark' ? 'light' : (this.themeMode === 'light' ? 'follow' : 'dark');
+    this.themeMode = next;
+    GlobalData.prefs.setTheme(next);
+    if (next !== 'follow') {
+      this.theme = next;
+      AppStorage.setOrCreate('currentTheme', next);
+    } else {
+      const resolved: string = this.resolveTheme('follow');
+      this.theme = resolved;
+      AppStorage.setOrCreate('currentTheme', resolved);
+    }
     this.updateThemeColors();
-    GlobalData.prefs.setTheme(this.theme);
   }
 
   navigateTo(page: string): void {
@@ -213,6 +249,53 @@ struct Index {
       });
     } catch (e) {
       console.error('Navigate exception: ' + JSON.stringify(e));
+    }
+  }
+
+  async generateShareCard(): Promise<void> {
+    this.isGeneratingShare = true;
+    try {
+      console.info('generateShareCard: start snapshot');
+      const snap = this.getUIContext().getComponentSnapshot();
+      const pixelMap: image.PixelMap = await snap.createFromBuilder((): void => { this.shareCard(); }, 800);
+      console.info('generateShareCard: snapshot ok');
+      const packer: image.ImagePacker = image.createImagePacker();
+      const opts: image.PackingOption = { format: 'image/png', quality: 100 };
+      const data: ArrayBuffer = await packer.packing(pixelMap, opts);
+      console.info('generateShareCard: packing ok, size=' + data.byteLength);
+      const context = getContext(this) as common.UIAbilityContext;
+      const filePath = context.filesDir + '/health_share_' + Date.now() + '.png';
+      const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+      fs.writeSync(file.fd, data);
+      fs.closeSync(file);
+      console.info('generateShareCard: saved=' + filePath);
+      promptAction.showToast({ message: '分享卡片已生成，请在弹出的面板中选择应用', duration: 2000 });
+      await this.shareImage(context, filePath);
+    } catch (err) {
+      const e: Error = err as Error;
+      console.error('generateShareCard error: code=' + e.name + ' msg=' + e.message + ' stack=' + e.stack);
+      promptAction.showToast({ message: '生成分享失败', duration: 2000 });
+    } finally {
+      this.isGeneratingShare = false;
+      this.showSharePanel = false;
+    }
+  }
+
+  async shareImage(context: common.UIAbilityContext, filePath: string): Promise<void> {
+    const shareData = new systemShare.SharedData({
+      utd: utd.UniformDataType.PNG,
+      uri: fileUri.getUriFromPath(filePath)
+    });
+    const controller = new systemShare.ShareController(shareData);
+    try {
+      await controller.show(context, {
+        previewMode: systemShare.SharePreviewMode.DETAIL,
+        selectionMode: systemShare.SelectionMode.SINGLE
+      });
+      console.info('Share panel shown');
+    } catch (err) {
+      console.error('shareImage error:', JSON.stringify(err));
+      promptAction.showToast({ message: '打开分享面板失败', duration: 2500 });
     }
   }
 
@@ -301,32 +384,185 @@ struct Index {
   }
 
   build() {
-    Column() {
-      Tabs({ barPosition: BarPosition.End, index: this.currentTabIndex }) {
-        TabContent() { this.healthTab() }
-        .tabBar(this.tabBuilder('🏥', '健康', 0))
+    Stack() {
+      Column() {
+        Tabs({ barPosition: BarPosition.End, index: this.currentTabIndex }) {
+          TabContent() { this.healthTab() }
+          .tabBar(this.tabBuilder('🏥', '健康', 0))
 
-        TabContent() { this.diaryTab() }
-        .tabBar(this.tabBuilder('📓', '记录', 1))
+          TabContent() { this.diaryTab() }
+          .tabBar(this.tabBuilder('📓', '记录', 1))
 
-        TabContent() { this.recognitionTab() }
-        .tabBar(this.tabBuilder('📷', '识图', 2))
+          TabContent() { this.recognitionTab() }
+          .tabBar(this.tabBuilder('📷', '识图', 2))
 
-        TabContent() { this.accountTab() }
-        .tabBar(this.tabBuilder('👤', '账号', 3))
+          TabContent() { this.accountTab() }
+          .tabBar(this.tabBuilder('👤', '账号', 3))
+        }
+        .animationDuration(200)
+        .barHeight(56)
+        .barWidth('100%')
+        .backgroundColor(this.bgColor)
+        .onChange((index: number) => {
+          this.currentTabIndex = index;
+          if (index === 0) { this.loadAllData(); }
+        })
       }
-      .animationDuration(200)
-      .barHeight(56)
-      .barWidth('100%')
+      .width('100%')
+      .height('100%')
       .backgroundColor(this.bgColor)
-      .onChange((index: number) => {
-        this.currentTabIndex = index;
-        if (index === 0) { this.loadAllData(); }
-      })
+
+      if (this.showSharePanel) {
+        this.sharePanel()
+      }
     }
     .width('100%')
     .height('100%')
+  }
+
+  @Builder sharePanel() {
+    Column() {
+      Blank()
+      Column() {
+        Row() {
+          Text('分享我的健康日记').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+          Blank()
+          Text('✕').fontSize(20).fontColor(this.subTextColor).onClick(() => { this.showSharePanel = false; })
+        }
+        .width('100%').padding({ left: 20, right: 20, top: 16 })
+
+        Text('选择要分享的内容').fontSize(12).fontColor(this.subTextColor).width('100%')
+          .padding({ left: 20, top: 8, bottom: 8 })
+
+        this.shareCheckItem('🍎', '饮食记录', this.diaryDietRecords.length > 0, this.shareDiet, (on: boolean) => { this.shareDiet = on; })
+        this.shareCheckItem('🏃', '运动记录', this.diarySportRecords.length > 0, this.shareSport, (on: boolean) => { this.shareSport = on; })
+        this.shareCheckItem('😴', '睡眠记录', this.diarySleepRecords.length > 0, this.shareSleep, (on: boolean) => { this.shareSleep = on; })
+        this.shareCheckItem('😊', '情绪记录', this.diaryMoodRecords.length > 0, this.shareMood, (on: boolean) => { this.shareMood = on; })
+        this.shareCheckItem('📊', '今日健康概览', true, this.shareOverview, (on: boolean) => { this.shareOverview = on; })
+
+        Button(this.isGeneratingShare ? '生成中...' : '生成分享卡片')
+          .width('90%').height(44).margin({ top: 16, bottom: 16 })
+          .backgroundColor(this.accentColor)
+          .fontColor(Color.White)
+          .enabled(!this.isGeneratingShare)
+          .onClick(() => { this.generateShareCard(); })
+      }
+      .width('100%')
+      .backgroundColor(this.bgColor)
+      .borderRadius({ topLeft: 20, topRight: 20 })
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#66000000')
+  }
+
+  @Builder shareCheckItem(icon: string, label: string, hasData: boolean, checked: boolean, onChange: (on: boolean) => void) {
+    Row() {
+      Text(icon).fontSize(18)
+      Text(label).fontSize(14).fontColor(this.textColor).margin({ left: 8 })
+      if (!hasData) {
+        Text('（无记录）').fontSize(11).fontColor(this.subTextColor).margin({ left: 4 })
+      }
+      Blank()
+      if (hasData) {
+        Toggle({ type: ToggleType.Checkbox, isOn: checked })
+          .selectedColor(this.accentColor)
+          .onChange((isOn: boolean) => { onChange(isOn); })
+      }
+    }
+    .width('90%').padding(12).backgroundColor(this.cardColor).borderRadius(10).margin({ bottom: 8 })
+    .opacity(hasData ? 1 : 0.4)
+  }
+
+  @Builder shareCard() {
+    Column() {
+      Row() {
+        Column() {
+          Text('健康1st').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+          Text('我的健康日记').fontSize(11).fontColor(this.subTextColor).margin({ top: 2 })
+        }
+        .alignItems(HorizontalAlign.Start)
+        Blank()
+        Text(GlobalData.formatDate(new Date())).fontSize(12).fontColor(this.subTextColor)
+      }
+      .width('100%')
+
+      if (this.shareOverview) {
+        Row() {
+          Column() {
+            Text('健康评分').fontSize(11).fontColor(this.subTextColor)
+            Text(String(this.getHealthScore())).fontSize(30).fontWeight(FontWeight.Bold).fontColor(this.getScoreColor(this.getHealthScore()))
+          }
+          Column() {
+            Text('步数').fontSize(11).fontColor(this.subTextColor)
+            Text(this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+          }
+          Column() {
+            Text('运动').fontSize(11).fontColor(this.subTextColor)
+            Text(this.exerciseMin > 0 ? String(this.exerciseMin) + '分' : '--').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+          }
+          Column() {
+            Text('睡眠').fontSize(11).fontColor(this.subTextColor)
+            Text(this.sleepHours !== '0' && this.sleepHours !== '0.0' ? this.sleepHours + '时' : '--').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+          }
+        }
+        .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding(16)
+        .backgroundColor(this.cardColor).borderRadius(12).margin({ top: 12 })
+      }
+
+      if (this.shareDiet && this.diaryDietRecords.length > 0) {
+        Text('🍎 饮食').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
+        ForEach(this.diaryDietRecords.slice(0, 3), (item: DbRow) => {
+          Row() {
+            Text(String(item.food_name)).fontSize(12).fontColor(this.textColor)
+            Blank()
+            Text(Number(item.calories) + ' kcal').fontSize(11).fontColor(this.subTextColor)
+          }
+          .width('100%').padding(8).backgroundColor(this.cardColor).borderRadius(6).margin({ top: 4 })
+        }, (item: DbRow): string => String(item.id))
+      }
+
+      if (this.shareSport && this.diarySportRecords.length > 0) {
+        Text('🏃 运动').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
+        ForEach(this.diarySportRecords.slice(0, 3), (item: DbRow) => {
+          Row() {
+            Text(String(item.sport_type)).fontSize(12).fontColor(this.textColor)
+            Blank()
+            Text(Number(item.duration_min) + 'min ' + Number(item.calories) + 'kcal').fontSize(11).fontColor(this.subTextColor)
+          }
+          .width('100%').padding(8).backgroundColor(this.cardColor).borderRadius(6).margin({ top: 4 })
+        }, (item: DbRow): string => String(item.id))
+      }
+
+      if (this.shareSleep && this.diarySleepRecords.length > 0) {
+        Text('😴 睡眠').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
+        ForEach(this.diarySleepRecords.slice(0, 3), (item: DbRow) => {
+          Row() {
+            Text(String(item.date)).fontSize(12).fontColor(this.textColor)
+            Blank()
+            Text(Number(item.total_minutes) / 60 + '时 · 评分' + Number(item.score)).fontSize(11).fontColor(this.subTextColor)
+          }
+          .width('100%').padding(8).backgroundColor(this.cardColor).borderRadius(6).margin({ top: 4 })
+        }, (item: DbRow): string => String(item.id))
+      }
+
+      if (this.shareMood && this.diaryMoodRecords.length > 0) {
+        Text('😊 情绪').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
+        Row() {
+          ForEach(this.diaryMoodRecords.slice(0, 7), (item: DbRow) => {
+            Text(this.getMoodEmoji(Number(item.mood))).fontSize(24).margin({ right: 8 })
+          }, (item: DbRow): string => String(item.id))
+        }
+        .width('100%').padding(8).backgroundColor(this.cardColor).borderRadius(6).margin({ top: 4 })
+      }
+
+      Text('来自「健康1st」健康管理应用').fontSize(10).fontColor(this.subTextColor).width('100%')
+        .textAlign(TextAlign.Center).margin({ top: 16 })
+    }
+    .width(320)
+    .padding(20)
     .backgroundColor(this.bgColor)
+    .borderRadius(16)
   }
 
   @Builder tabBuilder(icon: string, label: string, index: number) {
@@ -362,10 +598,10 @@ struct Index {
             }
             .margin({ right: 12 })
           }
-          Text(this.theme === 'dark' ? '☀️' : '🌙').fontSize(22).margin({ right: 12 })
+          Text(this.themeMode === 'dark' ? '🌙' : (this.themeMode === 'light' ? '☀️' : '🔄')).fontSize(22).margin({ right: 12 })
             .onClick(() => { this.toggleTheme(); })
         }
-        .width('100%').padding({ left: 20, right: 20, top: 12 })
+        .width('100%').padding({ left: 20, right: 20, top: 12 + this.statusBarHeight })
 
         Row() {
           RingProgress({ progress: this.moveProgress, strokeColor: Constants.COLOR_MOVE, ringSize: 90, strokeWidth: 10, label: '活动', valueText: this.moveCal > 0 ? String(this.moveCal) : '--', unit: '千卡' })
@@ -460,8 +696,10 @@ struct Index {
         Row() {
           Text('每日日记').fontSize(22).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           Blank()
+          Text('📤 分享').fontSize(14).fontColor(this.accentColor)
+            .onClick(() => { this.showSharePanel = true; })
         }
-        .width('100%').padding({ left: 20, right: 20, top: 16, bottom: 12 })
+        .width('100%').padding({ left: 20, right: 20, top: 16 + this.statusBarHeight, bottom: 12 })
 
         if (this.diaryDietRecords.length === 0 && this.diarySportRecords.length === 0 &&
           this.diarySleepRecords.length === 0 && this.diaryMoodRecords.length === 0) {
@@ -545,7 +783,7 @@ struct Index {
           Text('账号').fontSize(22).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           Blank()
         }
-        .width('100%').padding({ left: 20, right: 20, top: 16, bottom: 16 })
+        .width('100%').padding({ left: 20, right: 20, top: 16 + this.statusBarHeight, bottom: 16 })
 
         Row() {
           Stack() {
