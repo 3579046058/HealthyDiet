@@ -52,7 +52,7 @@ export class PreferenceHelper {
   }
 
   async getTheme(): Promise<string> {
-    return await this.pref.get(KEY_THEME, 'dark') as string;
+    return await this.pref.get(KEY_THEME, 'follow') as string;
   }
 
   async setTheme(theme: string): Promise<void> {
