@@ -14,6 +14,7 @@ const KEY_STREAK_BEST = 'streak_best';
 const KEY_LAST_ACTIVE_DATE = 'last_active_date';
 const KEY_WEIGHT_SKIP_PROMPT = 'weight_skip_prompt';
 const KEY_WEIGHT_CONFIGURED = 'weight_configured';
+const KEY_GENDER = 'gender';
 
 export class PreferenceHelper {
   private pref_: preferences.Preferences | null = null;
@@ -83,6 +84,15 @@ export class PreferenceHelper {
 
   async markWeightConfigured(): Promise<void> {
     await this.pref.put(KEY_WEIGHT_CONFIGURED, true);
+    await this.pref.flush();
+  }
+
+  async getGender(): Promise<string> {
+    return await this.pref.get(KEY_GENDER, '') as string;
+  }
+
+  async setGender(gender: string): Promise<void> {
+    await this.pref.put(KEY_GENDER, gender);
     await this.pref.flush();
   }
 

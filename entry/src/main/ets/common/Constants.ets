@@ -41,10 +41,10 @@ export class Constants {
   static readonly PAGE_WOMEN: string = 'pages/WomenHealthPage';
   static readonly PAGE_MEDICATION: string = 'pages/MedicationPage';
   static readonly PAGE_MOOD: string = 'pages/MoodPage';
-  static readonly PAGE_BODY: string = 'pages/BodyCompositionPage';
-  static readonly PAGE_PLAN: string = 'pages/WorkoutPlanPage';
-  static readonly PAGE_DEVICE: string = 'pages/DevicePage';
   static readonly PAGE_LOGIN: string = 'pages/LoginPage';
+  static readonly PAGE_NOTIFICATION: string = 'pages/NotificationPage';
+  static readonly PAGE_PROFILE: string = 'pages/ProfilePage';
+  static readonly PAGE_SETTINGS: string = 'pages/SettingsPage';
 
   static readonly SPORT_TYPES: SportTypeDef[] = [
     { label: '步行', value: 'walk', icon: '🚶' },

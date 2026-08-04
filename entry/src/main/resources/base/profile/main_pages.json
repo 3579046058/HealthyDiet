@@ -12,9 +12,9 @@
     "pages/WomenHealthPage",
     "pages/MedicationPage",
     "pages/MoodPage",
-    "pages/BodyCompositionPage",
-    "pages/WorkoutPlanPage",
-    "pages/DevicePage",
-    "pages/LoginPage"
+    "pages/LoginPage",
+    "pages/NotificationPage",
+    "pages/ProfilePage",
+    "pages/SettingsPage"
   ]
 }
