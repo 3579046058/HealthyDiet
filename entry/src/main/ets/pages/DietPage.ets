@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
-import { DbRow, ThemeColors, FoodCalories } from '../common/Constants';
+import { DbRow, ThemeColors, FoodCalories, GoalConfig } from '../common/Constants';
 import { FoodRecognitionService } from '../services/FoodRecognitionService';
 
 @Entry
@@ -13,11 +13,13 @@ struct DietPage {
   @State foodName: string = '';
   @State amountG: string = '';
   @State showFoodList: boolean = false;
+  @State recommendCalorie: number = 2000; // 来自体重页面计算保存的推荐热量
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.initDate();
+    this.loadRecommendCalorie();
   }
 
   onPageShow(): void {
@@ -25,6 +27,18 @@ struct DietPage {
       this.initDate();
     } else {
       this.loadData();
+    }
+    // 从体重页返回后刷新推荐热量
+    this.loadRecommendCalorie();
+  }
+
+  /** 读取体重页面计算保存的推荐热量GoalConfig.dailyCalorie */
+  async loadRecommendCalorie(): Promise<void> {
+    try {
+      const cfg: GoalConfig = await GlobalData.prefs.getGoalConfig();
+      this.recommendCalorie = cfg.dailyCalorie;
+    } catch (err) {
+      console.error("loadRecommendCalorie error", JSON.stringify(err));
     }
   }
 
@@ -154,6 +168,21 @@ struct DietPage {
     }
     const d = new Date(num);
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
+  // 计算距离推荐热量差值
+  getRemainCalories(): number {
+    return this.recommendCalorie - this.getTotalCalories();
+  }
+
+  // 颜色：超出推荐值红色，剩余为橙色
+  getRemainTextColor(): string {
+    const remain = this.getRemainCalories();
+    if (remain < 0) {
+      return '#F44336';
+    } else {
+      return '#FF9800';
+    }
   }
 
   @Builder
@@ -384,18 +413,62 @@ struct DietPage {
             .margin({ bottom: 16 })
           }
 
-          Row() {
-            Text('🍽️ 今日总计')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-            Blank()
-            Text(this.getTotalGrams() + 'g · ' + this.getTotalCalories() + ' kcal')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.txt())
+          // ==========今日统计卡片：已摄入 / 推荐热量 / 剩余/超出==========
+          Column() {
+            Row() {
+              Text('🍽️ 今日热量统计')
+                .fontSize(16)
+                .fontWeight(FontWeight.Bold)
+              Blank()
+            }
+            .width('100%')
+            .margin({ bottom: 8 })
+
+            Row() {
+              Column() {
+                Text('已摄入')
+                  .fontSize(12)
+                  .fontColor(this.sub())
+                Text(this.getTotalCalories().toString() + ' kcal')
+                  .fontSize(17)
+                  .fontWeight(FontWeight.Medium)
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Center)
+
+              Column() {
+                Text('推荐热量')
+                  .fontSize(12)
+                  .fontColor(this.sub())
+                Text(this.recommendCalorie.toString() + ' kcal')
+                  .fontSize(17)
+                  .fontWeight(FontWeight.Medium)
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Center)
+
+              Column() {
+                Text(this.getRemainCalories() >= 0 ? '剩余可摄入' : '超出推荐')
+                  .fontSize(12)
+                  .fontColor(this.sub())
+                Text(Math.abs(this.getRemainCalories()).toString() + ' kcal')
+                  .fontSize(17)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.getRemainTextColor())
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Center)
+            }
+            .width('100%')
+
+            Text('总重量：' + this.getTotalGrams() + ' g')
+              .fontSize(12)
+              .fontColor(this.sub())
+              .width('100%')
+              .margin({ top: 8 })
           }
           .width('100%')
-          .padding(12)
+          .padding(14)
           .backgroundColor(this.card())
           .borderRadius(10)
           .margin({ bottom: 16 })
