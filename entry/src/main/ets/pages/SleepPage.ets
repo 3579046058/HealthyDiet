@@ -369,8 +369,8 @@ struct SleepPage {
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).onClick(() => { router.back(); })
-        Text('睡眠分析').fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 12 })
+        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { router.back(); })
+        Text('睡眠分析').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
         Button('+')
           .fontSize(24)

@@ -133,8 +133,8 @@ struct ReportPage {
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).onClick(() => { router.back(); })
-        Text('数据报告').fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 12 })
+        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { router.back(); })
+        Text('数据报告').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
       }
       .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })

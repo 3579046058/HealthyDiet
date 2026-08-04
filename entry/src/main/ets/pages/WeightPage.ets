@@ -355,10 +355,12 @@ struct WeightPage {
       Row() {
         Text('←')
           .fontSize(22)
+          .fontColor(this.txt())
           .onClick(() => { router.back(); })
         Text('体重记录')
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
+          .fontColor(this.txt())
           .margin({ left: 12 })
         Blank()
       }

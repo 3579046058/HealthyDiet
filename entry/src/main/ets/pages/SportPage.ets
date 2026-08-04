@@ -350,8 +350,8 @@ struct SportPage {
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).onClick(() => { router.back(); })
-        Text('运动记录').fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 12 })
+        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { router.back(); })
+        Text('运动记录').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
         Text('＋ 手动添加').fontSize(14).fontColor('#FF6B35')
           .onClick(() => {
@@ -434,7 +434,7 @@ struct SportPage {
 
           if (!this.isTracking) {
             Text('选择运动类型')
-              .fontSize(16).fontWeight(FontWeight.Bold)
+              .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
               .width('100%').padding({ left: 16, bottom: 8 })
 
             Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
