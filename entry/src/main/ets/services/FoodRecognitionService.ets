@@ -166,9 +166,13 @@ export class FoodRecognitionService {
     if (!this.isCloudConfigured()) {
       return -1;
     }
+    if (grams <= 0) {
+      return -1;
+    }
     try {
-      const promptText = '请估算"' + foodName + '"每100克的热量（千卡），' +
-        '然后计算' + String(grams) + '克的总热量。只回答一个数字（总千卡数），不要任何其他文字。';
+      // 让 GLM 只返回每100克热量，本地再乘克数，避免大克数计算误差
+      const promptText = '"' + foodName + '"每100克的热量是多少千卡？' +
+        '只回答一个数字（每100克的千卡数），不要任何其他文字。';
       const textContent: GlmContent = { type: 'text', text: promptText };
       const contents: Array<GlmContent> = [textContent];
       const message: GlmMessage = { role: 'user', content: contents };
@@ -204,9 +208,9 @@ export class FoodRecognitionService {
         if (choicesArr.length > 0) {
           const messageObj = choicesArr[0]['message'] as Record<string, Object>;
           const content: string = String(messageObj['content'] ?? '');
-          const num = this.parseCalories(content);
-          if (num >= 0) {
-            return num;
+          const per100 = this.parseCalories(content);
+          if (per100 >= 0) {
+            return Math.round(per100 * grams / 100);
           }
         }
       }

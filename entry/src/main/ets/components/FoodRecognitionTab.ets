@@ -36,13 +36,14 @@ export struct FoodRecognitionTab {
     return v;
   }
 
-  async refreshCloudCalories(): Promise<void> {
-    if (this.recognizedFood.length === 0 || this.currentGrams <= 0) {
+  async refreshCloudCalories(grams?: number): Promise<void> {
+    const g = grams !== undefined ? grams : this.currentGrams;
+    if (this.recognizedFood.length === 0 || g <= 0) {
       this.cloudCalories = 0;
       return;
     }
     this.isCalcCalories = true;
-    const result = await FoodRecognitionService.getInstance().calculateCalories(this.recognizedFood, this.currentGrams);
+    const result = await FoodRecognitionService.getInstance().calculateCalories(this.recognizedFood, g);
     this.cloudCalories = result >= 0 ? result : 0;
     this.isCalcCalories = false;
   }
@@ -137,6 +138,10 @@ export struct FoodRecognitionTab {
     const grams: number = gramsVal > 0 ? gramsVal : this.gramsSlider;
     if (grams <= 0) {
       promptAction.showToast({ message: '请输入有效的克数' });
+      return;
+    }
+    if (grams > 2000) {
+      promptAction.showToast({ message: '单次最多2000克' });
       return;
     }
     let calories: number = this.cloudCalories;
@@ -273,7 +278,7 @@ export struct FoodRecognitionTab {
             // 克数滑块 + 文本输入
             Text('食物份量').fontSize(13).fontColor(this.sub).width('100%')
             Row() {
-              Slider({ value: this.gramsSlider, min: 10, max: 500, step: 10, style: SliderStyle.OutSet })
+              Slider({ value: this.gramsSlider, min: 10, max: 2000, step: 10, style: SliderStyle.OutSet })
                 .layoutWeight(1)
                 .selectedColor('#FF6B35')
                 .onChange((value: number, mode: SliderChangeMode) => {
@@ -281,7 +286,7 @@ export struct FoodRecognitionTab {
                     const valid: number = isNaN(value) ? 200 : value;
                     this.gramsSlider = valid;
                     this.gramsInput = String(valid);
-                    this.refreshCloudCalories();
+                    this.refreshCloudCalories(valid);
                   }
                 })
               Text(this.gramsInput.length > 0 ? this.gramsInput + 'g' : '200g')
@@ -301,10 +306,19 @@ export struct FoodRecognitionTab {
                 .onChange((v: string) => {
                   this.gramsInput = v;
                   const num = parseFloat(v);
-                  if (!isNaN(num) && num >= 10 && num <= 500) {
+                  if (!isNaN(num) && num >= 10 && num <= 2000) {
                     this.gramsSlider = num;
                   }
-                  this.refreshCloudCalories();
+                  if (!isNaN(num) && num > 0 && num <= 2000) {
+                    this.refreshCloudCalories(num);
+                  } else if (!isNaN(num) && num > 2000) {
+                    promptAction.showToast({ message: '单次最多2000克' });
+                    this.gramsInput = '2000';
+                    this.gramsSlider = 2000;
+                    this.refreshCloudCalories(2000);
+                  } else {
+                    this.cloudCalories = 0;
+                  }
                 })
               Text('g').fontSize(12).fontColor(this.sub).margin({ left: 6 })
             }
