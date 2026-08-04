@@ -369,10 +369,18 @@ struct Index {
 
   @Builder tabBuilder(icon: string, label: string, index: number) {
     Column() {
-      Text(icon).fontSize(20)
-      Text(label).fontSize(10).fontColor(this.currentTabIndex === index ? this.accentColor : this.subTextColor)
+      Text(icon)
+        .fontSize(this.currentTabIndex === index ? 26 : 20)
+        .animation({ duration: 250, curve: Curve.EaseInOut })
+      Text(label)
+        .fontSize(10)
+        .fontColor(this.currentTabIndex === index ? this.accentColor : this.subTextColor)
+        .animation({ duration: 250, curve: Curve.EaseInOut })
     }
-    .width(56).height(48).justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+    .width(56)
+    .height(48)
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
   }
 
   @Builder healthTab() {
