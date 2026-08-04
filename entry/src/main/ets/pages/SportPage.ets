@@ -20,6 +20,8 @@ struct SportPage {
   @State intensity: string = '中强度';
   @State showManualAdd: boolean = false;
   @State manualMin: string = '30';
+  @State manualKm: string = '';
+  @State manualSport: string = 'walk';
   @State isCalcCalories: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
@@ -160,9 +162,23 @@ struct SportPage {
       const spd = Constants.SPEED_KMH.get(this.currentSport) ?? 5;
       this.distanceKm = parseFloat(((this.durationSec / 3600) * spd).toFixed(2));
     }
-    const met: number = Constants.MET_VALUES.get(this.currentSport) ?? 4.0;
-    const hours: number = this.durationSec / 3600;
-    this.calorieBurn = Math.round(met * this.bodyWeight * hours);
+    // 千卡估算优先按实际路程（体重 kg × 距离 km × 每公斤每公里消耗系数）
+    if (this.distanceKm > 0) {
+      const perKgKm: number = this.getPerKgKm();
+      this.calorieBurn = Math.round(this.bodyWeight * this.distanceKm * perKgKm);
+    } else {
+      const met: number = Constants.MET_VALUES.get(this.currentSport) ?? 4.0;
+      const hours: number = this.durationSec / 3600;
+      this.calorieBurn = Math.round(met * this.bodyWeight * hours);
+    }
+  }
+
+  // 每公斤体重每公里消耗千卡（依运动类型）
+  private getPerKgKm(): number {
+    if (this.currentSport === 'run') { return 1.04; }
+    if (this.currentSport === 'cycle') { return 0.32; }
+    if (this.currentSport === 'walk') { return 0.5; }
+    return 0.5;
   }
 
   stopTracking(): void {
@@ -197,7 +213,7 @@ struct SportPage {
     let calories: number = this.calorieBurn;
     this.isCalcCalories = true;
     const cloud = await FoodRecognitionService.getInstance().calculateSportCalories(
-      this.getSportLabel(this.currentSport), minutes, this.intensity, this.bodyWeight
+      this.getSportLabel(this.currentSport), minutes, this.intensity, this.bodyWeight, this.distanceKm
     );
     this.isCalcCalories = false;
     if (cloud >= 0) {
@@ -226,18 +242,34 @@ struct SportPage {
       return;
     }
     const minutes: number = Math.round(minVal);
+    let distKm: number = 0;
+    const kmVal = parseFloat(this.manualKm);
+    if (!isNaN(kmVal) && kmVal > 0) {
+      distKm = kmVal;
+    }
+    // 本地兜底估算：优先按距离，无距离按 MET×体重×时长
+    let calories: number = 0;
+    if (distKm > 0) {
+      const perKgKm: number = this.getPerKgKmFor(this.manualSport);
+      calories = Math.round(this.bodyWeight * distKm * perKgKm);
+    } else {
+      const met: number = Constants.MET_VALUES.get(this.manualSport) ?? 4.0;
+      calories = Math.round(met * this.bodyWeight * (minutes / 60));
+    }
     this.isCalcCalories = true;
     const cloud = await FoodRecognitionService.getInstance().calculateSportCalories(
-      this.getSportLabel(this.currentSport), minutes, this.intensity, this.bodyWeight
+      this.getSportLabel(this.manualSport), minutes, this.intensity, this.bodyWeight, distKm
     );
     this.isCalcCalories = false;
-    const calories: number = cloud >= 0 ? cloud : 0;
+    if (cloud >= 0) {
+      calories = cloud;
+    }
     const today = await GlobalData.getTodayDate();
     const record: DbRow = {
       date: today,
-      sport_type: this.currentSport,
+      sport_type: this.manualSport,
       duration_min: minutes,
-      distance_km: 0,
+      distance_km: distKm,
       calories: calories,
       avg_heart_rate: this.heartRateAvg,
     };
@@ -246,6 +278,12 @@ struct SportPage {
     await this.loadHistory();
     this.showManualAdd = false;
     promptAction.showToast({ message: '手动记录已保存' });
+  }
+
+  private getPerKgKmFor(sport: string): number {
+    if (sport === 'run') { return 1.04; }
+    if (sport === 'cycle') { return 0.32; }
+    return 0.5;
   }
 
   async saveDailySummarySport(date: string, minutes: number, calories: number): Promise<void> {
@@ -287,7 +325,13 @@ struct SportPage {
         Text('运动记录').fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 12 })
         Blank()
         Text('＋ 手动添加').fontSize(14).fontColor('#FF6B35')
-          .onClick(() => { this.showManualAdd = !this.showManualAdd; })
+          .onClick(() => {
+            this.showManualAdd = !this.showManualAdd;
+            if (this.showManualAdd) {
+              this.manualSport = this.currentSport;
+              this.manualKm = '';
+            }
+          })
       }
       .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
@@ -299,10 +343,19 @@ struct SportPage {
               Text('手动添加记录').fontSize(16).fontWeight(FontWeight.Bold).margin({ bottom: 12 })
 
               Text('运动类型').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
-              Text(this.getSportLabel(this.currentSport))
-                .fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.txt())
-                .width('100%').padding(12).backgroundColor(this.card()).borderRadius(8)
-                .margin({ bottom: 10 })
+              Flex({ wrap: FlexWrap.Wrap }) {
+                ForEach(Constants.SPORT_TYPES, (item: SportTypeDef) => {
+                  Text(item.icon + ' ' + item.label)
+                    .fontSize(13)
+                    .fontColor(this.manualSport === item.value ? '#FFFFFF' : this.txt())
+                    .backgroundColor(this.manualSport === item.value ? '#FF6B35' : ThemeColors.inputBg(this.theme))
+                    .borderRadius(16).padding({ left: 12, right: 12, top: 8, bottom: 8 })
+                    .margin({ right: 8, bottom: 8 })
+                    .onClick(() => { this.manualSport = item.value; })
+                })
+              }
+              .width('100%')
+              .margin({ bottom: 10 })
 
               Text('运动时长 (分钟)').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
               TextInput({ placeholder: '30', text: this.manualMin })
@@ -311,6 +364,16 @@ struct SportPage {
                 .fontColor(this.txt()).placeholderColor(this.sub())
                 .onChange((v: string) => { this.manualMin = v; })
                 .margin({ bottom: 10 })
+
+              if (this.manualSport === 'walk' || this.manualSport === 'run' || this.manualSport === 'cycle') {
+                Text('运动距离 (公里，可选)').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
+                TextInput({ placeholder: '如 3.5', text: this.manualKm })
+                  .type(InputType.Number).width('100%').height(44)
+                  .backgroundColor(ThemeColors.inputBg(this.theme))
+                  .fontColor(this.txt()).placeholderColor(this.sub())
+                  .onChange((v: string) => { this.manualKm = v; })
+                  .margin({ bottom: 10 })
+              }
 
               Text('运动强度').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
               Row() {
@@ -340,45 +403,45 @@ struct SportPage {
             .margin({ left: 16, right: 16, bottom: 16 })
           }
 
-          Text('选择运动类型')
-            .fontSize(16).fontWeight(FontWeight.Bold)
-            .width('100%').padding({ left: 16, bottom: 8 })
-
-          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
-            ForEach(Constants.SPORT_TYPES, (item: SportTypeDef) => {
-              Column() {
-                Text(item.icon).fontSize(28)
-                Text(item.label).fontSize(12).fontColor(this.sub()).margin({ top: 4 })
-              }
-              .width(64).height(64)
-              .backgroundColor(this.currentSport === item.value ? '#FF6B3544' : this.card())
-              .borderRadius(32)
-              .border(this.currentSport === item.value ? { style: BorderStyle.Solid, width: 2, color: '#FF6B35' } : { style: BorderStyle.Dashed, width: 0, color: 'transparent' })
-              .justifyContent(FlexAlign.Center)
-              .alignItems(HorizontalAlign.Center)
-              .margin(6)
-              .onClick(() => { this.currentSport = item.value; })
-            })
-          }
-          .width('100%').padding({ left: 16, right: 16 })
-
-          // 烈度选择
-          Text('运动强度').fontSize(13).fontColor(this.sub())
-            .width('100%').padding({ left: 16, top: 8, bottom: 4 })
-          Row() {
-            ForEach(Constants.INTENSITIES, (item: string) => {
-              Text(item)
-                .fontSize(13)
-                .fontColor(this.intensity === item ? '#FFFFFF' : this.sub())
-                .backgroundColor(this.intensity === item ? '#FF6B35' : this.card())
-                .borderRadius(16).padding({ left: 14, right: 14, top: 8, bottom: 8 })
-                .margin({ right: 8 })
-                .onClick(() => { this.intensity = item; })
-            })
-          }
-          .width('100%').padding({ left: 16, right: 16 })
-
           if (!this.isTracking) {
+            Text('选择运动类型')
+              .fontSize(16).fontWeight(FontWeight.Bold)
+              .width('100%').padding({ left: 16, bottom: 8 })
+
+            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
+              ForEach(Constants.SPORT_TYPES, (item: SportTypeDef) => {
+                Column() {
+                  Text(item.icon).fontSize(28)
+                  Text(item.label).fontSize(12).fontColor(this.sub()).margin({ top: 4 })
+                }
+                .width(64).height(64)
+                .backgroundColor(this.currentSport === item.value ? '#FF6B3544' : this.card())
+                .borderRadius(32)
+                .border(this.currentSport === item.value ? { style: BorderStyle.Solid, width: 2, color: '#FF6B35' } : { style: BorderStyle.Dashed, width: 0, color: 'transparent' })
+                .justifyContent(FlexAlign.Center)
+                .alignItems(HorizontalAlign.Center)
+                .margin(6)
+                .onClick(() => { this.currentSport = item.value; })
+              })
+            }
+            .width('100%').padding({ left: 16, right: 16 })
+
+            // 烈度选择
+            Text('运动强度').fontSize(13).fontColor(this.sub())
+              .width('100%').padding({ left: 16, top: 8, bottom: 4 })
+            Row() {
+              ForEach(Constants.INTENSITIES, (item: string) => {
+                Text(item)
+                  .fontSize(13)
+                  .fontColor(this.intensity === item ? '#FFFFFF' : this.sub())
+                  .backgroundColor(this.intensity === item ? '#FF6B35' : this.card())
+                  .borderRadius(16).padding({ left: 14, right: 14, top: 8, bottom: 8 })
+                  .margin({ right: 8 })
+                  .onClick(() => { this.intensity = item; })
+              })
+            }
+            .width('100%').padding({ left: 16, right: 16 })
+
             Button() {
               Text('▶ 开始运动').fontSize(20).fontColor(this.txt())
             }
@@ -430,7 +493,9 @@ struct SportPage {
               }
               .width('100%').justifyContent(FlexAlign.Center).margin({ top: 16 })
 
-              Text('卡路里按体重 ' + this.bodyWeight.toFixed(0) + 'kg 估算')
+              Text(this.useGps ?
+                '按体重 ' + this.bodyWeight.toFixed(0) + 'kg × 路程 ' + this.distanceKm.toFixed(2) + 'km 估算' :
+                '卡路里按体重 ' + this.bodyWeight.toFixed(0) + 'kg 估算')
                 .fontSize(11).fontColor(this.sub()).margin({ top: 8 })
 
               if (this.useGps) {
