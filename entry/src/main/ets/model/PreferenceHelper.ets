@@ -15,6 +15,7 @@ const KEY_LAST_ACTIVE_DATE = 'last_active_date';
 const KEY_WEIGHT_SKIP_PROMPT = 'weight_skip_prompt';
 const KEY_WEIGHT_CONFIGURED = 'weight_configured';
 const KEY_GENDER = 'gender';
+const KEY_LAST_MOOD_PROMPT = 'last_mood_prompt_date';
 const KEY_HEALTH_CARD_ORDER = 'health_card_order';
 const KEY_QUICK_FUNCTION_ORDER = 'quick_function_order';
 
@@ -95,6 +96,15 @@ export class PreferenceHelper {
 
   async setGender(gender: string): Promise<void> {
     await this.pref.put(KEY_GENDER, gender);
+    await this.pref.flush();
+  }
+
+  async getLastMoodPromptDate(): Promise<string> {
+    return await this.pref.get(KEY_LAST_MOOD_PROMPT, '') as string;
+  }
+
+  async setLastMoodPromptDate(date: string): Promise<void> {
+    await this.pref.put(KEY_LAST_MOOD_PROMPT, date);
     await this.pref.flush();
   }
 

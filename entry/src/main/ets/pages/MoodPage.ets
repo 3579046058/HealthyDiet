@@ -10,11 +10,17 @@ struct MoodPage {
   @State records: DbRow[] = [];
   @State weekAvg: number = 0;
   @State expandedId: number = -1;
+  @State recordDate: string = '';
+  @State tempDate: Date = new Date();
+  @State showInput: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
   aboutToAppear(): void {
     this.loadData();
+    GlobalData.getTodayDate().then((today: string) => {
+      this.recordDate = today;
+    });
   }
 
   async loadData(): Promise<void> {
@@ -35,9 +41,14 @@ struct MoodPage {
 
   async saveRecord(): Promise<void> {
     try {
-      const today: string = await GlobalData.getTodayDate();
+      let date: string;
+      if (this.showInput) {
+        date = this.formatDate(this.tempDate);
+      } else {
+        date = this.recordDate.length > 0 ? this.recordDate : await GlobalData.getTodayDate();
+      }
       const record: DbRow = {
-        date: today,
+        date: date,
         mood: this.selectedMood,
         note: this.note,
       };
@@ -45,10 +56,33 @@ struct MoodPage {
       await this.loadData();
       this.note = '';
       this.selectedMood = 3;
+      this.showInput = false;
       promptAction.showToast({ message: '已保存' });
     } catch (err) {
       console.error('MoodPage saveRecord error:', JSON.stringify(err));
     }
+  }
+
+  onDateChange(offsetDays: number): void {
+    if (this.recordDate.length === 0) {
+      return;
+    }
+    const d = new Date(this.recordDate + 'T00:00:00');
+    if (isNaN(d.getTime())) {
+      return;
+    }
+    d.setDate(d.getDate() + offsetDays);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const today = new Date();
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') +
+      '-' + String(today.getDate()).padStart(2, '0');
+    const candidate = y + '-' + m + '-' + day;
+    if (candidate > todayStr) {
+      return;
+    }
+    this.recordDate = candidate;
   }
 
   async deleteRecord(id: number): Promise<void> {
@@ -133,46 +167,133 @@ struct MoodPage {
         Text('情绪记录')
           .fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt())
           .margin({ left: 12 })
+        Blank()
+        Text(this.showInput ? '✕' : '＋ 添加').fontSize(14).fontColor('#FFC107')
+          .onClick(() => {
+            this.showInput = !this.showInput;
+            if (this.showInput) {
+              this.tempDate = new Date();
+            }
+          })
       }
       .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 8 })
 
       Scroll() {
         Column() {
-          Text('今天心情怎么样？')
-            .fontSize(16).fontColor(this.txt())
-            .width('100%').margin({ top: 8, bottom: 16 })
+          // 日期选择
+          if (this.showInput) {
+            // 完整添加面板：DatePicker 选日期 + 表情 + 备注
+            Column() {
+              Text('选择日期').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
+              DatePicker({ selected: this.tempDate })
+                .onDateChange((d: Date) => {
+                  const today = new Date();
+                  const t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                  const max = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                  if (t.getTime() > max.getTime()) {
+                    this.tempDate = max;
+                    return;
+                  }
+                  this.tempDate = d;
+                })
+                .margin({ bottom: 16 })
 
-          Row() {
-            ForEach([1, 2, 3, 4, 5], (mood: number) => {
-              Column() {
-                Text(this.getMoodEmoji(mood)).fontSize(36).lineHeight(44)
-                Text(this.getMoodLabel(mood)).fontSize(11).fontColor(this.sub()).margin({ top: 4 })
+              Text('心情').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 8 })
+              Row() {
+                ForEach([1, 2, 3, 4, 5], (mood: number) => {
+                  Column() {
+                    Text(this.getMoodEmoji(mood)).fontSize(30).lineHeight(38)
+                    Text(this.getMoodLabel(mood)).fontSize(10).fontColor(this.sub()).margin({ top: 2 })
+                  }
+                  .width(52).height(72)
+                  .justifyContent(FlexAlign.Center)
+                  .alignItems(HorizontalAlign.Center)
+                  .borderRadius(10)
+                  .backgroundColor(this.selectedMood === mood ? '#FFC107' : this.card())
+                  .border({ width: 2, color: this.selectedMood === mood ? '#FFC107' : ThemeColors.divider(this.theme), style: BorderStyle.Solid })
+                  .onClick(() => { this.selectedMood = mood; })
+                }, (mood: number): string => mood.toString())
               }
-              .width(60).height(86)
-              .justifyContent(FlexAlign.Center)
-              .alignItems(HorizontalAlign.Center)
-              .borderRadius(12)
-              .backgroundColor(this.selectedMood === mood ? '#FFC107' : this.card())
-              .border({ width: 2, color: this.selectedMood === mood ? '#FFC107' : ThemeColors.divider(this.theme), style: BorderStyle.Solid })
-              .onClick(() => { this.selectedMood = mood; })
-            }, (mood: number): string => mood.toString())
+              .width('100%').justifyContent(FlexAlign.SpaceEvenly)
+              .padding({ bottom: 16 })
+
+              TextArea({ placeholder: '今天过得怎么样？(选填)', text: this.note })
+                .width('100%').height(80)
+                .backgroundColor(ThemeColors.inputBg(this.theme))
+                .placeholderColor(ThemeColors.textSecondary(this.theme))
+                .fontColor(this.txt()).borderRadius(12).padding(12)
+                .onChange((value: string) => { this.note = value; })
+
+              Row() {
+                Button('取消').layoutWeight(1).height(44)
+                  .backgroundColor('#555555').borderRadius(22)
+                  .fontColor(this.txt()).fontSize(15)
+                  .margin({ right: 8 })
+                  .onClick(() => {
+                    this.showInput = false;
+                    this.note = '';
+                    this.selectedMood = 3;
+                  })
+                Button('保存记录').layoutWeight(1).height(44)
+                  .backgroundColor('#FFC107').fontColor('#0D0D1A')
+                  .fontWeight(FontWeight.Bold).borderRadius(22)
+                  .fontSize(15)
+                  .onClick(() => { this.saveRecord(); })
+              }
+              .width('100%').margin({ top: 16, bottom: 24 })
+            }
+            .width('100%').padding(16)
+            .backgroundColor(this.card()).borderRadius(12)
+            .margin({ bottom: 16 })
+          } else {
+            // 快速记录：◀ ▶ 切换日期 + 表情
+            Row() {
+              Text('◀').fontSize(18).fontColor('#FFC107')
+                .onClick(() => { this.onDateChange(-1); })
+              Text(this.recordDate.length > 0 ? this.recordDate : '--')
+                .fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.txt())
+                .margin({ left: 14, right: 14 })
+              Text('▶').fontSize(18).fontColor('#FFC107')
+                .onClick(() => { this.onDateChange(1); })
+            }
+            .width('100%').justifyContent(FlexAlign.Center)
+
+            Text('今天心情怎么样？')
+              .fontSize(16).fontColor(this.txt())
+              .width('100%').margin({ top: 12, bottom: 16 })
+
+            Row() {
+              ForEach([1, 2, 3, 4, 5], (mood: number) => {
+                Column() {
+                  Text(this.getMoodEmoji(mood)).fontSize(36).lineHeight(44)
+                  Text(this.getMoodLabel(mood)).fontSize(11).fontColor(this.sub()).margin({ top: 4 })
+                }
+                .width(60).height(86)
+                .justifyContent(FlexAlign.Center)
+                .alignItems(HorizontalAlign.Center)
+                .borderRadius(12)
+                .backgroundColor(this.selectedMood === mood ? '#FFC107' : this.card())
+                .border({ width: 2, color: this.selectedMood === mood ? '#FFC107' : ThemeColors.divider(this.theme), style: BorderStyle.Solid })
+                .onClick(() => { this.selectedMood = mood; })
+              }, (mood: number): string => mood.toString())
+            }
+            .width('100%').justifyContent(FlexAlign.SpaceEvenly)
+            .padding({ bottom: 24 })
+
+            TextArea({ placeholder: '今天过得怎么样？(选填)', text: this.note })
+              .width('100%').height(80)
+              .backgroundColor(ThemeColors.inputBg(this.theme))
+              .placeholderColor(ThemeColors.textSecondary(this.theme))
+              .fontColor(this.txt()).borderRadius(12).padding(12)
+              .onChange((value: string) => { this.note = value; })
+
+            Button('保存')
+              .width('100%').height(48)
+              .backgroundColor('#FFC107').fontColor('#0D0D1A')
+              .fontWeight(FontWeight.Bold).borderRadius(24)
+              .margin({ top: 16, bottom: 24 })
+              .onClick(() => { this.saveRecord(); })
           }
-          .width('100%').justifyContent(FlexAlign.SpaceEvenly)
-          .padding({ bottom: 24 })
-
-          TextArea({ placeholder: '今天过得怎么样？(选填)', text: this.note })
-            .width('100%').height(80)
-            .backgroundColor(ThemeColors.inputBg(this.theme))
-            .placeholderColor(ThemeColors.textSecondary(this.theme))
-            .fontColor(this.txt()).borderRadius(12).padding(12)
-            .onChange((value: string) => { this.note = value; })
-
-          Button('保存')
-            .width('100%').height(48)
-            .backgroundColor('#FFC107').fontColor('#0D0D1A')
-            .fontWeight(FontWeight.Bold).borderRadius(24)
-            .margin({ top: 16, bottom: 24 })
-            .onClick(() => { this.saveRecord(); })
 
           if (this.weekAvg > 0) {
             Row() {

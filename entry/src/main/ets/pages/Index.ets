@@ -10,7 +10,6 @@ import { Constants, GoalConfig, StreakData, DbRow, ThemeColors } from '../common
 import { RingProgress } from '../components/RingProgress';
 import { HealthCard } from '../components/HealthCard';
 import { FoodRecognitionTab } from '../components/FoodRecognitionTab';
-import { WeightDialog } from '../components/WeightDialog';
 import { NestedRings } from '../components/NestedRings';
 
 // 健康卡片类型定义
@@ -34,6 +33,7 @@ interface QuickFunctionItem {
 @Component
 struct Index {
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  @StorageLink('appForegroundDate') @Watch('onForegroundDateChange') appForegroundDate: string = '';
   @State showSharePanel: boolean = false;
   @State shareDiet: boolean = true;
   @State shareSport: boolean = true;
@@ -71,12 +71,25 @@ struct Index {
   @State diarySportRecords: DbRow[] = [];
   @State diarySleepRecords: DbRow[] = [];
   @State diaryMoodRecords: DbRow[] = [];
+  @State diaryDate: string = '';
   @State bgColor: string = '#121212';
   @State cardColor: string = '#1E1E2E';
   @State textColor: string = '#FFFFFF';
   @State subTextColor: string = '#AAAAAA';
   readonly accentColor: string = '#FF6B35';
-  private weightDialogController: CustomDialogController | null = null;
+  @State showWeightOverlay: boolean = false;
+  @State showMoodOverlay: boolean = false;
+  private moodPromptPending: boolean = false;
+  private pendingMoodDate: string = '';
+  private lastMoodCheckDate: string = '';
+  @State overlayHeightInput: string = '170';
+  @State overlayWeightInput: string = '70';
+  @State overlayGender: string = '男';
+  @State overlaySkipNext: boolean = false;
+  readonly overlayGenders: string[] = ['男', '女'];
+  @State overlayMood: number = 3;
+  @State overlayMoodNote: string = '';
+  @State overlayMoodDate: string = '';
 
   // 今日概览卡片拖拽排序相关
   @State healthCardOrder: string[] = ['steps', 'heart', 'sleep', 'water']; // 卡片顺序
@@ -115,6 +128,7 @@ struct Index {
     this.loadAllData();
     this.startAutoRefresh();
     this.checkWeightPrompt();
+    this.checkMoodPrompt();
     this.loadHealthCardOrder(); // 加载卡片顺序
     this.loadQuickFunctionOrder(); // 加载快捷功能顺序
   }
@@ -236,20 +250,107 @@ struct Index {
       if (skip || configured) {
         return;
       }
+      // 延迟显示确保页面已渲染
       setTimeout(() => {
-        this.weightDialogController = new CustomDialogController({
-          builder: WeightDialog(),
-          autoCancel: true,
-          customStyle: true
-        });
-        this.weightDialogController.open();
-      }, 600);
+        this.showWeightOverlay = true;
+      }, 800);
     } catch (err) {
       console.error('checkWeightPrompt error:', JSON.stringify(err));
     }
   }
 
+  // 每日首次进入弹出情绪记录（不透明覆盖层）
+  // 幂等：同一日期只触发一次；跨天后（不重启）重新触发
+  async checkMoodPrompt(): Promise<void> {
+    try {
+      const today = await GlobalData.getTodayDate();
+      if (this.lastMoodCheckDate === today) {
+        return;
+      }
+      this.lastMoodCheckDate = today;
+      const lastPrompt = await GlobalData.prefs.getLastMoodPromptDate();
+      console.info('MOOD_PROMPT today=' + today + ' last=' + lastPrompt);
+      if (lastPrompt === today) {
+        console.info('MOOD_PROMPT already prompted today');
+        return;
+      }
+      // 今天已记录情绪则不再弹出
+      const rows = await GlobalData.db.getMoodRecords(today, today);
+      console.info('MOOD_PROMPT moodRows=' + String(rows.length));
+      if (rows.length > 0) {
+        await GlobalData.prefs.setLastMoodPromptDate(today);
+        console.info('MOOD_PROMPT has mood record');
+        return;
+      }
+      // 体重弹窗关闭后再弹情绪弹窗
+      this.moodPromptPending = true;
+      this.pendingMoodDate = today;
+      setTimeout(() => {
+        if (this.showWeightOverlay) {
+          console.info('MOOD_PROMPT waiting weight overlay');
+          return;
+        }
+        console.info('MOOD_PROMPT opening overlay');
+        this.openMoodOverlay(today);
+      }, 1100);
+    } catch (err) {
+      console.error('checkMoodPrompt error:', JSON.stringify(err));
+    }
+  }
+
   private refreshTimer: number = -1;
+
+  async saveWeightOverlay(): Promise<void> {
+    const h = parseInt(this.overlayHeightInput);
+    const w = parseFloat(this.overlayWeightInput);
+    if (!isNaN(h) && h > 0 && !isNaN(w) && w > 0) {
+      const config = await GlobalData.prefs.getGoalConfig();
+      config.heightCm = h;
+      config.weightKg = w;
+      await GlobalData.prefs.saveGoalConfig(config);
+      await GlobalData.prefs.setWeight(w);
+      await GlobalData.prefs.setGender(this.overlayGender);
+    }
+    await GlobalData.prefs.markWeightConfigured();
+    await GlobalData.prefs.setWeightSkipPrompt(this.overlaySkipNext);
+    this.showWeightOverlay = false;
+    this.checkPendingMoodPrompt();
+  }
+
+  async saveMoodOverlay(): Promise<void> {
+    const date: string = this.overlayMoodDate.length > 0 ? this.overlayMoodDate : await GlobalData.getTodayDate();
+    const record: DbRow = {
+      date: date,
+      mood: this.overlayMood,
+      note: this.overlayMoodNote,
+    };
+    try {
+      await GlobalData.db.addMoodRecord(record);
+    } catch (err) {
+      console.error('saveMoodOverlay error:', JSON.stringify(err));
+    }
+    this.showMoodOverlay = false;
+    this.loadAllData();
+  }
+
+  openMoodOverlay(date: string): void {
+    console.info('MOOD_PROMPT openMoodOverlay date=' + date);
+    this.overlayMoodDate = date;
+    this.overlayMood = 3;
+    this.overlayMoodNote = '';
+    this.showMoodOverlay = true;
+    this.moodPromptPending = false;
+    GlobalData.prefs.setLastMoodPromptDate(date);
+  }
+
+  checkPendingMoodPrompt(): void {
+    if (this.moodPromptPending && !this.showWeightOverlay) {
+      const d: string = this.pendingMoodDate.length > 0 ? this.pendingMoodDate : '';
+      if (d.length > 0) {
+        this.openMoodOverlay(d);
+      }
+    }
+  }
 
   startAutoRefresh(): void {
     if (this.refreshTimer !== -1) {
@@ -257,6 +358,7 @@ struct Index {
     }
     this.refreshTimer = setInterval(() => {
       this.loadAllData();
+      this.checkMoodPrompt();
     }, 10000);
   }
 
@@ -346,20 +448,11 @@ struct Index {
       const nameRaw: string | number | boolean = await GlobalData.prefs.get('user_name', '');
       this.userName = String(nameRaw);
 
-      const end = new Date();
-      const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
-      this.diaryDietRecords = await GlobalData.db.getDietRecordsRange(
-        GlobalData.formatDate(start), GlobalData.formatDate(end)
-      );
-      this.diarySportRecords = await GlobalData.db.getSportRecords(
-        GlobalData.formatDate(start), GlobalData.formatDate(end)
-      );
-      this.diarySleepRecords = await GlobalData.db.getSleepRecords(
-        GlobalData.formatDate(start), GlobalData.formatDate(end)
-      );
-      this.diaryMoodRecords = await GlobalData.db.getMoodRecords(
-        GlobalData.formatDate(start), GlobalData.formatDate(end)
-      );
+      // 加载日记页数据（按选中日期，默认今天）
+      if (this.diaryDate.length === 0) {
+        this.diaryDate = today;
+      }
+      await this.loadDiaryData();
     } catch (err) {
       console.error('loadData error:', JSON.stringify(err));
     }
@@ -367,6 +460,38 @@ struct Index {
 
   @StorageLink('themeMode') themeMode: string = 'follow';
   @StorageLink('systemDark') systemDark: boolean = false;
+
+  async loadDiaryData(): Promise<void> {
+    try {
+      const day: string = this.diaryDate.length > 0 ? this.diaryDate : await GlobalData.getTodayDate();
+      this.diaryDietRecords = await GlobalData.db.getDietRecordsRange(day, day);
+      this.diarySportRecords = await GlobalData.db.getSportRecords(day, day);
+      this.diarySleepRecords = await GlobalData.db.getSleepRecords(day, day);
+      this.diaryMoodRecords = await GlobalData.db.getMoodRecords(day, day);
+    } catch (err) {
+      console.error('loadDiaryData error:', JSON.stringify(err));
+    }
+  }
+
+  changeDiaryDate(offsetDays: number): void {
+    const d = new Date(this.diaryDate + 'T00:00:00');
+    if (isNaN(d.getTime())) {
+      return;
+    }
+    d.setDate(d.getDate() + offsetDays);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const today = new Date();
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') +
+      '-' + String(today.getDate()).padStart(2, '0');
+    const candidate = y + '-' + m + '-' + day;
+    if (candidate > todayStr) {
+      return;
+    }
+    this.diaryDate = candidate;
+    this.loadDiaryData();
+  }
 
   resolveTheme(savedTheme: string): string {
     if (savedTheme === 'dark' || savedTheme === 'light') {
@@ -460,6 +585,14 @@ struct Index {
     return '😢';
   }
 
+  getMoodLabel(mood: number): string {
+    if (mood === 5) { return '很好'; }
+    if (mood === 4) { return '不错'; }
+    if (mood === 3) { return '一般'; }
+    if (mood === 2) { return '不好'; }
+    return '很差';
+  }
+
   getDisplaySteps(): number {
     if (this.liveSteps > 0) {
       return this.liveSteps;
@@ -522,6 +655,12 @@ struct Index {
 
   onPageShow(): void {
     this.loadAllData();
+    this.checkMoodPrompt();
+  }
+
+  onForegroundDateChange(propName: string): void {
+    // 每次从后台回到前台触发，检测是否跨天需要弹情绪弹窗
+    this.checkMoodPrompt();
   }
 
   onInAppAlarm(propName: string): void {
@@ -566,6 +705,7 @@ struct Index {
         .onChange((index: number) => {
           this.currentTabIndex = index;
           if (index === 0) { this.loadAllData(); }
+          if (index === 1) { this.loadDiaryData(); }
         })
       }
       .width('100%')
@@ -575,9 +715,165 @@ struct Index {
       if (this.showSharePanel) {
         this.sharePanel()
       }
+
+      if (this.showWeightOverlay) {
+        this.weightOverlay()
+      }
+
+      if (this.showMoodOverlay) {
+        this.moodOverlay()
+      }
     }
     .width('100%')
     .height('100%')
+  }
+
+  @Builder weightOverlay() {
+    Column() {
+      Blank()
+      Column() {
+        Text('完善你的个人信息').fontSize(20).fontWeight(FontWeight.Bold).fontColor(Color.White)
+          .width('100%').margin({ bottom: 8 })
+
+        Text('身高、体重、性别用于计算 BMI 和运动热量').fontSize(12).fontColor('#AAAAAA')
+          .width('100%').margin({ bottom: 20 })
+
+        Text('性别').fontSize(14).fontColor('#DDDDDD').width('100%').margin({ bottom: 8 })
+        Row() {
+          ForEach(this.overlayGenders, (item: string) => {
+            Text(item)
+              .fontSize(15)
+              .fontColor(this.overlayGender === item ? Color.White : '#AAAAAA')
+              .backgroundColor(this.overlayGender === item ? '#FF6B35' : '#2A2A3E')
+              .borderRadius(20).padding({ left: 28, right: 28, top: 10, bottom: 10 })
+              .margin({ right: 12 })
+              .onClick(() => { this.overlayGender = item; })
+          })
+        }
+        .width('100%')
+        .margin({ bottom: 18 })
+
+        Text('身高').fontSize(14).fontColor('#DDDDDD').width('100%').margin({ bottom: 8 })
+        Row() {
+          TextInput({ placeholder: '170', text: this.overlayHeightInput })
+            .type(InputType.Number).layoutWeight(1).height(46)
+            .backgroundColor('#2A2A3E').fontColor(Color.White).placeholderColor('#888888')
+            .borderRadius(10)
+            .onChange((v: string) => { this.overlayHeightInput = v; })
+          Text('cm').fontSize(14).fontColor('#AAAAAA').margin({ left: 10 })
+        }
+        .width('100%')
+        .margin({ bottom: 18 })
+
+        Text('体重').fontSize(14).fontColor('#DDDDDD').width('100%').margin({ bottom: 8 })
+        Row() {
+          TextInput({ placeholder: '70', text: this.overlayWeightInput })
+            .type(InputType.Number).layoutWeight(1).height(46)
+            .backgroundColor('#2A2A3E').fontColor(Color.White).placeholderColor('#888888')
+            .borderRadius(10)
+            .onChange((v: string) => { this.overlayWeightInput = v; })
+          Text('kg').fontSize(14).fontColor('#AAAAAA').margin({ left: 10 })
+        }
+        .width('100%')
+
+        Row() {
+          Text('设置后不再弹出').fontSize(13).fontColor('#AAAAAA')
+          Blank()
+          Toggle({ type: ToggleType.Switch, isOn: this.overlaySkipNext })
+            .selectedColor('#FF6B35')
+            .onChange((on: boolean) => { this.overlaySkipNext = on; })
+        }
+        .width('100%').margin({ top: 20 })
+
+        Row() {
+          Button('暂不设置').layoutWeight(1).height(46)
+            .backgroundColor('#555555').borderRadius(23)
+            .fontColor(Color.White).fontSize(15)
+            .onClick(() => {
+              GlobalData.prefs.setWeightSkipPrompt(this.overlaySkipNext);
+              GlobalData.prefs.markWeightConfigured();
+              this.showWeightOverlay = false;
+              this.checkPendingMoodPrompt();
+            })
+          Button('保存').layoutWeight(1).height(46)
+            .backgroundColor('#FF6B35').borderRadius(23)
+            .fontColor(Color.White).fontSize(15)
+            .margin({ left: 12 })
+            .onClick(() => { this.saveWeightOverlay(); })
+        }
+        .width('100%').margin({ top: 24 })
+      }
+      .width('88%')
+      .padding(24)
+      .backgroundColor('#1A1A2E')
+      .borderRadius(18)
+      Blank()
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#000000')
+  }
+
+  @Builder moodOverlay() {
+    Column() {
+      Blank()
+      Column() {
+        Text('记录心情').fontSize(20).fontWeight(FontWeight.Bold).fontColor(Color.White)
+          .width('100%').margin({ bottom: 4 })
+
+        Text(this.overlayMoodDate.length > 0 ? this.overlayMoodDate : '--').fontSize(14).fontColor('#AAAAAA')
+          .width('100%').margin({ bottom: 16 })
+
+        Text('今天心情怎么样？').fontSize(14).fontColor('#DDDDDD')
+          .width('100%').margin({ bottom: 14 })
+
+        Row() {
+          ForEach([1, 2, 3, 4, 5], (mood: number) => {
+            Column() {
+              Text(this.getMoodEmoji(mood)).fontSize(32).lineHeight(40)
+              Text(this.getMoodLabel(mood)).fontSize(11).fontColor('#AAAAAA').margin({ top: 2 })
+            }
+            .width(54).height(78)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center)
+            .borderRadius(10)
+            .backgroundColor(this.overlayMood === mood ? '#FFC107' : '#2A2A3E')
+            .border({ width: 2, color: this.overlayMood === mood ? '#FFC107' : '#333333', style: BorderStyle.Solid })
+            .onClick(() => { this.overlayMood = mood; })
+          }, (mood: number): string => mood.toString())
+        }
+        .width('100%').justifyContent(FlexAlign.SpaceEvenly)
+
+        TextArea({ placeholder: '说点什么吧(选填)', text: this.overlayMoodNote })
+          .width('100%').height(80)
+          .backgroundColor('#2A2A3E')
+          .placeholderColor('#888888')
+          .fontColor(Color.White).borderRadius(10).padding(10)
+          .onChange((value: string) => { this.overlayMoodNote = value; })
+          .margin({ top: 16 })
+
+        Row() {
+          Button('稍后').layoutWeight(1).height(46)
+            .backgroundColor('#555555').borderRadius(23)
+            .fontColor(Color.White).fontSize(15)
+            .onClick(() => { this.showMoodOverlay = false; })
+          Button('保存').layoutWeight(1).height(46)
+            .backgroundColor('#FFC107').fontColor('#0D0D1A')
+            .fontWeight(FontWeight.Bold).borderRadius(23)
+            .fontSize(15).margin({ left: 12 })
+            .onClick(() => { this.saveMoodOverlay(); })
+        }
+        .width('100%').margin({ top: 20 })
+      }
+      .width('88%')
+      .padding(24)
+      .backgroundColor('#1A1A2E')
+      .borderRadius(18)
+      Blank()
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#000000')
   }
 
   @Builder sharePanel() {
@@ -923,10 +1219,22 @@ struct Index {
         Row() {
           Text('每日日记').fontSize(22).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           Blank()
-          Text('📤 分享').fontSize(14).fontColor(this.accentColor)
-            .onClick(() => { this.showSharePanel = true; })
+          Text('◀').fontSize(18).fontColor(this.accentColor)
+            .onClick(() => { this.changeDiaryDate(-1); })
+          Text(this.diaryDate.length > 0 ? this.diaryDate : '--')
+            .fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.textColor)
+            .margin({ left: 8, right: 8 })
+          Text('▶').fontSize(18).fontColor(this.accentColor)
+            .onClick(() => { this.changeDiaryDate(1); })
         }
         .width('100%').padding({ left: 20, right: 20, top: 16 + this.statusBarHeight, bottom: 12 })
+
+        Row() {
+          Text('📤 分享当天日记').fontSize(13).fontColor(this.accentColor)
+            .onClick(() => { this.showSharePanel = true; })
+          Blank()
+        }
+        .width('100%').padding({ left: 20, right: 20, bottom: 4 })
 
         if (this.diaryDietRecords.length === 0 && this.diarySportRecords.length === 0 &&
           this.diarySleepRecords.length === 0 && this.diaryMoodRecords.length === 0) {

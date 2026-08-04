@@ -147,7 +147,12 @@ export default class EntryAbility extends UIAbility {
     PedometerService.getInstance().startListening((steps: number) => {
       hilog.info(DOMAIN, TAG, 'Pedometer resumed: %{public}d', steps);
     });
-    hilog.info(DOMAIN, TAG, 'Ability onForeground');
+    // 检测日期变化：后台跨天后回到前台，通知页面触发每日情绪弹窗
+    const now = new Date();
+    const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') +
+      '-' + String(now.getDate()).padStart(2, '0');
+    AppStorage.setOrCreate('appForegroundDate', todayStr);
+    hilog.info(DOMAIN, TAG, 'Ability onForeground, date=%{public}s', todayStr);
   }
 
   onBackground(): void {
