@@ -151,8 +151,36 @@ struct WeightPage {
           this.historyBmis.push(0);
         }
       });
+
+      // 自动计算推荐热量（基于当前身高体重）
+      await this.autoCalcCalorie();
     } catch (err) {
       console.error('WeightPage loadData error:', JSON.stringify(err));
+    }
+  }
+
+  async autoCalcCalorie(): Promise<void> {
+    try {
+      const latestHeightRow = await GlobalData.db.getLatestHeight();
+      const latestWeightRow = await GlobalData.db.getLatestWeight();
+      let h: number = this.heightCm;
+      if (latestHeightRow) {
+        h = Number(latestHeightRow.height_cm);
+      }
+      if (!latestWeightRow) {
+        this.recommendCalorieText = "请先记录当前体重";
+        return;
+      }
+      const currentW = Number(latestWeightRow.weight_kg);
+      const isMale = this.gender === "男";
+      const age = 25;
+      const recCal = this.calcRecommendCalorie(h, currentW, age, isMale);
+      this.recommendCalorieText = `推荐每日摄入：${recCal} kcal`;
+      const goalCfg = await GlobalData.prefs.getGoalConfig();
+      goalCfg.dailyCalorie = recCal;
+      await GlobalData.prefs.saveGoalConfig(goalCfg);
+    } catch (err) {
+      console.error('WeightPage autoCalcCalorie error:', JSON.stringify(err));
     }
   }
 
@@ -289,8 +317,13 @@ struct WeightPage {
   }
 
   async onClickCalcCalorie() {
+    // 统一从最新记录读取身高体重，与页面显示一致
     const goalCfg = await GlobalData.prefs.getGoalConfig();
-    const h = goalCfg.heightCm;
+    let h = goalCfg.heightCm;
+    const latestHeightRow = await GlobalData.db.getLatestHeight();
+    if (latestHeightRow) {
+      h = Number(latestHeightRow.height_cm);
+    }
     const latestWeightRow = await GlobalData.db.getLatestWeight();
     if (!latestWeightRow) {
       this.recommendCalorieText = "请先记录当前体重";
@@ -474,14 +507,6 @@ struct WeightPage {
               .width('100%')
               .margin({ bottom: 12 })
 
-            Row() {
-              Button("计算推荐热量")
-                .backgroundColor(Constants.COLOR_WEIGHT)
-                .fontColor("#ffffff")
-                .borderRadius(20)
-                .onClick(() => { this.onClickCalcCalorie(); })
-              Blank()
-            }
             if (this.recommendCalorieText.length > 0) {
               Text(this.recommendCalorieText)
                 .fontSize(15)
@@ -489,6 +514,8 @@ struct WeightPage {
                 .margin({ top: 10 })
                 .width('100%')
             }
+            Text('根据当前身高、体重自动计算').fontSize(11).fontColor(this.sub())
+              .width('100%').margin({ top: 6 })
           }
           .width('100%')
           .padding(16)

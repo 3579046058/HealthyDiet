@@ -51,8 +51,41 @@ struct ProfilePage {
     await GlobalData.prefs.setWeight(w);
     await GlobalData.prefs.markWeightConfigured();
     await GlobalData.prefs.setGender(this.gender);
+    // 同步更新身高体重记录表，保证各页数据源一致
+    try {
+      const today = await GlobalData.getTodayDate();
+      const existingHeight = await GlobalData.db.getHeightRecords(today, today);
+      for (const record of existingHeight) {
+        await GlobalData.db.deleteHeightRecord(Number(record.id));
+      }
+      await GlobalData.db.addHeightRecord(today, h);
+      const existingWeight = await GlobalData.db.getWeightRecords(today, today);
+      for (const record of existingWeight) {
+        await GlobalData.db.deleteWeightRecord(Number(record.id));
+      }
+      await GlobalData.db.addWeightRecord(today, w);
+    } catch (err) {
+      console.error('ProfilePage sync records error:', JSON.stringify(err));
+    }
+    // 根据最新身高体重重新计算推荐热量，同步更新饮食页
+    config.dailyCalorie = this.calcRecommendCalorie(h, w, this.gender === '男');
+    await GlobalData.prefs.saveGoalConfig(config);
     this.saved = true;
     promptAction.showToast({ message: '个人信息已保存' });
+  }
+
+  calcRecommendCalorie(heightCm: number, weightKg: number, isMale: boolean): number {
+    const age = 25;
+    let bmr: number;
+    if (isMale) {
+      bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+    } else {
+      bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+    }
+    const tdee = bmr * 1.375;
+    let targetCal = tdee - 550;
+    targetCal = isMale ? Math.max(1500, targetCal) : Math.max(1200, targetCal);
+    return Math.round(targetCal);
   }
 
   build() {
