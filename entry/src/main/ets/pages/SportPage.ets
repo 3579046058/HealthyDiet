@@ -33,8 +33,14 @@ struct SportPage {
     this.loadHistory();
   }
 
+  // 判断是否为 GPS 运动（有位移的运动）
   isGpsSport(): boolean {
-    return this.currentSport === 'walk' || this.currentSport === 'run' || this.currentSport === 'cycle';
+    return Constants.GPS_SPORTS.has(this.currentSport);
+  }
+
+  // 判断是否为原地运动
+  isStationarySport(): boolean {
+    return Constants.STATIONARY_SPORTS.has(this.currentSport);
   }
 
   async loadWeight(): Promise<void> {
@@ -157,16 +163,25 @@ struct SportPage {
   }
 
   private updateMetrics(): void {
-    if (!this.useGps) {
-      const met: number = Constants.MET_VALUES.get(this.currentSport) ?? 4.0;
-      const spd = Constants.SPEED_KMH.get(this.currentSport) ?? 5;
-      this.distanceKm = parseFloat(((this.durationSec / 3600) * spd).toFixed(2));
-    }
-    // 千卡估算优先按实际路程（体重 kg × 距离 km × 每公斤每公里消耗系数）
-    if (this.distanceKm > 0) {
+    if (this.isGpsSport()) {
+      // GPS 运动（步行、跑步、骑行）：根据距离计算热量
+      if (this.distanceKm === 0) {
+        // GPS 失败或未启动，根据时间估算距离
+        const spd = Constants.SPEED_KMH.get(this.currentSport) ?? 5;
+        this.distanceKm = parseFloat(((this.durationSec / 3600) * spd).toFixed(2));
+      }
+      // 热量 = 体重 × 距离 × 每公斤每公里消耗系数
       const perKgKm: number = this.getPerKgKm();
       this.calorieBurn = Math.round(this.bodyWeight * this.distanceKm * perKgKm);
+    } else if (this.isStationarySport()) {
+      // 原地运动（游泳、瑜伽、力量训练）：根据体重、强度和时间计算热量
+      const met: number = Constants.MET_VALUES.get(this.currentSport) ?? 4.0;
+      const intensityMultiplier: number = Constants.INTENSITY_MULTIPLIERS.get(this.intensity) ?? 1.0;
+      const hours: number = this.durationSec / 3600;
+      // 热量 = MET × 强度系数 × 体重 × 时间
+      this.calorieBurn = Math.round(met * intensityMultiplier * this.bodyWeight * hours);
     } else {
+      // 其他运动：使用默认 MET 公式
       const met: number = Constants.MET_VALUES.get(this.currentSport) ?? 4.0;
       const hours: number = this.durationSec / 3600;
       this.calorieBurn = Math.round(met * this.bodyWeight * hours);
@@ -247,14 +262,28 @@ struct SportPage {
     if (!isNaN(kmVal) && kmVal > 0) {
       distKm = kmVal;
     }
-    // 本地兜底估算：优先按距离，无距离按 MET×体重×时长
+    // 本地兜底估算：根据运动类型选择不同的计算方法
     let calories: number = 0;
-    if (distKm > 0) {
+    const hours: number = minutes / 60;
+    
+    if (Constants.GPS_SPORTS.has(this.manualSport)) {
+      // GPS 运动：根据距离计算热量
+      if (distKm === 0) {
+        // 没有输入距离，根据时间估算
+        const spd = Constants.SPEED_KMH.get(this.manualSport) ?? 5;
+        distKm = parseFloat((hours * spd).toFixed(2));
+      }
       const perKgKm: number = this.getPerKgKmFor(this.manualSport);
       calories = Math.round(this.bodyWeight * distKm * perKgKm);
-    } else {
+    } else if (Constants.STATIONARY_SPORTS.has(this.manualSport)) {
+      // 原地运动：根据体重、强度和时间计算热量
       const met: number = Constants.MET_VALUES.get(this.manualSport) ?? 4.0;
-      calories = Math.round(met * this.bodyWeight * (minutes / 60));
+      const intensityMultiplier: number = Constants.INTENSITY_MULTIPLIERS.get(this.intensity) ?? 1.0;
+      calories = Math.round(met * intensityMultiplier * this.bodyWeight * hours);
+    } else {
+      // 其他运动：使用默认 MET 公式
+      const met: number = Constants.MET_VALUES.get(this.manualSport) ?? 4.0;
+      calories = Math.round(met * this.bodyWeight * hours);
     }
     this.isCalcCalories = true;
     const cloud = await FoodRecognitionService.getInstance().calculateSportCalories(
@@ -365,7 +394,7 @@ struct SportPage {
                 .onChange((v: string) => { this.manualMin = v; })
                 .margin({ bottom: 10 })
 
-              if (this.manualSport === 'walk' || this.manualSport === 'run' || this.manualSport === 'cycle') {
+              if (Constants.GPS_SPORTS.has(this.manualSport)) {
                 Text('运动距离 (公里，可选)').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
                 TextInput({ placeholder: '如 3.5', text: this.manualKm })
                   .type(InputType.Number).width('100%').height(44)
@@ -472,9 +501,24 @@ struct SportPage {
               .margin({ top: 8 })
 
               Row() {
-                Column() {
-                  Text(this.distanceKm.toFixed(2)).fontSize(24).fontWeight(FontWeight.Bold)
-                  Text(this.useGps ? '公里(GPS)' : '公里').fontSize(12).fontColor(this.sub())
+                if (this.isGpsSport()) {
+                  // GPS 运动：显示距离
+                  Column() {
+                    Text(this.distanceKm.toFixed(2)).fontSize(24).fontWeight(FontWeight.Bold)
+                    Text(this.useGps ? '公里(GPS)' : '公里').fontSize(12).fontColor(this.sub())
+                  }
+                } else if (this.isStationarySport()) {
+                  // 原地运动：显示强度
+                  Column() {
+                    Text(this.intensity.replace('强度', '')).fontSize(24).fontWeight(FontWeight.Bold)
+                    Text('运动强度').fontSize(12).fontColor(this.sub())
+                  }
+                } else {
+                  // 其他运动：显示距离（如果有的话）
+                  Column() {
+                    Text(this.distanceKm.toFixed(2)).fontSize(24).fontWeight(FontWeight.Bold)
+                    Text('公里').fontSize(12).fontColor(this.sub())
+                  }
                 }
                 Divider().vertical(true).height(50).margin({ left: 24, right: 24 })
                 Column() {
@@ -493,10 +537,17 @@ struct SportPage {
               }
               .width('100%').justifyContent(FlexAlign.Center).margin({ top: 16 })
 
-              Text(this.useGps ?
-                '按体重 ' + this.bodyWeight.toFixed(0) + 'kg × 路程 ' + this.distanceKm.toFixed(2) + 'km 估算' :
-                '卡路里按体重 ' + this.bodyWeight.toFixed(0) + 'kg 估算')
-                .fontSize(11).fontColor(this.sub()).margin({ top: 8 })
+              // 根据运动类型显示不同的热量计算提示
+              if (this.isGpsSport()) {
+                Text('按体重 ' + this.bodyWeight.toFixed(0) + 'kg × 路程 ' + this.distanceKm.toFixed(2) + 'km 估算')
+                  .fontSize(11).fontColor(this.sub()).margin({ top: 8 })
+              } else if (this.isStationarySport()) {
+                Text('按体重 ' + this.bodyWeight.toFixed(0) + 'kg × ' + this.intensity + '估算')
+                  .fontSize(11).fontColor(this.sub()).margin({ top: 8 })
+              } else {
+                Text('卡路里按体重 ' + this.bodyWeight.toFixed(0) + 'kg 估算')
+                  .fontSize(11).fontColor(this.sub()).margin({ top: 8 })
+              }
 
               if (this.useGps) {
                 Text('📡 ' + this.gpsStatus).fontSize(11)

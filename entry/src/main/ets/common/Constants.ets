@@ -57,6 +57,15 @@ export class Constants {
 
   static readonly INTENSITIES: string[] = ['低强度', '中强度', '高强度'];
 
+  // 运动类型分类：有位移的运动（使用 GPS）和原地运动（不使用 GPS）
+  static readonly GPS_SPORTS: Set<string> = new Set<string>(['walk', 'run', 'cycle']);
+  static readonly STATIONARY_SPORTS: Set<string> = new Set<string>(['swim', 'yoga', 'strength']);
+
+  // 原地运动的强度系数（低/中/高）
+  static readonly INTENSITY_MULTIPLIERS: Map<string, number> = new Map<string, number>([
+    ['低强度', 0.7], ['中强度', 1.0], ['高强度', 1.3]
+  ]);
+
   static readonly FOOD_CATEGORIES: string[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
   static readonly MET_VALUES: Map<string, number> = new Map<string, number>([
