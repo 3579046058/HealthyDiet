@@ -376,6 +376,40 @@ struct Index {
         .backgroundColor(this.cardColor).borderRadius(16)
         .margin({ left: 16, right: 16, top: 16 })
 
+        Row() {
+          Column() {
+            Text('今日健康评分')
+              .fontSize(14)
+              .fontColor(this.subTextColor)
+            Row() {
+              Text(String(this.getHealthScore()))
+                .fontSize(36)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(this.getScoreColor(this.getHealthScore()))
+                .margin({ top: 4 })
+                .layoutWeight(2)
+              
+              Blank().layoutWeight(2)
+              
+              Progress({ value: this.getHealthScore(), total: 100, type: ProgressType.Linear })
+                .layoutWeight(6)
+                .height(8)
+                .color(this.getScoreColor(this.getHealthScore()))
+                .backgroundColor('#404040')
+                .margin({ top: 12 })
+            }
+            .width('100%')
+            .alignItems(VerticalAlign.Center)
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor(this.cardColor)
+        .borderRadius(16)
+        .margin({ left: 16, right: 16, top: 16 })
+
         Text('今日概览').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           .width('100%').padding({ left: 20, top: 20, bottom: 8 })
 
@@ -394,45 +428,6 @@ struct Index {
           }
         }
         .columnsTemplate('1fr 1fr').columnsGap(12).rowsGap(12).padding({ left: 16, right: 16 })
-
-        Row() {
-          Column() {
-            Text('今日健康评分')
-              .fontSize(14)
-              .fontColor(this.subTextColor)
-            Text(String(this.getHealthScore()))
-              .fontSize(36)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getScoreColor(this.getHealthScore()))
-              .margin({ top: 4 })
-          }
-          .alignItems(HorizontalAlign.Start)
-          .layoutWeight(1)
-
-          Column() {
-            Row() {
-              Text('步数').fontSize(12).fontColor(this.subTextColor)
-              Blank()
-              Text(this.stepCount > 0 ? String(this.stepCount) : '--').fontSize(13).fontColor(this.textColor)
-            }
-            Row() {
-              Text('运动').fontSize(12).fontColor(this.subTextColor)
-              Blank()
-              Text(this.exerciseMin > 0 ? String(this.exerciseMin) + '分' : '--').fontSize(13).fontColor(this.textColor)
-            }
-            Row() {
-              Text('睡眠').fontSize(12).fontColor(this.subTextColor)
-              Blank()
-              Text(this.sleepHours !== '0' && this.sleepHours !== '0.0' ? this.sleepHours + '时' : '--').fontSize(13).fontColor(this.textColor)
-            }
-          }
-          .layoutWeight(1)
-        }
-        .width('100%')
-        .padding(16)
-        .backgroundColor(this.cardColor)
-        .borderRadius(16)
-        .margin({ left: 16, right: 16, top: 16 })
 
         Text('快捷功能').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           .width('100%').padding({ left: 20, top: 20, bottom: 8 })
