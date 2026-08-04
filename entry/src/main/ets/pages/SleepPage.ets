@@ -9,6 +9,8 @@ struct SleepPage {
   @State showInput: boolean = false;
   @State startTime: string = '23:00';
   @State endTime: string = '07:00';
+  @State startDate: string = ''; // 入睡日期
+  @State endDate: string = ''; // 醒来日期
   @State deepMin: string = '90';
   @State lightMin: string = '270';
   @State remMin: string = '120';
@@ -26,6 +28,19 @@ struct SleepPage {
     this.loadData();
     this.loadSleepStartRecord();
     this.startAutoRefresh();
+    this.initDates();
+  }
+
+  // 初始化日期（入睡日期默认昨天，醒来日期默认今天）
+  async initDates(): Promise<void> {
+    const today = await GlobalData.getTodayDate();
+    this.endDate = today; // 醒来日期默认今天
+    
+    // 计算昨天的日期
+    const todayDate = new Date(today);
+    todayDate.setDate(todayDate.getDate() - 1);
+    const yesterday = todayDate.toISOString().split('T')[0];
+    this.startDate = yesterday; // 入睡日期默认昨天
   }
 
   aboutToDisappear(): void {
@@ -217,13 +232,24 @@ struct SleepPage {
     const em = parseInt(endParts[1]) || 0;
     const startMin = sh * 60 + sm;
     const endMin = eh * 60 + em;
-    if (startMin === endMin) {
+    
+    // 计算睡眠时长，考虑跨天和跨日期的情况
+    let sleepDuration = endMin - startMin;
+    
+    // 如果醒来日期和入睡日期不同，需要加上天数差
+    const startDateObj = new Date(this.startDate);
+    const endDateObj = new Date(this.endDate);
+    const daysDiff = Math.floor((endDateObj.getTime() - startDateObj.getTime()) / (24 * 60 * 60 * 1000));
+    
+    if (daysDiff > 0) {
+      sleepDuration += daysDiff * 24 * 60;
+    } else if (sleepDuration < 0) {
+      sleepDuration += 24 * 60;
+    }
+    
+    if (startMin === endMin && daysDiff === 0) {
       promptAction.showToast({ message: '入睡和醒来时间不能相同' });
       return;
-    }
-    let sleepDuration = endMin - startMin;
-    if (sleepDuration < 0) {
-      sleepDuration += 24 * 60;
     }
     if (sleepDuration < 120) {
       promptAction.showToast({ message: '睡眠时长太短，至少2小时' });
@@ -232,9 +258,6 @@ struct SleepPage {
     if (sleepDuration > 18 * 60) {
       promptAction.showToast({ message: '睡眠时长异常，请检查时间设置' });
       return;
-    }
-    if (endMin < startMin) {
-      promptAction.showToast({ message: '醒来时间早于入睡时间，已按跨天睡眠计算' });
     }
 
     // 按健康睡眠比例自动估算分期：深睡20%、浅睡55%、REM25%
@@ -245,10 +268,9 @@ struct SleepPage {
     this.lightMin = String(l);
     this.remMin = String(r);
 
-    const today = await GlobalData.getTodayDate();
     const score = this.calcScore();
     const record: DbRow = {
-      date: today,
+      date: this.endDate, // 使用醒来日期作为记录日期
       start_time: this.startTime,
       end_time: this.endTime,
       deep_sleep_min: d,
@@ -258,9 +280,12 @@ struct SleepPage {
       score: score,
     };
     await GlobalData.db.addSleepRecord(record);
-    await GlobalData.db.updateDailySummaryField(today, 'sleep_score', score);
-    await GlobalData.db.updateDailySummaryField(today, 'sleep_hours', Math.round(sleepDuration / 60 * 10) / 10);
+    await GlobalData.db.updateDailySummaryField(this.endDate, 'sleep_score', score);
+    await GlobalData.db.updateDailySummaryField(this.endDate, 'sleep_hours', Math.round(sleepDuration / 60 * 10) / 10);
     this.showInput = false;
+    
+    // 重置日期为默认值
+    await this.initDates();
     await this.loadData();
   }
 
@@ -346,6 +371,19 @@ struct SleepPage {
       Row() {
         Text('←').fontSize(22).onClick(() => { router.back(); })
         Text('睡眠分析').fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 12 })
+        Blank()
+        Button('+')
+          .fontSize(24)
+          .fontWeight(FontWeight.Bold)
+          .width(40)
+          .height(40)
+          .backgroundColor('#9C27B0')
+          .fontColor(Color.White)
+          .borderRadius(20)
+          .padding(0)
+          .onClick(() => {
+            this.showInput = !this.showInput;
+          })
       }
       .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
@@ -427,12 +465,34 @@ struct SleepPage {
               Text('添加睡眠记录').fontSize(16).fontWeight(FontWeight.Bold).margin({ bottom: 12 })
 
               Row() {
+                Text('入睡日期: ').fontSize(14).width(90)
+                DatePicker({ selected: new Date(this.startDate) })
+                  .width(160)
+                  .onChange((value: DatePickerResult) => {
+                    if (value.year !== undefined && value.month !== undefined && value.day !== undefined) {
+                      this.startDate = `${value.year}-${String(value.month + 1).padStart(2, '0')}-${String(value.day).padStart(2, '0')}`;
+                    }
+                  })
+              }.width('100%').padding({ bottom: 8 })
+
+              Row() {
                 Text('入睡时间: ').fontSize(14).width(90)
                 TimePicker({ selected: this.parseTimeToDate(this.startTime) })
                   .useMilitaryTime(true)
                   .width(160)
                   .onChange((value: TimePickerResult) => {
                     this.startTime = this.formatPickerTime(value);
+                  })
+              }.width('100%').padding({ bottom: 8 })
+
+              Row() {
+                Text('醒来日期: ').fontSize(14).width(90)
+                DatePicker({ selected: new Date(this.endDate) })
+                  .width(160)
+                  .onChange((value: DatePickerResult) => {
+                    if (value.year !== undefined && value.month !== undefined && value.day !== undefined) {
+                      this.endDate = `${value.year}-${String(value.month + 1).padStart(2, '0')}-${String(value.day).padStart(2, '0')}`;
+                    }
                   })
               }.width('100%').padding({ bottom: 8 })
 
@@ -489,66 +549,110 @@ struct SleepPage {
           }
 
           // 历史记录
-          Text('历史记录').fontSize(16).fontWeight(FontWeight.Bold)
-            .width('100%').padding({ left: 16, top: 20, bottom: 8 })
+          Row() {
+            Text('历史记录').fontSize(16).fontWeight(FontWeight.Bold)
+            Blank()
+            Text('共 ' + this.records.length + ' 条记录').fontSize(12).fontColor(this.sub())
+          }
+          .width('100%').padding({ left: 16, right: 16, top: 20, bottom: 8 })
 
           // 入睡记录（未完成）
           if (this.isSleeping) {
-            Row() {
-              Column() {
-                Text('入睡中').fontSize(12).fontColor('#9C27B0').fontWeight(FontWeight.Bold)
-                Text(this.sleepStartTime + ' 入睡').fontSize(14)
-              }
-              .alignItems(HorizontalAlign.Start)
-              Blank()
+            Column() {
               Row() {
-                Text('等待醒来').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#4CAF50')
-                Blank().width(12)
+                Column() {
+                  Row() {
+                    Text('●').fontSize(12).fontColor('#9C27B0')
+                    Text(' 入睡中').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#9C27B0')
+                  }
+                  Text(this.sleepStartTime + ' 入睡').fontSize(13).fontColor(this.sub()).margin({ top: 4 })
+                }
+                .alignItems(HorizontalAlign.Start)
+                .layoutWeight(1)
+                
+                Column() {
+                  Text('等待醒来').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#4CAF50')
+                  Button('删除')
+                    .fontSize(12)
+                    .backgroundColor('#FF5722')
+                    .fontColor(Color.White)
+                    .height(28)
+                    .padding({ left: 12, right: 12 })
+                    .margin({ top: 4 })
+                    .onClick(async () => {
+                      await this.deleteSleepStartRecord();
+                    })
+                }
+                .alignItems(HorizontalAlign.End)
+              }
+              .width('100%')
+            }
+            .width('100%').padding(16)
+            .backgroundColor(this.card()).borderRadius(12)
+            .margin({ left: 16, right: 16, bottom: 8 })
+          }
+
+          ForEach(this.records, (record: DbRow) => {
+            Column() {
+              Row() {
+                Column() {
+                  Text(String(record.date)).fontSize(13).fontColor(this.sub())
+                  Text(String(record.start_time) + ' - ' + String(record.end_time)).fontSize(15).fontWeight(FontWeight.Medium)
+                }
+                .alignItems(HorizontalAlign.Start)
+                .layoutWeight(1)
+                
+                Column() {
+                  Text(String(record.total_minutes) + ' 分钟').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#9C27B0')
+                  Text('评分 ' + String(record.score)).fontSize(13).fontColor(this.sub())
+                }
+                .alignItems(HorizontalAlign.End)
+                
                 Button('删除')
                   .fontSize(12)
                   .backgroundColor('#FF5722')
                   .fontColor(Color.White)
                   .height(28)
-                  .padding({ left: 12, right: 12 })
-                  .onClick(async () => {
-                    await this.deleteSleepStartRecord();
-                  })
+                  .padding({ left: 8, right: 8 })
+                  .margin({ left: 8 })
+                  .onClick(() => { this.deleteRecord(Number(record.id)); })
               }
-            }
-            .width('100%').padding(14)
-            .backgroundColor(this.card()).borderRadius(10)
-            .margin({ left: 16, right: 16, bottom: 8 })
-          }
-
-          List() {
-            ForEach(this.records, (record: DbRow) => {
-              ListItem() {
-                Row() {
-                  Column() {
-                    Text(String(record.date)).fontSize(12).fontColor(this.sub())
-                    Text(String(record.start_time) + ' - ' + String(record.end_time)).fontSize(14)
-                  }
-                  .alignItems(HorizontalAlign.Start)
-                  Blank()
-                  Column() {
-                    Text(String(record.total_minutes) + 'min').fontSize(14).fontWeight(FontWeight.Bold)
-                    Text('评分 ' + String(record.score)).fontSize(12).fontColor('#9C27B0')
-                  }
-                  .alignItems(HorizontalAlign.End)
-                  Text('🗑').fontSize(16).margin({ left: 10 })
-                    .onClick(() => { this.deleteRecord(Number(record.id)); })
+              .width('100%')
+              
+              // 睡眠详情
+              Row() {
+                Column() {
+                  Text('深睡').fontSize(11).fontColor(this.sub())
+                  Text(String(record.deep_sleep_min) + 'min').fontSize(12).fontWeight(FontWeight.Bold)
                 }
-                .width('100%').padding(14)
-                .backgroundColor(this.card()).borderRadius(10)
+                Column() {
+                  Text('浅睡').fontSize(11).fontColor(this.sub())
+                  Text(String(record.light_sleep_min) + 'min').fontSize(12).fontWeight(FontWeight.Bold)
+                }
+                Column() {
+                  Text('REM').fontSize(11).fontColor(this.sub())
+                  Text(String(record.rem_min) + 'min').fontSize(12).fontWeight(FontWeight.Bold)
+                }
               }
-            })
-          }
-          .width('100%').padding({ left: 16, right: 16 }).height(250)
+              .width('100%')
+              .justifyContent(FlexAlign.SpaceEvenly)
+              .margin({ top: 8 })
+              .padding({ top: 8 })
+              .border({ width: { top: 1 }, color: this.sub() })
+            }
+            .width('100%').padding(16)
+            .backgroundColor(this.card()).borderRadius(12)
+            .margin({ left: 16, right: 16, bottom: 8 })
+          })
 
           Divider().opacity(0).height(24)
         }
         .width('100%')
       }
+      .width('100%')
+      .layoutWeight(1)
+      .scrollBar(BarState.Off)
+      .edgeEffect(EdgeEffect.Spring)
     }
     .width('100%').height('100%').backgroundColor(this.bg())
   }
