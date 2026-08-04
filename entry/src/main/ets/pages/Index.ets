@@ -11,6 +11,7 @@ import { RingProgress } from '../components/RingProgress';
 import { HealthCard } from '../components/HealthCard';
 import { FoodRecognitionTab } from '../components/FoodRecognitionTab';
 import { WeightDialog } from '../components/WeightDialog';
+import { NestedRings } from '../components/NestedRings';
 
 // 健康卡片类型定义
 interface HealthCardItem {
@@ -47,6 +48,7 @@ struct Index {
   @State moveCal: number = 0;
   @State exerciseMin: number = 0;
   @State moodValue: number = 0;
+  @State ringDisplayMode: boolean = false; // false: 三个独立圆环, true: 嵌套圆环
 
   @State stepCount: number = 0;
   @State stepGoal: number = 8000;
@@ -766,12 +768,54 @@ struct Index {
         }
         .width('100%').padding({ left: 20, right: 20, top: 12 + this.statusBarHeight })
 
-        Row() {
-          RingProgress({ progress: this.moveProgress, strokeColor: Constants.COLOR_MOVE, ringSize: 90, strokeWidth: 10, label: '活动', valueText: this.moveCal > 0 ? String(this.moveCal) : '--', unit: '千卡' })
-          RingProgress({ progress: this.exerciseProgress, strokeColor: Constants.COLOR_EXERCISE, ringSize: 90, strokeWidth: 10, label: '锻炼', valueText: this.exerciseMin > 0 ? String(this.exerciseMin) : '--', unit: '分钟' })
-          RingProgress({ progress: this.moodProgress, strokeColor: Constants.COLOR_MOOD, ringSize: 90, strokeWidth: 10, label: '心情', valueText: this.moodValue > 0 ? this.getMoodEmoji(this.moodValue) : '--', unit: this.moodValue > 0 ? '心情 ' + String(this.moodValue) : '暂无记录' })
+        // 圆环切换区域
+        Column() {
+          // 切换按钮 - 右上角
+          Row() {
+            Button('切换样式')
+              .fontSize(12)
+              .fontColor(this.theme === 'dark' ? '#FFFFFF' : '#000000')
+              .backgroundColor(this.theme === 'dark' ? '#333333' : '#E0E0E0')
+              .borderRadius(8)
+              .height(28)
+              .padding({ left: 12, right: 12 })
+              .onClick(() => {
+                this.ringDisplayMode = !this.ringDisplayMode;
+              })
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.End)
+          .padding({ left: 16, right: 16, top: 12 })
+
+          // 圆环显示区域
+          if (this.ringDisplayMode) {
+            // 嵌套圆环模式
+            Column() {
+              NestedRings({
+                stepProgress: (this.stepCount / this.stepGoal) * 100,
+                sleepProgress: (parseFloat(this.sleepHours) / Constants.DEFAULT_SLEEP_GOAL_HOURS) * 100,
+                moodProgress: this.moodProgress,
+                stepColor: Constants.COLOR_STEP,
+                sleepColor: Constants.COLOR_SLEEP,
+                moodColor: Constants.COLOR_MOOD,
+                stepValue: this.stepCount > 0 ? String(this.stepCount) : '--',
+                sleepValue: this.sleepHours !== '0' ? this.sleepHours : '--',
+                moodValue: this.moodValue > 0 ? this.getMoodEmoji(this.moodValue) + ' 心情 ' + String(this.moodValue) : '暂无记录'
+              })
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, top: 8, bottom: 16 })
+          } else {
+            // 三个独立圆环模式
+            Row() {
+              RingProgress({ progress: (this.stepCount / this.stepGoal) * 100, strokeColor: Constants.COLOR_STEP, ringSize: 90, strokeWidth: 10, label: '步数', valueText: this.stepCount > 0 ? String(this.stepCount) : '--', unit: '步' })
+              RingProgress({ progress: (parseFloat(this.sleepHours) / Constants.DEFAULT_SLEEP_GOAL_HOURS) * 100, strokeColor: Constants.COLOR_SLEEP, ringSize: 90, strokeWidth: 10, label: '睡眠', valueText: this.sleepHours !== '0' ? this.sleepHours : '--', unit: '小时' })
+              RingProgress({ progress: this.moodProgress, strokeColor: Constants.COLOR_MOOD, ringSize: 90, strokeWidth: 10, label: '心情', valueText: this.moodValue > 0 ? this.getMoodEmoji(this.moodValue) : '--', unit: this.moodValue > 0 ? '心情 ' + String(this.moodValue) : '暂无记录' })
+            }
+            .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding({ left: 16, right: 16, top: 8, bottom: 16 })
+          }
         }
-        .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding(16)
+        .width('100%')
         .backgroundColor(this.cardColor).borderRadius(16)
         .margin({ left: 16, right: 16, top: 16 })
 
