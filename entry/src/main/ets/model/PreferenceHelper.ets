@@ -1,5 +1,6 @@
 import { preferences } from '@kit.ArkData';
 import { GoalConfig, StreakData, AiConfig } from '../common/Constants';
+import { GlobalData } from '../common/GlobalData';
 
 // 基础存储key
 const KEY_STEP_GOAL = 'goal_steps';
@@ -31,6 +32,7 @@ const KEY_DAILY_CARBS = "daily_carbs";
 const KEY_ACHIEVEMENT_DAYS = 'achievement_days'; // 已解锁的成就天数列表
 const KEY_ACHIEVEMENT_DATES = 'achievement_dates'; // 成就解锁日期映射（天数:日期）
 const KEY_LAST_ACHIEVEMENT_CHECK_DATE = 'last_achievement_check_date'; // 上次检查成就的日期
+const KEY_MAKEUP_DAYS = 'makeup_days'; // 补录达标日期列表
 
 export class PreferenceHelper {
   private pref_: preferences.Preferences | null = null;
@@ -363,6 +365,55 @@ export class PreferenceHelper {
       await this.pref.flush();
     } catch (err) {
       console.error('setAiConfig error:', JSON.stringify(err));
+    }
+  }
+
+  // ========== 补录达标日期相关方法 ==========
+  async getMakeupDays(): Promise<string[]> {
+    try {
+      const daysStr = await this.pref.get(KEY_MAKEUP_DAYS, '') as string;
+      if (daysStr === '') {
+        return [];
+      }
+      return daysStr.split(',').filter(d => d.length > 0);
+    } catch (err) {
+      console.error('getMakeupDays error:', JSON.stringify(err));
+      return [];
+    }
+  }
+
+  async saveMakeupDays(days: string[]): Promise<void> {
+    try {
+      const daysStr = days.join(',');
+      await this.pref.put(KEY_MAKEUP_DAYS, daysStr);
+      await this.pref.flush();
+    } catch (err) {
+      console.error('saveMakeupDays error:', JSON.stringify(err));
+    }
+  }
+
+  async addMakeupDay(date: string): Promise<void> {
+    try {
+      const days = await this.getMakeupDays();
+      if (!days.includes(date)) {
+        days.push(date);
+        await this.saveMakeupDays(days);
+      }
+    } catch (err) {
+      console.error('addMakeupDay error:', JSON.stringify(err));
+    }
+  }
+
+  async removeMakeupDay(date: string): Promise<void> {
+    try {
+      const days = await this.getMakeupDays();
+      const index = days.indexOf(date);
+      if (index >= 0) {
+        days.splice(index, 1);
+        await this.saveMakeupDays(days);
+      }
+    } catch (err) {
+      console.error('removeMakeupDay error:', JSON.stringify(err));
     }
   }
 }

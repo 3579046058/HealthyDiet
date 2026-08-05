@@ -79,6 +79,7 @@ struct Index {
   @State greeting: string = '';
   @State streakCurrent: number = 0;
   @State streakBest: number = 0;
+  @State makeupDaysCount: number = 0; // 补录天数数量
   @State currentTabIndex: number = 0;
   @State isLoggedIn: boolean = false;
   @State diaryDietRecords: DbRow[] = [];
@@ -421,6 +422,10 @@ struct Index {
       const streak: StreakData = await GlobalData.prefs.getStreakData();
       this.streakCurrent = streak.current;
       this.streakBest = streak.best;
+      
+      // 加载补录天数
+      const makeupDays = await GlobalData.prefs.getMakeupDays();
+      this.makeupDaysCount = makeupDays.length;
 
       const loginRaw: string | number | boolean = await GlobalData.prefs.get('login_status', 'false');
       const loginStatus: string = String(loginRaw);
@@ -765,11 +770,21 @@ struct Index {
             }
           }
         }
+        
+        // 连续天数更新时，触发数据刷新
+        if (streak.current !== prevStreakCurrent) {
+          this.dataUpdateTrigger = Date.now().toString();
+        }
       } else {
         // 如果没有达到60分，重置连续天数
         const streak: StreakData = await GlobalData.prefs.updateStreak(false);
         this.streakCurrent = streak.current;
         this.streakBest = streak.best;
+        
+        // 连续天数重置时，触发数据刷新
+        if (streak.current !== prevStreakCurrent) {
+          this.dataUpdateTrigger = Date.now().toString();
+        }
       }
     } catch (err) {
       console.error('checkAchievements error:', JSON.stringify(err));
@@ -845,7 +860,7 @@ struct Index {
               themeMode: this.themeMode,
               theme: this.theme,
               greeting: this.greeting,
-              streakCurrent: this.streakCurrent,
+              streakCurrent: this.streakCurrent + this.makeupDaysCount, // 连续天数 + 补录天数
               ringDisplayMode: this.ringDisplayMode,
               stepCount: this.stepCount,
               stepGoal: this.stepGoal,

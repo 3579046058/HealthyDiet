@@ -236,7 +236,7 @@ export struct HealthTab {
           if (this.streakCurrent > 0) {
             Column() {
               Text('🔥').fontSize(20)
-              Text(String(this.streakCurrent) + '天').fontSize(11).fontColor('#FFD700')
+              Text(String(this.streakCurrent) + '天').fontSize(11).fontColor('#E65100')
             }
             .margin({ right: 12 })
           }

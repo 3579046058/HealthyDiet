@@ -5,6 +5,7 @@ import { GlobalData } from '../common/GlobalData';
 @Component
 export struct AccountTab {
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  @StorageLink('dataUpdateTrigger') @Watch('onDataUpdate') dataUpdateTrigger: string = '';
   @Prop textColor: string = '#FFFFFF';
   @Prop subTextColor: string = '#AAAAAA';
   @Prop cardColor: string = '#1E1E2E';
@@ -22,6 +23,13 @@ export struct AccountTab {
   
   aboutToAppear(): void {
     this.loadAchievements();
+  }
+  
+  // 监听数据更新触发器
+  onDataUpdate(): void {
+    if (this.dataUpdateTrigger.length > 0) {
+      this.loadAchievements();
+    }
   }
   
   async loadAchievements(): Promise<void> {
@@ -68,6 +76,23 @@ export struct AccountTab {
         this.accountMenuItem('⚙️', '设置', '通知、目标、主题、关于', () => { this.onNavigate(Constants.PAGE_SETTINGS); })
         this.accountMenuItem('📊', '健康报告', '查看周报月报', () => { this.onNavigate(Constants.PAGE_REPORT); })
         this.accountMenuItem('🗑️', '回收站', '恢复已删除的数据', () => { this.onNavigate(Constants.PAGE_RECYCLE_BIN); })
+
+        // 补录达标天数
+        Row() {
+          Text('📅').fontSize(22)
+          Column() {
+            Text('补录达标天数').fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.textColor)
+            Text('手动添加历史达标记录')
+              .fontSize(11)
+              .fontColor(this.subTextColor)
+              .margin({ top: 2 })
+          }
+          .alignItems(HorizontalAlign.Start).margin({ left: 12 }).layoutWeight(1)
+          Text('›').fontSize(20).fontColor(this.subTextColor)
+        }
+        .width('100%').padding(14).backgroundColor(this.cardColor).borderRadius(12)
+        .margin({ left: 16, right: 16, bottom: 8 })
+        .onClick(() => { this.onNavigate(Constants.PAGE_MAKEUP_DAYS); })
 
         // 成就墙（卡片样式）
         Row() {

@@ -1,4 +1,5 @@
 import { router } from '@kit.ArkUI';
+import { promptAction } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { DbRow, ThemeColors } from '../common/Constants';
 import { CardDataHelper } from '../services/CardDataHelper';
@@ -13,6 +14,8 @@ struct WaterPage {
   @State goalInput: string = '';
   @State timeline: DbRow[] = [];
   @State detailRecord: DbRow | null = null;
+  @State barAnimWidth: number = 0; // 进度条动画宽度，从0开始渐变到目标值
+  @State barHeights: number[] = []; // 柱状图每根柱子的动画高度，从0渐变到目标值
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
   private lastClickTime: number = 0;
@@ -46,16 +49,45 @@ struct WaterPage {
       
       // 通知 Index 页面数据已更新
       AppStorage.setOrCreate('dataUpdateTrigger', `water_${Date.now()}`);
+
+      // 进度条从0动画过渡到目标宽度
+      const targetWidth = Math.min(100, (total / this.goalMl) * 100);
+      animateTo({ duration: 900, curve: Curve.EaseOut }, () => {
+        this.barAnimWidth = targetWidth;
+      });
+      // 柱状图从0动画过渡到目标高度
+      this.animateBarChart();
     } catch (err) {
       console.error('WaterPage loadData error:', JSON.stringify(err));
     }
   }
 
   async deleteTimelineItem(id: number): Promise<void> {
+    // 找到要删除的柱子在 timeline 中的索引
+    const idx = this.timeline.findIndex((r: DbRow) => Number(r.id) === id);
+    if (idx >= 0 && idx < this.barHeights.length) {
+      // 先让被删柱子动画从当前高度缩到 0，其他柱子不动
+      animateTo({ duration: 500, curve: Curve.EaseOut }, () => {
+        this.barHeights[idx] = 0;
+      });
+      // 等待动画完成后，从数据和数组中移除该柱子
+      setTimeout(async () => {
+        await GlobalData.db.deleteWaterTimelineItem(id);
+        const today = await GlobalData.getTodayDate();
+        this.timeline = await GlobalData.db.getWaterTimeline(today);
+        this.barHeights.splice(idx, 1);
+        await this.syncWaterSummary(today);
+        promptAction.showToast({ message: '记录删除成功', duration: 2000, bottom: 80 });
+      }, 500);
+      return;
+    }
+    // fallback：索引未找到时直接删除
     await GlobalData.db.deleteWaterTimelineItem(id);
     const today = await GlobalData.getTodayDate();
     this.timeline = await GlobalData.db.getWaterTimeline(today);
+    this.animateBarChart();
     await this.syncWaterSummary(today);
+    promptAction.showToast({ message: '记录删除成功', duration: 2000, bottom: 80 });
   }
 
   async addCup(): Promise<void> {
@@ -64,9 +96,31 @@ struct WaterPage {
     await GlobalData.db.addWaterCup(today, this.cupMl);
     await GlobalData.db.addWaterTimeline(today, now, this.cupMl);
     this.currentMl += this.cupMl;
+    // 进度条动画过渡到新的宽度
+    const targetWidth = Math.min(100, (this.currentMl / this.goalMl) * 100);
+    animateTo({ duration: 600, curve: Curve.EaseOut }, () => {
+      this.barAnimWidth = targetWidth;
+    });
+    const prevLen = this.barHeights.length;
     this.timeline = await GlobalData.db.getWaterTimeline(today);
+
+    // 仅动画新添加的柱子：在 barHeights 末尾追加 0，然后渐变到目标高度，已有柱子不动
+    const newCount = this.timeline.length - prevLen;
+    if (newCount > 0) {
+      this.barHeights = [...this.barHeights, ...new Array<number>(newCount).fill(0)];
+      const targetHeights = this.timeline.slice(prevLen).map((r: DbRow) => this.calcBarHeight(Number(r.ml)));
+      animateTo({ duration: 600, curve: Curve.EaseOut }, () => {
+        const updated = [...this.barHeights];
+        for (let i = 0; i < newCount; i++) {
+          updated[prevLen + i] = targetHeights[i];
+        }
+        this.barHeights = updated;
+      });
+    }
+
     await this.syncWaterSummary(today);
     this.refreshCard();
+    promptAction.showToast({ message: `喝水记录添加成功  +${this.cupMl}ml`, duration: 2000, bottom: 80 });
   }
 
   // 刷新桌面卡片（复用完整数据，包含三环/评分/心情等所有字段）
@@ -86,6 +140,12 @@ struct WaterPage {
       
       // 通知 Index 页面数据已更新
       AppStorage.setOrCreate('dataUpdateTrigger', `water_${Date.now()}`);
+
+      // 进度条动画过渡到新的宽度
+      const targetWidth = Math.min(100, (total / this.goalMl) * 100);
+      animateTo({ duration: 600, curve: Curve.EaseOut }, () => {
+        this.barAnimWidth = targetWidth;
+      });
     } catch (err) {
       console.error('WaterPage syncWaterSummary error:', JSON.stringify(err));
     }
@@ -106,6 +166,24 @@ struct WaterPage {
   card(): string { return ThemeColors.cardBg(this.theme); }
   txt(): string { return ThemeColors.textPrimary(this.theme); }
   sub(): string { return ThemeColors.textSecondary(this.theme); }
+
+  calcBarHeight(ml: number): number {
+    return Math.max(10, Math.min(90, ml / 5));
+  }
+
+  animateBarChart(): void {
+    if (this.timeline.length === 0) {
+      this.barHeights = [];
+      return;
+    }
+    const targetHeights = this.timeline.map((r: DbRow) => this.calcBarHeight(Number(r.ml)));
+    // 先重置为0，触发"从短到长"的动画起点
+    this.barHeights = targetHeights.map(() => 0);
+    // animateTo 驱动高度从0渐变到目标值
+    animateTo({ duration: 700, curve: Curve.EaseOut }, () => {
+      this.barHeights = targetHeights;
+    });
+  }
 
   build() {
     Stack() {
@@ -142,7 +220,7 @@ struct WaterPage {
             Stack() {
               Row().width('100%').height(14).backgroundColor(ThemeColors.divider(this.theme)).borderRadius(7)
               Row()
-                .width(Math.min(100, (this.currentMl / this.goalMl) * 100) + '%')
+                .width(this.barAnimWidth + '%')
                 .height(14).backgroundColor('#03A9F4').borderRadius(7)
             }
             .width('80%').margin({ top: 16 })
@@ -191,12 +269,12 @@ struct WaterPage {
             // 柱状图：每根柱子代表一次喝水，高度按 ml 比例
             Scroll() {
               Row() {
-                ForEach(this.timeline, (item: DbRow) => {
+                ForEach(this.timeline, (item: DbRow, index: number) => {
                   Column() {
                     // 柱子（点击弹出详情卡片，删除功能在卡片里）
                     Row()
                       .width(20)
-                      .height(Math.max(10, Math.min(90, Number(item.ml) / 5)))
+                      .height(index < this.barHeights.length ? this.barHeights[index] : 0)
                       .backgroundColor('#03A9F4')
                       .borderRadius({ topLeft: 6, topRight: 6 })
                     // 时间

@@ -5,11 +5,22 @@ import { http } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { FoodCalories, AiDefaults } from '../common/Constants';
 
+export interface RecognizedFoodItem {
+  id: string;
+  foodName: string;
+  grams: number;
+  calories: number;
+  isSnack: boolean;
+  snackReason: string;
+  saved: boolean;
+}
+
 export interface RecognitionOutcome {
   foodName: string;
   confidence: number;
   source: string;
   error?: string;
+  foodItems?: RecognizedFoodItem[];
 }
 
 export interface SnackJudge {
@@ -108,6 +119,118 @@ export class FoodRecognitionService {
       return { foodName: '', confidence: 0, source: RecognitionMode.CLOUD, error: '云端识别失败，请检查网络或稍后重试' };
     }
     return { foodName: '', confidence: 0, source: RecognitionMode.LOCAL, error: '未配置云端识别 Key' };
+  }
+
+  /**
+   * 多食物识别：识别图片中的所有食物
+   * 返回包含多个食物项的 RecognitionOutcome
+   */
+  async recognizeMultiple(uri: string): Promise<RecognitionOutcome> {
+    if (!this.isCloudConfigured()) {
+      return { foodName: '', confidence: 0, source: RecognitionMode.LOCAL, error: '未配置云端识别 Key' };
+    }
+    try {
+      const base64 = await this.uriToBase64(uri);
+      if (base64.length === 0) {
+        console.error('recognizeMultiple: base64 empty, uri=' + uri);
+        return { foodName: '', confidence: 0, source: RecognitionMode.CLOUD, error: '图片读取失败' };
+      }
+
+      const imageUrl: Record<string, string> = { 'url': 'data:image/jpeg;base64,' + base64 };
+      const imgContent: GlmContent = {
+        type: 'image_url',
+        image_url: imageUrl
+      };
+      const textContent: GlmContent = {
+        type: 'text',
+        text: '请识别图片中的所有食物，用逗号分隔列出每个食物名称（中文），不要其他文字。例如：米饭,红烧肉,青菜'
+      };
+      const contents: Array<GlmContent> = [imgContent, textContent];
+      const message: GlmMessage = { role: 'user', content: contents };
+      const messages: Array<GlmMessage> = [message];
+      const requestBody: GlmRequestBody = {
+        model: FoodRecognitionService.VISION_MODEL,
+        messages: messages
+      };
+
+      const request = http.createHttp();
+      const response = await request.request(FoodRecognitionService.VISION_URL, {
+        method: http.RequestMethod.POST,
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + this.glmApiKey
+        },
+        extraData: JSON.stringify(requestBody),
+        connectTimeout: 15000,
+        readTimeout: 30000
+      });
+      request.destroy();
+
+      const code: number = response.responseCode;
+      const result: string = typeof response.result === 'string' ? response.result : JSON.stringify(response.result);
+      if (code === 200) {
+        const parsed: Record<string, Object> = JSON.parse(result) as Record<string, Object>;
+        const choicesObj = parsed['choices'];
+        if (choicesObj !== undefined && Array.isArray(choicesObj)) {
+          const choicesArr = choicesObj as Array<Record<string, Object>>;
+          if (choicesArr.length > 0) {
+            const first = choicesArr[0];
+            const messageObj = first['message'] as Record<string, Object>;
+            const content: string = String(messageObj['content'] ?? '');
+            const foodItems = this.parseMultipleFoodResult(content);
+            if (foodItems.length > 0) {
+              return { 
+                foodName: foodItems.map(item => item.foodName).join(','), 
+                confidence: 0.8, 
+                source: RecognitionMode.CLOUD,
+                foodItems: foodItems
+              };
+            }
+          }
+        }
+      } else {
+        console.error('GLM request failed code=' + String(code) + ' resp=' + result);
+      }
+      return { foodName: '', confidence: 0, source: RecognitionMode.CLOUD, error: '云端识别失败，请检查网络或稍后重试' };
+    } catch (err) {
+      const e = err as BusinessError;
+      console.error('recognizeMultiple error: ' + e.code + ' ' + e.message);
+      return { foodName: '', confidence: 0, source: RecognitionMode.CLOUD, error: '识别过程出错' };
+    }
+  }
+
+  /**
+   * 解析多食物识别结果
+   * 输入格式：米饭,红烧肉,青菜 或 米饭、红烧肉、青菜
+   */
+  private parseMultipleFoodResult(raw: string): RecognizedFoodItem[] {
+    const text = raw.trim();
+    if (text.length === 0) {
+      return [];
+    }
+    
+    // 按逗号、顿号、空格分隔
+    const foodNames = text.split(/[,，、\s]+/).map(s => s.trim()).filter(s => s.length > 0);
+    
+    // 为每个食物创建 RecognizedFoodItem
+    const items: RecognizedFoodItem[] = [];
+    for (let i = 0; i < foodNames.length; i++) {
+      const name = foodNames[i];
+      if (name.length > 0 && name.length <= 20) {
+        items.push({
+          id: 'food_' + Date.now() + '_' + i,
+          foodName: name,
+          grams: 200,
+          calories: 0,
+          isSnack: false,
+          snackReason: '',
+          saved: false
+        });
+      }
+    }
+    
+    console.info('parseMultipleFoodResult: found ' + String(items.length) + ' foods');
+    return items;
   }
 
   /**
