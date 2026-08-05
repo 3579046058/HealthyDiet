@@ -1,4 +1,4 @@
-import { router, promptAction } from '@kit.ArkUI';
+import { router, promptAction, window } from '@kit.ArkUI';
 import { componentSnapshot } from '@kit.ArkUI';
 import { systemShare } from '@kit.ShareKit';
 import { uniformTypeDescriptor as utd } from '@kit.ArkData';
@@ -18,6 +18,7 @@ import { AccountTab } from '../components/AccountTab';
 import { ChatTab } from '../components/ChatTab';
 import { WeightOverlay, MoodOverlay } from '../components/OverlayDialogs';
 import { SharePanel } from '../components/SharePanel';
+import { NotificationService } from '../services/NotificationService';
 import { AchievementHelper, AchievementInfo } from '../model/AchievementHelper';
 import { AchievementDialog, AchievementListDialog } from '../components/AchievementDialog';
 
@@ -52,7 +53,7 @@ struct Index {
   @State shareMood: boolean = true;
   @State shareOverview: boolean = true;
   @State isGeneratingShare: boolean = false;
-  @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('currentTheme') @Watch('onThemeChange') theme: string = 'dark';
   @State moveProgress: number = 0;
   @State exerciseProgress: number = 0;
   @State moodProgress: number = 0;
@@ -272,6 +273,22 @@ struct Index {
       await GlobalData.prefs.saveGoalConfig(config);
       await GlobalData.prefs.setWeight(w);
       await GlobalData.prefs.setGender(this.overlayGender);
+      // 同步更新身高体重记录表，保证各页数据源一致
+      try {
+        const today = await GlobalData.getTodayDate();
+        const existingHeight = await GlobalData.db.getHeightRecords(today, today);
+        for (const record of existingHeight) {
+          await GlobalData.db.deleteHeightRecord(Number(record.id));
+        }
+        await GlobalData.db.addHeightRecord(today, h);
+        const existingWeight = await GlobalData.db.getWeightRecords(today, today);
+        for (const record of existingWeight) {
+          await GlobalData.db.deleteWeightRecord(Number(record.id));
+        }
+        await GlobalData.db.addWeightRecord(today, w);
+      } catch (err) {
+        console.error('Index saveWeightOverlay sync error:', JSON.stringify(err));
+      }
     }
     await GlobalData.prefs.markWeightConfigured();
     await GlobalData.prefs.setWeightSkipPrompt(this.overlaySkipNext);
@@ -429,7 +446,45 @@ struct Index {
   }
 
   @StorageLink('themeMode') themeMode: string = 'follow';
-  @StorageLink('systemDark') systemDark: boolean = false;
+  @StorageLink('systemDark') @Watch('onSystemThemeChange') systemDark: boolean = false;
+
+  // 主题变化时刷新颜色和状态栏
+  onThemeChange(): void {
+    this.updateThemeColors();
+    this.applySystemBarColor(this.theme);
+    console.info('THEME changed to: ' + this.theme);
+  }
+
+  // 系统主题变化时刷新（仅跟随模式）
+  onSystemThemeChange(): void {
+    if (this.themeMode === 'follow') {
+      const resolved: string = this.systemDark ? 'dark' : 'light';
+      this.theme = resolved;
+      AppStorage.setOrCreate('currentTheme', resolved);
+      console.info('THEME system changed, systemDark=' + this.systemDark + ', currentTheme=' + resolved);
+    }
+  }
+
+  // 更新状态栏颜色
+  applySystemBarColor(theme: string): void {
+    try {
+      const mainWindow: window.Window | undefined = AppStorage.get('mainWindow');
+      if (!mainWindow) {
+        console.error('applySystemBarColor: mainWindow not found');
+        return;
+      }
+      const isDark: boolean = theme === 'dark';
+      const props: window.SystemBarProperties = {
+        statusBarColor: '#00000000',
+        navigationBarColor: '#00000000',
+        statusBarContentColor: isDark ? '#FFFFFF' : '#000000',
+        navigationBarContentColor: isDark ? '#FFFFFF' : '#000000'
+      };
+      mainWindow.setWindowSystemBarProperties(props);
+    } catch (err) {
+      console.error('applySystemBarColor error: ' + JSON.stringify(err));
+    }
+  }
 
   async loadDiaryData(): Promise<void> {
     try {
@@ -463,6 +518,17 @@ struct Index {
     this.loadDiaryData();
   }
 
+  selectDiaryDate(date: string): void {
+    const today = new Date();
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') +
+      '-' + String(today.getDate()).padStart(2, '0');
+    if (date > todayStr) {
+      return;
+    }
+    this.diaryDate = date;
+    this.loadDiaryData();
+  }
+
   resolveTheme(savedTheme: string): string {
     if (savedTheme === 'dark' || savedTheme === 'light') {
       return savedTheme;
@@ -485,7 +551,6 @@ struct Index {
       this.theme = resolved;
       AppStorage.setOrCreate('currentTheme', resolved);
     }
-    this.updateThemeColors();
     console.info('THEME toggle next=' + next + ' currentTheme=' + AppStorage.get<string>('currentTheme'));
   }
 
@@ -510,7 +575,13 @@ struct Index {
     try {
       console.info('generateShareCard: start snapshot');
       const snap = this.getUIContext().getComponentSnapshot();
-      const pixelMap: image.PixelMap = await snap.createFromBuilder((): void => { this.shareCard(); }, 800);
+      // 使用 waitUntilRenderFinished 确保所有内容渲染完成
+      const pixelMap: image.PixelMap = await snap.createFromBuilder(
+        (): void => { this.shareCard(); },
+        500,  // 延迟500ms
+        false, // 不检查图片状态
+        { scale: 1, waitUntilRenderFinished: true }  // 等待渲染完成
+      );
       console.info('generateShareCard: snapshot ok');
       const packer: image.ImagePacker = image.createImagePacker();
       const opts: image.PackingOption = { format: 'image/png', quality: 100 };
@@ -684,6 +755,14 @@ struct Index {
           if (newAchievements.length > 0) {
             this.currentAchievement = newAchievements[0]; // 显示第一个新成就
             this.showAchievementDialog = true;
+            
+            // 发送成就解锁通知
+            const notifyEnabledRaw: string | number | boolean = await GlobalData.prefs.get('achievement_notify', 'true');
+            if (String(notifyEnabledRaw) === 'true') {
+              for (const ach of newAchievements) {
+                NotificationService.getInstance().notifyAchievementUnlocked(ach.name, ach.description);
+              }
+            }
           }
         }
       } else {
@@ -810,6 +889,7 @@ struct Index {
               diarySleepRecords: this.diarySleepRecords,
               diaryMoodRecords: this.diaryMoodRecords,
               onDateChange: (offset: number) => { this.changeDiaryDate(offset); },
+              onDateSelect: (date: string) => { this.selectDiaryDate(date); },
               onShare: () => { this.showSharePanel = true; }
             })
           }
@@ -866,6 +946,12 @@ struct Index {
           shareMood: this.shareMood,
           shareOverview: this.shareOverview,
           isGeneratingShare: this.isGeneratingShare,
+          healthScore: this.getHealthScore(),
+          hasScoreData: this.hasScoreData(),
+          steps: this.getDisplaySteps(),
+          exerciseMin: this.exerciseMin,
+          sleepHours: this.sleepHours,
+          diaryDate: this.diaryDate.length > 0 ? this.diaryDate : GlobalData.formatDate(new Date()),
           onDietChange: (on: boolean) => { this.shareDiet = on; },
           onSportChange: (on: boolean) => { this.shareSport = on; },
           onSleepChange: (on: boolean) => { this.shareSleep = on; },
@@ -949,8 +1035,50 @@ struct Index {
     .height('100%')
   }
 
+  // 计算分享卡片总高度（createFromBuilder 需要明确高度）
+  getShareCardHeight(): number {
+    let height: number = 40; // 标题栏
+    height += 40; // padding 上下各20
+    
+    // 健康概览
+    if (this.shareOverview) {
+      height += 130; // 概览区域
+    }
+    
+    // 饮食记录
+    if (this.shareDiet && this.diaryDietRecords.length > 0) {
+      height += 20; // 标题
+      height += this.diaryDietRecords.length * 60; // 每条记录约60vp
+    }
+    
+    // 运动记录
+    if (this.shareSport && this.diarySportRecords.length > 0) {
+      height += 20; // 标题
+      height += this.diarySportRecords.length * 60;
+    }
+    
+    // 睡眠记录
+    if (this.shareSleep && this.diarySleepRecords.length > 0) {
+      height += 20; // 标题
+      height += this.diarySleepRecords.length * 60;
+    }
+    
+    // 情绪记录
+    if (this.shareMood && this.diaryMoodRecords.length > 0) {
+      height += 20; // 标题
+      for (const item of this.diaryMoodRecords) {
+        height += item.note && String(item.note).length > 0 ? 80 : 60; // 有note则更高
+      }
+    }
+    
+    height += 30; // 底部文字
+    
+    return height;
+  }
+
   @Builder shareCard() {
     Column() {
+      // 标题栏
       Row() {
         Column() {
           Text('健康1st').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
@@ -958,91 +1086,178 @@ struct Index {
         }
         .alignItems(HorizontalAlign.Start)
         Blank()
-        Text(GlobalData.formatDate(new Date())).fontSize(12).fontColor(this.subTextColor)
+        Text(this.diaryDate.length > 0 ? this.diaryDate : GlobalData.formatDate(new Date()))
+          .fontSize(12).fontColor(this.subTextColor)
       }
       .width('100%')
 
+      // 健康概览 - 单排放置
       if (this.shareOverview) {
-        Row() {
-          Column() {
+        Column() {
+          Row() {
             Text('健康评分').fontSize(11).fontColor(this.subTextColor)
+            Blank()
             Text(this.hasScoreData() ? String(this.getHealthScore()) : '--')
-              .fontSize(30).fontWeight(FontWeight.Bold)
+              .fontSize(24).fontWeight(FontWeight.Bold)
               .fontColor(this.hasScoreData() ? this.getScoreColor(this.getHealthScore()) : this.subTextColor)
-          }
-          .onClick(() => { this.navigateTo(Constants.PAGE_REPORT); })
-          Column() {
+          }.width('100%')
+          Row() {
             Text('步数').fontSize(11).fontColor(this.subTextColor)
+            Blank()
             Text(this.getDisplaySteps() > 0 ? this.formatLargeNumber(this.getDisplaySteps()) : '--')
-              .fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-              .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
-          Column() {
+              .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+          }.width('100%').margin({ top: 6 })
+          Row() {
             Text('运动').fontSize(11).fontColor(this.subTextColor)
-            Text(this.exerciseMin > 0 ? String(this.exerciseMin) + '分' : '--').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-          }
-          Column() {
+            Blank()
+            Text(this.exerciseMin > 0 ? String(this.exerciseMin) + '分钟' : '--')
+              .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+          }.width('100%').margin({ top: 6 })
+          Row() {
             Text('睡眠').fontSize(11).fontColor(this.subTextColor)
-            Text(this.sleepHours !== '0' && this.sleepHours !== '0.0' ? this.sleepHours + '时' : '--').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-          }
+            Blank()
+            Text(this.sleepHours !== '0' && this.sleepHours !== '0.0' ? this.sleepHours + '小时' : '--')
+              .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+          }.width('100%').margin({ top: 6 })
         }
-        .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding(16)
+        .width('100%').padding(12)
         .backgroundColor(this.cardColor).borderRadius(12).margin({ top: 12 })
       }
 
+      // 饮食记录 - 显示所有
       if (this.shareDiet && this.diaryDietRecords.length > 0) {
         Text('🍎 饮食').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
-        ForEach(this.diaryDietRecords.slice(0, 3), (item: DbRow) => {
-          Row() {
-            Text(String(item.food_name)).fontSize(12).fontColor(this.textColor)
-            Blank()
-            Text(Number(item.calories) + ' kcal').fontSize(11).fontColor(this.subTextColor)
+        ForEach(this.diaryDietRecords, (item: DbRow) => {
+          Column() {
+            Row() {
+              Text(this.formatShareTime(Number(item.timestamp)) || '--:--').fontSize(11).fontColor(this.accentColor)
+              Text(' · ').fontSize(11).fontColor(this.subTextColor)
+              Text(this.getMealTypeName(String(item.meal_type))).fontSize(11).fontColor(this.subTextColor)
+              Blank()
+              Text(Number(item.calories) + ' kcal').fontSize(12).fontWeight(FontWeight.Bold).fontColor(this.accentColor)
+            }.width('100%')
+            Row() {
+              Text(String(item.food_name)).fontSize(13).fontColor(this.textColor)
+              if (item.amount_g) {
+                Text('  ' + Number(item.amount_g) + 'g').fontSize(11).fontColor(this.subTextColor)
+              }
+            }.width('100%').margin({ top: 2 })
           }
           .width('100%').padding(8).backgroundColor(this.cardColor).borderRadius(6).margin({ top: 4 })
         }, (item: DbRow): string => String(item.id))
       }
 
+      // 运动记录 - 显示所有
       if (this.shareSport && this.diarySportRecords.length > 0) {
         Text('🏃 运动').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
-        ForEach(this.diarySportRecords.slice(0, 3), (item: DbRow) => {
-          Row() {
-            Text(String(item.sport_type)).fontSize(12).fontColor(this.textColor)
-            Blank()
-            Text(Number(item.duration_min) + 'min ' + Number(item.calories) + 'kcal').fontSize(11).fontColor(this.subTextColor)
+        ForEach(this.diarySportRecords, (item: DbRow) => {
+          Column() {
+            Row() {
+              Text(this.formatShareTime(Number(item.timestamp)) || '--:--').fontSize(11).fontColor(this.accentColor)
+              Text(' · ').fontSize(11).fontColor(this.subTextColor)
+              Text(this.getSportTypeName(String(item.sport_type))).fontSize(11).fontColor(this.subTextColor)
+              Blank()
+              Text(Number(item.calories) + ' kcal').fontSize(12).fontWeight(FontWeight.Bold).fontColor(this.accentColor)
+            }.width('100%')
+            Row() {
+              Text(this.formatShareDuration(Number(item.duration_min))).fontSize(13).fontColor(this.textColor)
+              if (item.distance_km && Number(item.distance_km) > 0) {
+                Text(' · ' + Number(item.distance_km).toFixed(1) + 'km').fontSize(11).fontColor(this.subTextColor)
+              }
+            }.width('100%').margin({ top: 2 })
           }
           .width('100%').padding(8).backgroundColor(this.cardColor).borderRadius(6).margin({ top: 4 })
         }, (item: DbRow): string => String(item.id))
       }
 
+      // 睡眠记录 - 显示所有
       if (this.shareSleep && this.diarySleepRecords.length > 0) {
         Text('😴 睡眠').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
-        ForEach(this.diarySleepRecords.slice(0, 3), (item: DbRow) => {
-          Row() {
-            Text(String(item.date)).fontSize(12).fontColor(this.textColor)
-            Blank()
-            Text(Number(item.total_minutes) / 60 + '时 · 评分' + Number(item.score)).fontSize(11).fontColor(this.subTextColor)
+        ForEach(this.diarySleepRecords, (item: DbRow) => {
+          Column() {
+            Row() {
+              Text('入睡 ' + String(item.start_time || '--:--')).fontSize(12).fontColor(this.textColor)
+              Text(' → ').fontSize(12).fontColor(this.subTextColor)
+              Text('醒来 ' + String(item.end_time || '--:--')).fontSize(12).fontColor(this.textColor)
+              Blank()
+              Text('评分 ' + Number(item.score)).fontSize(12).fontWeight(FontWeight.Bold).fontColor(Constants.COLOR_SLEEP)
+            }.width('100%')
+            Row() {
+              Text('总时长 ' + this.formatShareDuration(Number(item.total_minutes))).fontSize(11).fontColor(this.subTextColor)
+            }.width('100%').margin({ top: 2 })
           }
           .width('100%').padding(8).backgroundColor(this.cardColor).borderRadius(6).margin({ top: 4 })
         }, (item: DbRow): string => String(item.id))
       }
 
+      // 情绪记录 - 显示所有，带文本
       if (this.shareMood && this.diaryMoodRecords.length > 0) {
         Text('😊 情绪').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
-        Row() {
-          ForEach(this.diaryMoodRecords.slice(0, 7), (item: DbRow) => {
-            Text(this.getMoodEmoji(Number(item.mood))).fontSize(24).margin({ right: 8 })
-          }, (item: DbRow): string => String(item.id))
-        }
-        .width('100%').padding(8).backgroundColor(this.cardColor).borderRadius(6).margin({ top: 4 })
+        ForEach(this.diaryMoodRecords, (item: DbRow) => {
+          Column() {
+            Row() {
+              Text(this.formatShareTime(Number(item.timestamp)) || '--:--').fontSize(11).fontColor(this.accentColor)
+              Blank()
+              Text(this.getMoodEmoji(Number(item.mood))).fontSize(20)
+            }.width('100%')
+            if (item.note && String(item.note).length > 0) {
+              Text(String(item.note)).fontSize(12).fontColor(this.textColor)
+                .maxLines(2).textOverflow({ overflow: TextOverflow.Ellipsis })
+                .width('100%').margin({ top: 4 })
+            }
+          }
+          .width('100%').padding(8).backgroundColor(this.cardColor).borderRadius(6)
+          .alignItems(HorizontalAlign.Start).margin({ top: 4 })
+        }, (item: DbRow): string => String(item.id))
       }
 
       Text('来自「健康1st」健康管理应用').fontSize(10).fontColor(this.subTextColor).width('100%')
         .textAlign(TextAlign.Center).margin({ top: 16 })
     }
     .width(320)
+    .height(this.getShareCardHeight())  // createFromBuilder 需要明确高度
     .padding(20)
     .backgroundColor(this.bgColor)
     .borderRadius(16)
+  }
+
+  // 分享卡片辅助方法
+  formatShareTime(timestamp: number | undefined): string {
+    if (!timestamp) return '';
+    const date: Date = new Date(timestamp);
+    const h: number = date.getHours();
+    const m: number = date.getMinutes();
+    return `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`;
+  }
+
+  getMealTypeName(mealType: string): string {
+    const names: Record<string, string> = {
+      'breakfast': '早餐',
+      'lunch': '午餐',
+      'dinner': '晚餐',
+      'snack': '加餐'
+    };
+    return names[mealType] || mealType;
+  }
+
+  getSportTypeName(sportType: string): string {
+    const names: Record<string, string> = {
+      'walk': '步行',
+      'run': '跑步',
+      'bike': '骑行',
+      'swim': '游泳',
+      'gym': '健身'
+    };
+    return names[sportType] || sportType;
+  }
+
+  formatShareDuration(minutes: number): string {
+    if (minutes < 60) {
+      return `${minutes}分钟`;
+    }
+    const h: number = Math.floor(minutes / 60);
+    const m: number = minutes % 60;
+    return m > 0 ? `${h}时${m}分` : `${h}小时`;
   }
 
   @Builder tabBuilder(iconName: string, label: string, index: number) {

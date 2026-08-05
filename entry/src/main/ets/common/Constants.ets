@@ -97,6 +97,8 @@ export interface SportState {
   startTime: number;
   savedAt: number;
   isBackground?: boolean; // 是否在后台继续计时
+  startTimestamp?: number; // 运动开始时间戳（用于准确计算后台时长）
+  isPaused?: boolean; // 是否暂停状态
 }
 
 export interface DailySummary {
@@ -235,6 +237,7 @@ export class ThemeColors {
   static textSecondary(theme: string): string { return theme === 'dark' ? '#888888' : '#777777'; }
   static inputBg(theme: string): string { return theme === 'dark' ? '#1A1A2E' : '#E8E8F0'; }
   static divider(theme: string): string { return theme === 'dark' ? '#333333' : '#DDDDDD'; }
+  static accent(theme: string): string { return '#FF6B35'; }  // 强调色（橙色，不随主题变化）
 }
 
 /**

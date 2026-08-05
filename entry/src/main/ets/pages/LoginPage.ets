@@ -52,6 +52,17 @@ struct LoginPage {
     await GlobalData.prefs.saveGoalConfig(config);
     await GlobalData.prefs.setWeight(val);
     await GlobalData.prefs.markWeightConfigured();
+    // 同步更新体重记录表
+    try {
+      const today = await GlobalData.getTodayDate();
+      const existingWeight = await GlobalData.db.getWeightRecords(today, today);
+      for (const record of existingWeight) {
+        await GlobalData.db.deleteWeightRecord(Number(record.id));
+      }
+      await GlobalData.db.addWeightRecord(today, val);
+    } catch (err) {
+      console.error('LoginPage saveWeight sync error:', JSON.stringify(err));
+    }
   }
 
   login(): void {

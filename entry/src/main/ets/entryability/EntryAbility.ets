@@ -8,6 +8,8 @@ import { ReminderScheduler } from '../services/ReminderScheduler';
 import { FoodRecognitionService } from '../services/FoodRecognitionService';
 import { CardDataHelper } from '../services/CardDataHelper';
 import { ChatService } from '../services/ChatService';
+import { GoalNotificationHelper } from '../services/GoalNotificationHelper';
+import { BackgroundTaskService } from '../services/BackgroundTaskService';
 
 const DOMAIN = 0x0000;
 const TAG = 'HarmonyHealth';
@@ -53,8 +55,18 @@ export default class EntryAbility extends UIAbility {
       hilog.error(DOMAIN, TAG, 'Failed to init ChatService: %{public}s', JSON.stringify(err));
     }
 
+    // 初始化后台任务服务
+    try {
+      BackgroundTaskService.getInstance().setContext(this.context);
+      await BackgroundTaskService.getInstance().requestNotificationPermission();
+      hilog.info(DOMAIN, TAG, 'BackgroundTaskService initialized');
+    } catch (err) {
+      hilog.error(DOMAIN, TAG, 'Failed to init BackgroundTaskService: %{public}s', JSON.stringify(err));
+    }
+
     const win = windowStage.getMainWindowSync();
     this.mainWindow = win;
+    AppStorage.setOrCreate('mainWindow', win);
 
     // 沉浸式状态栏：全屏布局 + 状态栏透明
     try {
@@ -102,6 +114,10 @@ export default class EntryAbility extends UIAbility {
             hilog.error(DOMAIN, TAG, 'Refresh widget error: %{public}s', JSON.stringify(err));
           });
         }
+        // 检查步数目标达成
+        GoalNotificationHelper.getInstance().checkStepsGoal(steps).catch((err: Error) => {
+          hilog.error(DOMAIN, TAG, 'Goal check error: %{public}s', JSON.stringify(err));
+        });
       });
       ReminderScheduler.getInstance().startAll();
     });
@@ -204,6 +220,8 @@ export default class EntryAbility extends UIAbility {
   }
 
   onForeground(): void {
+    // 停止后台长时任务
+    BackgroundTaskService.getInstance().stopBackgroundTask();
     PedometerService.getInstance().startListening((steps: number) => {
       hilog.info(DOMAIN, TAG, 'Pedometer resumed: %{public}d', steps);
     });
@@ -221,5 +239,11 @@ export default class EntryAbility extends UIAbility {
 
   onBackground(): void {
     hilog.info(DOMAIN, TAG, 'Ability onBackground');
+    // 启动后台长时任务，保持定时提醒正常运行
+    BackgroundTaskService.getInstance().startBackgroundTask('HealthReminder').then((success: boolean) => {
+      hilog.info(DOMAIN, TAG, 'Background task started: %{public}s', success.toString());
+    }).catch((err: Error) => {
+      hilog.error(DOMAIN, TAG, 'Failed to start background task: %{public}s', JSON.stringify(err));
+    });
   }
 }

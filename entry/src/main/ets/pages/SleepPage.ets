@@ -3,6 +3,8 @@ import { GlobalData } from '../common/GlobalData';
 import { Constants, DbRow, ThemeColors } from '../common/Constants';
 import { TrendChart } from '../components/TrendChart';
 import { CardDataHelper } from '../services/CardDataHelper';
+import { NotificationService } from '../services/NotificationService';
+import { GoalNotificationHelper } from '../services/GoalNotificationHelper';
 
 @Entry
 @Component
@@ -67,9 +69,10 @@ struct SleepPage {
           // 后台继续：保持睡眠状态，返回主页
           router.back();
         } else {
-          // 取消入睡：删除入睡记录，返回主页
+          // 取消入睡：删除入睡记录，取消通知，返回主页
           await this.deleteSleepStartRecord();
           this.isSleeping = false;
+          NotificationService.getInstance().cancelSleepTrackingNotification();
           router.back();
         }
       }).catch((error: Error) => {
@@ -158,7 +161,7 @@ struct SleepPage {
         this.isSleeping = false;
         this.sleepStartTime = '';
         this.startTime = '';
-        promptAction.showToast({ message: '已删除入睡记录' });
+        this.getUIContext().getPromptAction().showToast({ message: '已删除入睡记录' });
       }
     } catch (err) {
       console.error('SleepPage deleteSleepStartRecord error:', JSON.stringify(err));
@@ -293,15 +296,15 @@ struct SleepPage {
     }
     
     if (startMin === endMin && daysDiff === 0) {
-      promptAction.showToast({ message: '入睡和醒来时间不能相同' });
+      this.getUIContext().getPromptAction().showToast({ message: '入睡和醒来时间不能相同' });
       return;
     }
     if (sleepDuration < 30) {
-      promptAction.showToast({ message: '睡眠时长太短，至少半小时' });
+      this.getUIContext().getPromptAction().showToast({ message: '睡眠时长太短，至少半小时' });
       return;
     }
     if (sleepDuration > 18 * 60) {
-      promptAction.showToast({ message: '睡眠时长异常，请检查时间设置' });
+      this.getUIContext().getPromptAction().showToast({ message: '睡眠时长异常，请检查时间设置' });
       return;
     }
 
@@ -326,7 +329,7 @@ struct SleepPage {
     };
     const ok: boolean = await GlobalData.db.addSleepRecord(record);
     if (!ok) {
-      promptAction.showToast({ message: '与已有睡眠记录时间重叠，无法添加' });
+      this.getUIContext().getPromptAction().showToast({ message: '与已有睡眠记录时间重叠，无法添加' });
       return;
     }
     await GlobalData.db.updateDailySummaryField(this.endDate, 'sleep_score', score);
@@ -359,7 +362,7 @@ struct SleepPage {
     const startMin = sh * 60 + sm;
     const endMin = eh * 60 + em;
     if (startMin === endMin) {
-      promptAction.showToast({ message: '入睡和醒来时间不能相同' });
+      this.getUIContext().getPromptAction().showToast({ message: '入睡和醒来时间不能相同' });
       return;
     }
     let sleepDuration = endMin - startMin;
@@ -367,11 +370,11 @@ struct SleepPage {
       sleepDuration += 24 * 60;
     }
     if (sleepDuration < 120) {
-      promptAction.showToast({ message: '睡眠时长太短，至少2小时' });
+      this.getUIContext().getPromptAction().showToast({ message: '睡眠时长太短，至少2小时' });
       return;
     }
     if (sleepDuration > 18 * 60) {
-      promptAction.showToast({ message: '睡眠时长异常，请检查时间设置' });
+      this.getUIContext().getPromptAction().showToast({ message: '睡眠时长异常，请检查时间设置' });
       return;
     }
 
@@ -397,7 +400,7 @@ struct SleepPage {
     };
     const ok: boolean = await GlobalData.db.addSleepRecord(record);
     if (!ok) {
-      promptAction.showToast({ message: '与已有睡眠记录时间重叠，无法保存' });
+      this.getUIContext().getPromptAction().showToast({ message: '与已有睡眠记录时间重叠，无法保存' });
       return;
     }
     await GlobalData.db.updateDailySummaryField(today, 'sleep_score', score);
@@ -411,11 +414,20 @@ struct SleepPage {
       await GlobalData.db.deleteSleepStartRecord(Number(sleepStartRecord.id));
     }
     
+    // 取消睡眠追踪通知，发送睡眠完成通知
+    NotificationService.getInstance().cancelSleepTrackingNotification();
+    NotificationService.getInstance().notifySleepCompleted(sleepDuration * 60, score);
+    
+    // 检查睡眠目标达成
+    GoalNotificationHelper.getInstance().checkSleepGoal(sleepDuration * 60).catch((err: Error) => {
+      console.error('Sleep goal check error:', JSON.stringify(err));
+    });
+    
     // 重置睡眠状态
     this.isSleeping = false;
     this.sleepStartTime = '';
     
-    promptAction.showToast({ message: '睡眠记录已保存！评分: ' + score });
+    this.getUIContext().getPromptAction().showToast({ message: '睡眠记录已保存！评分: ' + score });
     await this.loadData();
   }
 
@@ -495,7 +507,11 @@ struct SleepPage {
                   // 保存入睡记录到数据库
                   const today = await GlobalData.getTodayDate();
                   await GlobalData.db.addSleepStartRecord(today, timeStr);
-                  promptAction.showToast({ message: '已记录入睡时间: ' + timeStr });
+                  this.getUIContext().getPromptAction().showToast({ message: '已记录入睡时间: ' + timeStr });
+                  
+                  // 发送睡眠开始通知和持续通知
+                  NotificationService.getInstance().notifySleepStarted(timeStr);
+                  NotificationService.getInstance().showSleepTrackingNotification(timeStr);
                 }
               })
 

@@ -310,7 +310,7 @@ export struct HealthTab {
               .fontColor(this.subTextColor)
             Row() {
               Column() {
-                Text(this.getScoreDisplay() + '分')
+                Text(this.getScoreDisplay())
                   .fontSize(28)
                   .fontWeight(FontWeight.Bold)
                   .fontColor(this.hasScoreData() ? this.getScoreColor(this.getHealthScore()) : this.subTextColor)

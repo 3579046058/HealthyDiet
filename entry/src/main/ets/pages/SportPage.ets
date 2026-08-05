@@ -4,6 +4,8 @@ import { Constants, DbRow, SportTypeDef, ThemeColors, SportState } from '../comm
 import { FoodRecognitionService } from '../services/FoodRecognitionService';
 import { LocationTrackerService } from '../services/LocationTrackerService';
 import { CardDataHelper } from '../services/CardDataHelper';
+import { NotificationService, NOTIFICATION_ID } from '../services/NotificationService';
+import { GoalNotificationHelper } from '../services/GoalNotificationHelper';
 
 @Entry
 @Component
@@ -29,6 +31,8 @@ struct SportPage {
   @State useGps: boolean = false;
   @State gpsStatus: string = '';
   @State isBackgroundTracking: boolean = false; // 是否在后台继续计时
+  private backgroundGpsSaveTimerId: number = -1; // 后台GPS保存定时器
+  private sportStartTimestamp: number = 0; // 运动开始时间戳（用于准确计算后台时长）
 
   aboutToAppear(): void {
     this.loadWeight();
@@ -46,15 +50,18 @@ struct SportPage {
         title: '运动进行中',
         message: `当前运动已进行${this.formatDuration(this.durationSec)}，请选择：`,
         buttons: [
-          { text: '取消', color: '#666666' },
+          { text: '暂停并退出', color: '#666666' },
           { text: '停止并保存', color: '#FF5737' },
           { text: '后台继续', color: '#007DFF' }
         ]
       }).then(async (result) => {
         console.info('[SportPage] 用户选择:', result.index);
         if (result.index === 2) {
-          // 后台继续：保存状态，保持计时器运行，返回主页
+          // 后台继续：保存状态，显示后台追踪通知，返回主页
           this.isBackgroundTracking = true;
+          // 显示后台追踪通知
+          const sportName = this.getSportName(this.currentSport);
+          await NotificationService.getInstance().showSportTrackingNotification(sportName, this.durationSec, this.distanceKm);
           await this.saveCurrentSportState();
           router.back();
         } else if (result.index === 1) {
@@ -64,8 +71,11 @@ struct SportPage {
           this.stopTracking();
           router.back();
         } else {
-          // 取消：留在当前页面，不做任何操作
-          console.info('[SportPage] 用户取消返回');
+          // 暂停并退出：暂停运动，保存状态，返回主页
+          this.isBackgroundTracking = false;
+          this.pauseTracking(); // 暂停运动
+          await this.saveCurrentSportState(); // 保存状态（下次可继续）
+          router.back();
         }
       }).catch((error: Error) => {
         console.error('[SportPage] 对话框错误:', error);
@@ -98,6 +108,12 @@ struct SportPage {
         console.info('[SportPage] 后台继续模式，自动恢复计时');
         this.isTracking = true;
         this.startTimer();
+        // 停止后台GPS保存（已返回前台）
+        this.stopBackgroundGpsSave();
+        // 取消后台追踪通知，显示正常追踪通知
+        const sportName = this.getSportName(this.currentSport);
+        NotificationService.getInstance().cancelSportTrackingNotification();
+        NotificationService.getInstance().showSportTrackingNotification(sportName, this.durationSec, this.distanceKm);
         this.getUIContext().getPromptAction().showToast({ 
           message: `已恢复${this.getSportName(this.currentSport)}运动，继续计时`, 
           duration: 2000 
@@ -106,9 +122,11 @@ struct SportPage {
       }
       
       // 提示用户是否继续之前的运动
+      const wasPaused = this.isPaused; // 记录之前的暂停状态
+      const statusText = wasPaused ? '（已暂停）' : '';
       this.getUIContext().getPromptAction().showDialog({
         title: '发现未完成的运动',
-        message: `检测到之前的${this.getSportName(this.currentSport)}运动（已进行${this.formatDuration(this.durationSec)}），是否继续？`,
+        message: `检测到之前的${this.getSportName(this.currentSport)}运动${statusText}（已进行${this.formatDuration(this.durationSec)}），是否继续？`,
         buttons: [
           { text: '放弃', color: '#FF5737' },
           { text: '继续', color: '#007DFF' }
@@ -116,16 +134,28 @@ struct SportPage {
       }).then(async (result) => {
         console.info('[SportPage] 用户选择:', result.index);
         if (result.index === 1) {
-          // 用户选择继续，开始计时
+          // 用户选择继续
           this.isTracking = true;
-          this.startTimer();
-          this.getUIContext().getPromptAction().showToast({ message: '已恢复运动状态', duration: 1500 });
+          if (wasPaused) {
+            // 之前是暂停状态，恢复为暂停状态（不自动开始计时）
+            this.isPaused = true;
+            // 显示暂停通知
+            const sportName = this.getSportName(this.currentSport);
+            NotificationService.getInstance().notifySportPaused(sportName, this.durationSec, this.distanceKm);
+            this.getUIContext().getPromptAction().showToast({ message: '已恢复运动状态（暂停中）', duration: 1500 });
+          } else {
+            // 之前不是暂停状态，开始计时
+            this.isPaused = false;
+            this.startTimer();
+            this.getUIContext().getPromptAction().showToast({ message: '已恢复运动状态', duration: 1500 });
+          }
         } else {
           // 用户选择放弃，清除保存的状态
           await this.clearSavedSportState();
           this.durationSec = 0;
           this.distanceKm = 0;
           this.calorieBurn = 0;
+          this.isPaused = false;
         }
       }).catch(async (error: Error) => {
         console.error('[SportPage] 对话框错误:', error);
@@ -163,6 +193,13 @@ struct SportPage {
 
   async loadWeight(): Promise<void> {
     try {
+      // 优先从体重记录表读取最新体重（与体重页数据源一致）
+      const latestWeight = await GlobalData.db.getLatestWeight();
+      if (latestWeight && Number(latestWeight.weight_kg) > 0) {
+        this.bodyWeight = Number(latestWeight.weight_kg);
+        return;
+      }
+      // 无记录时回退到 prefs 配置的体重
       const config = await GlobalData.prefs.getGoalConfig();
       if (config.weightKg > 0) {
         this.bodyWeight = config.weightKg;
@@ -174,11 +211,39 @@ struct SportPage {
 
   aboutToDisappear(): void {
     console.info('[SportPage] aboutToDisappear, isTracking:', this.isTracking, 
-      'isBackgroundTracking:', this.isBackgroundTracking, 'durationSec:', this.durationSec);
+      'isBackgroundTracking:', this.isBackgroundTracking, 'isPaused:', this.isPaused, 'durationSec:', this.durationSec);
     
-    // 如果是后台继续模式，只保存状态，不停止计时器
+    // 如果已暂停，停止计时器并保存状态
+    if (this.isPaused) {
+      console.info('[SportPage] 运动已暂停，停止计时器并保存状态');
+      if (this.timerId !== -1) {
+        clearInterval(this.timerId);
+        this.timerId = -1;
+      }
+      if (this.useGps) {
+        LocationTrackerService.getInstance().stop();
+        this.useGps = false;
+        this.gpsStatus = '';
+      }
+      this.saveCurrentSportState();
+      return;
+    }
+    
+    // 如果是后台继续模式，停止计时器但保存状态（页面销毁后计时器无法运行）
     if (this.isBackgroundTracking) {
-      console.info('[SportPage] 后台继续模式，保存状态但不停止计时器');
+      console.info('[SportPage] 后台继续模式，停止计时器并保存状态');
+      // 停止计时器（页面销毁后计时器回调无法执行）
+      if (this.timerId !== -1) {
+        clearInterval(this.timerId);
+        this.timerId = -1;
+      }
+      // GPS保持运行（后台定位权限已配置）
+      if (this.useGps) {
+        console.info('[SportPage] GPS将在后台继续运行');
+      }
+      // 后台期间每10秒刷新追踪通知 + 保存状态（GPS/非GPS 都启动，保证通知实时更新）
+      this.startBackgroundGpsSave();
+      // 保存当前状态
       this.saveCurrentSportState();
       return;
     }
@@ -214,15 +279,20 @@ struct SportPage {
         intensity: this.intensity,
         startTime: Date.now() - this.durationSec * 1000, // 计算开始时间
         savedAt: Date.now(),
-        isBackground: this.isBackgroundTracking // 保存后台继续标志
+        isBackground: this.isBackgroundTracking, // 保存后台继续标志
+        startTimestamp: this.sportStartTimestamp, // 保存运动开始时间戳
+        isPaused: this.isPaused // 保存暂停状态
       };
       await GlobalData.prefs.put('ongoing_sport_state', JSON.stringify(sportState));
       await GlobalData.prefs.flush();
       console.info('[SportPage] 运动状态已保存:', JSON.stringify(sportState));
       // 显示保存成功提示
-      const message = this.isBackgroundTracking ? 
-        '运动将在后台继续计时' : 
-        '运动状态已保存，下次进入可继续';
+      let message = '运动状态已保存';
+      if (this.isBackgroundTracking) {
+        message = '运动将在后台继续计时';
+      } else if (this.isPaused) {
+        message = '运动已暂停，下次进入可继续';
+      }
       this.getUIContext().getPromptAction().showToast({
         message: message,
         duration: 2000
@@ -257,12 +327,56 @@ struct SportPage {
 
       // 恢复运动状态
       this.currentSport = sportState.currentSport || 'walk';
-      this.durationSec = sportState.durationSec || 0;
       this.distanceKm = sportState.distanceKm || 0;
       this.calorieBurn = sportState.calorieBurn || 0;
       this.heartRateAvg = sportState.heartRateAvg || 0;
       this.intensity = sportState.intensity || '中强度';
       this.isBackgroundTracking = sportState.isBackground || false;
+      // ✅ 恢复暂停状态（如果不是后台继续模式）
+      if (!this.isBackgroundTracking) {
+        this.isPaused = sportState.isPaused || false;
+      }
+
+      // ✅ 关键修复：使用 startTimestamp 计算总时长（避免后台期间频繁保存导致的计时错误）
+      if (sportState.startTimestamp && sportState.startTimestamp > 0) {
+        // 使用运动开始时间戳计算总时长（推荐方式）
+        const now = Date.now();
+        this.durationSec = Math.floor((now - sportState.startTimestamp) / 1000);
+        this.sportStartTimestamp = sportState.startTimestamp; // 恢复开始时间戳
+        console.info('[SportPage] 使用startTimestamp计算总时长:', this.durationSec, '秒');
+        
+        // 如果是GPS运动，尝试从LocationTrackerService获取最新距离
+        if (this.isGpsSport()) {
+          const tracker = LocationTrackerService.getInstance();
+          if (tracker.isTracking()) {
+            // GPS仍在运行，获取最新距离
+            const distance = tracker.getDistanceM();
+            this.distanceKm = parseFloat((distance / 1000).toFixed(2));
+            console.info('[SportPage] 从GPS服务获取最新距离:', this.distanceKm, 'km');
+          } else {
+            // GPS已停止（不应该发生），使用估算
+            const speed = Constants.SPEED_KMH.get(this.currentSport) ?? 5;
+            const backgroundDistance = (this.durationSec - sportState.durationSec) / 3600 * speed;
+            this.distanceKm = parseFloat((sportState.distanceKm + backgroundDistance).toFixed(2));
+            console.info('[SportPage] GPS已停止，估算后台运行距离:', backgroundDistance, 'km，总距离:', this.distanceKm, 'km');
+          }
+        }
+        
+        // 重新计算热量
+        this.updateMetrics();
+      } else if (sportState.isBackground && timeDiff > 0) {
+        // 旧版本逻辑：使用 savedAt 计算后台时长（兼容旧版本保存的状态）
+        const backgroundDuration = Math.floor(timeDiff / 1000); // 后台运行时长（秒）
+        this.durationSec = sportState.durationSec + backgroundDuration; // 总时长 = 保存时时长 + 后台运行时长
+        console.info('[SportPage] 后台继续模式（旧版本），计算后台运行时长:', backgroundDuration, '秒，总时长:', this.durationSec, '秒');
+        
+        // 重新计算热量
+        this.updateMetrics();
+      } else {
+        // 非后台模式，直接恢复
+        this.durationSec = sportState.durationSec || 0;
+        this.sportStartTimestamp = Date.now() - this.durationSec * 1000; // 计算开始时间戳
+      }
 
       console.info('[SportPage] 运动状态已恢复:', this.currentSport, this.durationSec, '秒', 
         'isBackground:', this.isBackgroundTracking);
@@ -333,6 +447,7 @@ struct SportPage {
     this.durationSec = 0;
     this.distanceKm = 0;
     this.calorieBurn = 0;
+    this.sportStartTimestamp = Date.now(); // 记录运动开始时间
     const met: number = Constants.MET_VALUES.get(this.currentSport) ?? 4.0;
     const maxHr: number = Constants.MAX_HR;
     const restHr: number = Constants.REST_HR;
@@ -356,6 +471,43 @@ struct SportPage {
       this.gpsStatus = '';
     }
     this.startTimer();
+    
+    // 发送运动开始通知和持续通知
+    const sportName: string = this.getSportName(this.currentSport);
+    NotificationService.getInstance().notifySportStarted(sportName);
+    NotificationService.getInstance().showSportTrackingNotification(sportName, 0, 0);
+  }
+
+  // 重新定位：定位失效后手动重启 GPS
+  async restartLocation(): Promise<void> {
+    if (!this.useGps) {
+      return;
+    }
+    const tracker = LocationTrackerService.getInstance();
+    this.gpsStatus = '正在重新定位...';
+    // 重置并重启定位
+    tracker.stop();
+    await new Promise<void>((resolve) => {
+      setTimeout(() => { resolve(); }, 300);
+    });
+    tracker.reset();
+    tracker.onDistanceChanged((distanceM: number) => {
+      this.distanceKm = parseFloat((distanceM / 1000).toFixed(2));
+    });
+    tracker.start();
+    // 5秒后检查定位结果
+    setTimeout(() => {
+      if (this.isTracking && this.useGps) {
+        this.gpsStatus = tracker.getPointCount() > 0 ? 'GPS 定位中' : '未获取到定位，点击重试';
+      }
+    }, 5000);
+    this.getUIContext().getPromptAction().showToast({ message: '正在重新定位...', duration: 1500 });
+  }
+
+  // 判断 GPS 是否定位失败（需要显示重定位按钮）
+  gpsNeedRetry(): boolean {
+    return this.useGps && this.isTracking &&
+      (this.gpsStatus.includes('未获取') || this.gpsStatus.includes('重试') || this.gpsStatus.includes('信号丢失'));
   }
 
   pauseTracking(): void {
@@ -367,6 +519,16 @@ struct SportPage {
       LocationTrackerService.getInstance().pause();
     }
     this.isPaused = true;
+    // 暂停时把开始时间戳前移到当前暂停点（抹掉暂停前的时间），
+    // 避免恢复后 restoreSportState 用 now - startTimestamp 把暂停时长也算进运动时长
+    this.sportStartTimestamp = Date.now() - this.durationSec * 1000;
+    // 暂停时取消后台追踪状态，避免状态冲突
+    this.isBackgroundTracking = false;
+    
+    // 取消后台追踪通知，显示暂停通知
+    const sportName: string = this.getSportName(this.currentSport);
+    NotificationService.getInstance().cancelSportTrackingNotification();
+    NotificationService.getInstance().notifySportPaused(sportName, this.durationSec, this.distanceKm);
   }
 
   resumeTracking(): void {
@@ -376,6 +538,11 @@ struct SportPage {
       }
       this.isPaused = false;
       this.startTimer();
+      
+      // 取消暂停通知，恢复持续通知
+      const sportName: string = this.getSportName(this.currentSport);
+      NotificationService.getInstance().cancel(NOTIFICATION_ID.SPORT_STATUS);
+      NotificationService.getInstance().showSportTrackingNotification(sportName, this.durationSec, this.distanceKm);
     }
   }
 
@@ -383,9 +550,18 @@ struct SportPage {
     if (this.timerId !== -1) {
       clearInterval(this.timerId);
     }
+    let notificationUpdateCounter: number = 0;
     this.timerId = setInterval(() => {
       this.durationSec++;
       this.updateMetrics();
+      
+      // 每10秒更新一次持续通知
+      notificationUpdateCounter++;
+      if (notificationUpdateCounter >= 10) {
+        notificationUpdateCounter = 0;
+        const sportName: string = this.getSportName(this.currentSport);
+        NotificationService.getInstance().updateSportTrackingNotification(sportName, this.durationSec, this.distanceKm);
+      }
     }, 1000);
   }
 
@@ -435,8 +611,44 @@ struct SportPage {
       this.useGps = false;
       this.gpsStatus = '';
     }
+    // 停止后台GPS保存
+    this.stopBackgroundGpsSave();
     // 清除保存的运动状态
     this.clearSavedSportState();
+    
+    // 取消持续通知
+    NotificationService.getInstance().cancelSportTrackingNotification();
+  }
+
+  // 启动后台GPS定期保存（每10秒保存一次GPS数据）
+  // 后台期间每10秒刷新状态栏追踪通知 + 保存状态
+  // 距离保持 GPS onDistanceChanged 实时回调更新（高精度），此处不干预
+  private startBackgroundGpsSave(): void {
+    if (this.backgroundGpsSaveTimerId !== -1) {
+      clearInterval(this.backgroundGpsSaveTimerId);
+    }
+    this.backgroundGpsSaveTimerId = setInterval(() => {
+      // 用运动开始时间戳实时计算时长（不受页面销毁/计时器停摆影响）
+      if (this.sportStartTimestamp > 0) {
+        this.durationSec = Math.floor((Date.now() - this.sportStartTimestamp) / 1000);
+      }
+      // 非GPS运动（原地运动）距离保持 0；GPS 运动距离由 onDistanceChanged 实时更新
+      // 更新热量（基于最新时长和距离）
+      this.updateMetrics();
+      // 刷新状态栏追踪通知（10秒一次，展示最新时长/距离）
+      const sportName: string = this.getSportName(this.currentSport);
+      NotificationService.getInstance().updateSportTrackingNotification(sportName, this.durationSec, this.distanceKm);
+      // 保存状态
+      this.saveCurrentSportState();
+    }, 10000); // 每10秒刷新一次
+  }
+
+  // 停止后台GPS保存
+  private stopBackgroundGpsSave(): void {
+    if (this.backgroundGpsSaveTimerId !== -1) {
+      clearInterval(this.backgroundGpsSaveTimerId);
+      this.backgroundGpsSaveTimerId = -1;
+    }
   }
 
   adjustTime(deltaSec: number): void {
@@ -477,6 +689,33 @@ struct SportPage {
     this.stopTracking();
     await this.loadHistory();
     this.getUIContext().getPromptAction().showToast({ message: '运动记录已保存' });
+    
+    // 发送运动完成通知
+    const sportName: string = this.getSportName(this.currentSport);
+    NotificationService.getInstance().notifySportCompleted(sportName, this.durationSec, this.distanceKm, calories);
+    
+    // 检查运动目标达成（本周运动天数）
+    const now: Date = new Date();
+    const dayOfWeek: number = now.getDay(); // 0=周日, 1=周一...
+    const mondayOffset: number = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monday: Date = new Date(now);
+    monday.setDate(now.getDate() - mondayOffset);
+    monday.setHours(0, 0, 0, 0);
+    const sunday: Date = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    const startDate: string = monday.toISOString().split('T')[0];
+    const endDate: string = sunday.toISOString().split('T')[0];
+    const weekRecords: DbRow[] = await GlobalData.db.getSportRecords(startDate, endDate);
+    const uniqueDays: Set<string> = new Set();
+    for (const rec of weekRecords) {
+      if (rec.date) {
+        uniqueDays.add(String(rec.date));
+      }
+    }
+    GoalNotificationHelper.getInstance().checkSportGoal(uniqueDays.size).catch((err: Error) => {
+      console.error('Sport goal check error:', JSON.stringify(err));
+    });
   }
 
   async saveManualRecord(): Promise<void> {
@@ -783,9 +1022,21 @@ struct SportPage {
               }
 
               if (this.useGps) {
-                Text('📡 ' + this.gpsStatus).fontSize(11)
-                  .fontColor(this.gpsStatus.includes('定位') ? '#FF9800' : '#4CAF50')
-                  .margin({ top: 6 })
+                Row() {
+                  Text('📡 ' + this.gpsStatus).fontSize(11)
+                    .fontColor(this.gpsStatus.includes('定位') ? '#FF9800' : '#4CAF50')
+                  if (this.gpsNeedRetry()) {
+                    Button('重定位')
+                      .fontSize(11)
+                      .height(26)
+                      .backgroundColor('#FF9800')
+                      .fontColor('#FFFFFF')
+                      .borderRadius(13)
+                      .margin({ left: 8 })
+                      .onClick(() => { this.restartLocation(); })
+                  }
+                }
+                .margin({ top: 6 })
               }
 
               Row() {

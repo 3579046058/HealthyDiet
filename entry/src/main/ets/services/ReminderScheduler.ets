@@ -8,7 +8,6 @@ export class ReminderScheduler {
   private static instance: ReminderScheduler;
   private context: common.UIAbilityContext | null = null;
   private waterReminderIds: number[] = [];
-  private sedentaryReminderIds: number[] = [];
 
   static getInstance(): ReminderScheduler {
     if (!ReminderScheduler.instance) {
@@ -24,16 +23,10 @@ export class ReminderScheduler {
   async startAll(): Promise<void> {
     try {
       const waterEnabledRaw: string | number | boolean = await GlobalData.prefs.get('water_reminder_enabled', 'false');
-      const sedentaryEnabledRaw: string | number | boolean = await GlobalData.prefs.get('sedentary_reminder_enabled', 'false');
       const waterTimeRaw: string | number | boolean = await GlobalData.prefs.get('water_reminder_time', '10:00');
-      const sedentaryTimeRaw: string | number | boolean = await GlobalData.prefs.get('sedentary_reminder_time', '14:00');
       const waterTimes: string[] = String(waterTimeRaw).split(',').filter((t: string) => t.length > 0);
-      const sedentaryTimes: string[] = String(sedentaryTimeRaw).split(',').filter((t: string) => t.length > 0);
       if (String(waterEnabledRaw) === 'true') {
         this.scheduleWaterReminder(waterTimes.length > 0 ? waterTimes : ['10:00']);
-      }
-      if (String(sedentaryEnabledRaw) === 'true') {
-        this.scheduleSedentaryReminder(sedentaryTimes.length > 0 ? sedentaryTimes : ['14:00']);
       }
     } catch (err) {
       console.error('ReminderScheduler startAll error:', JSON.stringify(err));
@@ -49,15 +42,6 @@ export class ReminderScheduler {
     }
   }
 
-  async setSedentaryTimes(times: string[]): Promise<void> {
-    const list: string[] = times.filter((t: string) => t.length > 0);
-    await GlobalData.prefs.put('sedentary_reminder_time', list.join(','));
-    const enabledRaw: string | number | boolean = await GlobalData.prefs.get('sedentary_reminder_enabled', 'false');
-    if (String(enabledRaw) === 'true') {
-      this.scheduleSedentaryReminder(list.length > 0 ? list : ['14:00']);
-    }
-  }
-
   async toggleWaterReminder(enabled: boolean): Promise<void> {
     await GlobalData.prefs.put('water_reminder_enabled', String(enabled));
     if (enabled) {
@@ -66,17 +50,6 @@ export class ReminderScheduler {
       this.scheduleWaterReminder(times.length > 0 ? times : ['10:00']);
     } else {
       this.cancelWaterReminder();
-    }
-  }
-
-  async toggleSedentaryReminder(enabled: boolean): Promise<void> {
-    await GlobalData.prefs.put('sedentary_reminder_enabled', String(enabled));
-    if (enabled) {
-      const timeRaw: string | number | boolean = await GlobalData.prefs.get('sedentary_reminder_time', '14:00');
-      const times: string[] = String(timeRaw).split(',').filter((t: string) => t.length > 0);
-      this.scheduleSedentaryReminder(times.length > 0 ? times : ['14:00']);
-    } else {
-      this.cancelSedentaryReminder();
     }
   }
 
@@ -92,20 +65,6 @@ export class ReminderScheduler {
       }
     }
     this.waterReminderIds = ids;
-  }
-
-  async scheduleSedentaryReminder(times: string[]): Promise<void> {
-    this.cancelSedentaryReminder();
-    const ids: number[] = [];
-    for (const time of times) {
-      const h: number = this.parseHour(time);
-      const m: number = this.parseMinute(time);
-      const id: number = await this.publishAlarm(h, m, 1002, '🚶 久坐提醒', '起来活动一下吧！久坐不利于健康～');
-      if (id > 0) {
-        ids.push(id);
-      }
-    }
-    this.sedentaryReminderIds = ids;
   }
 
   /**
@@ -139,6 +98,34 @@ export class ReminderScheduler {
       }
     }
     return newIds;
+  }
+
+  /**
+   * 发布睡眠提醒（单时间点）
+   * @param time 提醒时间，如 "22:30"
+   * @returns 新发布的 reminderId
+   */
+  async scheduleSleepReminder(time: string): Promise<number> {
+    // 先取消旧的睡眠提醒
+    await this.cancelSleepReminder();
+    
+    const h: number = this.parseHour(time);
+    const m: number = this.parseMinute(time);
+    const id: number = await this.publishAlarm(h, m, 1004, '🌙 睡眠提醒', '该睡觉啦！保持规律作息有助于健康');
+    return id;
+  }
+
+  async cancelSleepReminder(): Promise<void> {
+    try {
+      const idRaw: string | number | boolean = await GlobalData.prefs.get('sleep_reminder_id', -1);
+      const id: number = Number(idRaw);
+      if (id > 0) {
+        await reminderAgentManager.cancelReminder(id);
+        await GlobalData.prefs.put('sleep_reminder_id', -1);
+      }
+    } catch (err) {
+      console.error('cancelSleepReminder error:', JSON.stringify(err));
+    }
   }
 
   private parseHour(time: string): number {
@@ -192,11 +179,6 @@ export class ReminderScheduler {
     this.waterReminderIds = [];
   }
 
-  async cancelSedentaryReminder(): Promise<void> {
-    await this.cancelMedicationReminders(this.sedentaryReminderIds);
-    this.sedentaryReminderIds = [];
-  }
-
   // 取消一批提醒（用药提醒删除时用）
   async cancelMedicationReminders(ids: number[]): Promise<void> {
     for (const id of ids) {
@@ -212,6 +194,5 @@ export class ReminderScheduler {
 
   async stopAll(): Promise<void> {
     await this.cancelWaterReminder();
-    await this.cancelSedentaryReminder();
   }
 }

@@ -163,10 +163,12 @@
     {"name": "total_calories", "value": "消耗(千卡)"},
     {"name": "avg_sleep_score", "value": "平均睡眠评分"},
     {"name": "reason_notification", "value": "用于发送喝水、久坐和用药提醒通知"},
+    {"name": "reason_background", "value": "用于在后台持续记录健康数据和定时提醒"},
     {"name": "reason_bluetooth", "value": "用于连接鸿蒙手环获取心率和血氧数据"},
     {"name": "reason_health", "value": "用于读取和记录健康数据"},
     {"name": "reason_motion", "value": "用于记录每日步数和运动状态"},
     {"name": "reason_location", "value": "用于在运动时记录实际路程，计算走路、跑步、骑行距离"},
+    {"name": "reason_location_background", "value": "用于在后台继续运动时持续记录GPS位置，计算实际路程"},
     {"name": "reason_mic", "value": "用于AI问答语音输入，将语音转换为文字"}
   ]
 }

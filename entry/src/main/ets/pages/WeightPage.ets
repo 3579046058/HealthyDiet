@@ -230,7 +230,7 @@ struct WeightPage {
   async saveRecord(): Promise<void> {
     const today = await GlobalData.getTodayDate();
 
-    // 保存体重
+    // 保存体重（同步更新 prefs，供运动页/热量计算读取）
     const weightVal = parseFloat(this.weightInput);
     if (!isNaN(weightVal) && weightVal > 0) {
       const existingWeight = await GlobalData.db.getWeightRecords(today, today);
@@ -238,10 +238,13 @@ struct WeightPage {
         await GlobalData.db.deleteWeightRecord(Number(record.id));
       }
       await GlobalData.db.addWeightRecord(today, weightVal);
+      const cfg = await GlobalData.prefs.getGoalConfig();
+      cfg.weightKg = weightVal;
+      await GlobalData.prefs.saveGoalConfig(cfg);
       this.weightInput = '';
     }
 
-    // 保存身高
+    // 保存身高（同步更新 prefs）
     const heightVal = parseFloat(this.heightInput);
     if (!isNaN(heightVal) && heightVal > 0) {
       const existingHeight = await GlobalData.db.getHeightRecords(today, today);
@@ -292,6 +295,18 @@ struct WeightPage {
       for (const id of deleteHeightRows) {
         await GlobalData.db.deleteHeightRecord(id);
       }
+
+      // 删除后同步 prefs 体重/身高（取最新记录，无则保留原值）
+      const cfg = await GlobalData.prefs.getGoalConfig();
+      const latestW = await GlobalData.db.getLatestWeight();
+      if (latestW) {
+        cfg.weightKg = Number(latestW.weight_kg);
+      }
+      const latestH = await GlobalData.db.getLatestHeight();
+      if (latestH) {
+        cfg.heightCm = Number(latestH.height_cm);
+      }
+      await GlobalData.prefs.saveGoalConfig(cfg);
 
       await this.loadData();
     } catch (err) {
