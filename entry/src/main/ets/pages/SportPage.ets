@@ -350,7 +350,10 @@ struct SportPage {
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { router.back(); })
+        Text('←').fontSize(22).fontColor(this.txt())
+          .accessibilityText('返回上一页')
+          .accessibilityLevel('important')
+          .onClick(() => { router.back(); })
         Text('运动记录').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
         Text('＋ 手动添加').fontSize(14).fontColor('#FF6B35')

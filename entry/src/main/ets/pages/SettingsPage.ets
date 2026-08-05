@@ -36,7 +36,10 @@ struct SettingsPage {
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { router.back(); })
+        Text('←').fontSize(22).fontColor(this.txt())
+          .accessibilityText('返回上一页')
+          .accessibilityLevel('important')
+          .onClick(() => { router.back(); })
         Text('设置').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
       }
