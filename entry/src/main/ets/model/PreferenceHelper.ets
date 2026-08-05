@@ -19,6 +19,9 @@ const KEY_LAST_MOOD_PROMPT = 'last_mood_prompt_date';
 const KEY_HEALTH_CARD_ORDER = 'health_card_order';
 const KEY_QUICK_FUNCTION_ORDER = 'quick_function_order';
 const KEY_DAILY_CALORIE = "dailyCalorie";
+const KEY_DAILY_PROTEIN = "daily_protein";
+const KEY_DAILY_FAT = "daily_fat";
+const KEY_DAILY_CARBS = "daily_carbs";
 
 export class PreferenceHelper {
   private pref_: preferences.Preferences | null = null;
@@ -43,6 +46,9 @@ export class PreferenceHelper {
       weightKg: await this.pref.get(KEY_WEIGHT_GOAL, 70) as number,
       heightCm: await this.pref.get(KEY_HEIGHT_CM, 170) as number,
       dailyCalorie: await this.pref.getSync(KEY_DAILY_CALORIE,2000) as number,
+      dailyProtein: await this.pref.get(KEY_DAILY_PROTEIN, 60) as number,
+      dailyFat: await this.pref.get(KEY_DAILY_FAT, 60) as number,
+      dailyCarbs: await this.pref.get(KEY_DAILY_CARBS, 250) as number,
     };
   }
 
@@ -54,6 +60,9 @@ export class PreferenceHelper {
     await this.pref.put(KEY_WEIGHT_GOAL, config.weightKg);
     await this.pref.put(KEY_HEIGHT_CM, config.heightCm);
     await this.pref.putSync(KEY_DAILY_CALORIE,config.dailyCalorie);
+    await this.pref.put(KEY_DAILY_PROTEIN, config.dailyProtein ?? 60);
+    await this.pref.put(KEY_DAILY_FAT, config.dailyFat ?? 60);
+    await this.pref.put(KEY_DAILY_CARBS, config.dailyCarbs ?? 250);
     await this.pref.flush();
   }
 
