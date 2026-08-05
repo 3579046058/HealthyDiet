@@ -209,6 +209,18 @@ export class ThemeColors {
   static divider(theme: string): string { return theme === 'dark' ? '#333333' : '#DDDDDD'; }
 }
 
+/**
+ * 主题工具类：统一页面背景/卡片/文字配色，消除各页面重复的 getter
+ */
+export class ThemeManager {
+  static bg(theme: string): string { return ThemeColors.pageBg(theme); }
+  static card(theme: string): string { return ThemeColors.cardBg(theme); }
+  static txt(theme: string): string { return ThemeColors.textPrimary(theme); }
+  static sub(theme: string): string { return ThemeColors.textSecondary(theme); }
+  static inputBg(theme: string): string { return ThemeColors.inputBg(theme); }
+  static divider(theme: string): string { return ThemeColors.divider(theme); }
+}
+
 export class FoodCalories {
   static readonly CAL_PER_100G: Map<string, number> = new Map<string, number>([
     ['米饭', 116], ['面条', 110], ['馒头', 223], ['包子', 227], ['饺子', 240],

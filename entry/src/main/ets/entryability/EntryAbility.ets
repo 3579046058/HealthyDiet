@@ -5,6 +5,7 @@ import { GlobalData } from '../common/GlobalData';
 import { PedometerService } from '../services/PedometerService';
 import { PermissionService } from '../services/PermissionService';
 import { ReminderScheduler } from '../services/ReminderScheduler';
+import { FoodRecognitionService } from '../services/FoodRecognitionService';
 
 const DOMAIN = 0x0000;
 const TAG = 'HarmonyHealth';
@@ -33,6 +34,14 @@ export default class EntryAbility extends UIAbility {
       hilog.info(DOMAIN, TAG, 'GlobalData initialized successfully');
     } catch (err) {
       hilog.error(DOMAIN, TAG, 'Failed to init GlobalData: %{public}s', JSON.stringify(err));
+    }
+
+    // 初始化 AI 配置（从 rawfile 读取 API 密钥）
+    try {
+      await FoodRecognitionService.getInstance().init(this.context);
+      hilog.info(DOMAIN, TAG, 'FoodRecognitionService initialized');
+    } catch (err) {
+      hilog.error(DOMAIN, TAG, 'Failed to init FoodRecognitionService: %{public}s', JSON.stringify(err));
     }
 
     const win = windowStage.getMainWindowSync();

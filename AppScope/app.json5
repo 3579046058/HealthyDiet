@@ -1,7 +1,7 @@
 {
   "app": {
     "bundleName": "com.yourcompany.healthapp",
-    "vendor": "example",
+    "vendor": "thirdgroup",
     "versionCode": 1000001,
     "versionName": "1.1.0",
     "buildVersion": "1",
