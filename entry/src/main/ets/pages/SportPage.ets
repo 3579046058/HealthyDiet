@@ -82,6 +82,9 @@ struct SportPage {
       }
       await GlobalData.db.updateDailySummaryField(today, 'exercise_minutes', totalMin);
       await GlobalData.db.updateDailySummaryField(today, 'calories_burned', totalCal);
+      
+      // 通知 Index 页面数据已更新
+      AppStorage.setOrCreate('dataUpdateTrigger', `sport_${Date.now()}`);
     } catch (err) {
       console.error('SportPage recalcDailySportSummary error:', JSON.stringify(err));
     }

@@ -148,6 +148,11 @@ export struct HealthTab {
             }
             .margin({ right: 12 })
           }
+          // 成就入口图标
+          Text('🏆').fontSize(22).margin({ right: 12 })
+            .accessibilityText('查看成就')
+            .accessibilityLevel('important')
+            .onClick(() => { this.onNavigate('achievement'); })
           Text(this.themeMode === 'dark' ? '🌙' : (this.themeMode === 'light' ? '☀️' : '🔄')).fontSize(22).margin({ right: 12 })
             .accessibilityText(this.getThemeAccessibilityText())
             .accessibilityLevel('important')

@@ -1,6 +1,7 @@
 import { preferences } from '@kit.ArkData';
 import { GoalConfig, StreakData } from '../common/Constants';
 
+// 基础存储key
 const KEY_STEP_GOAL = 'goal_steps';
 const KEY_WATER_GOAL = 'goal_water_ml';
 const KEY_SPORT_DAYS = 'goal_sport_days';
@@ -19,9 +20,13 @@ const KEY_LAST_MOOD_PROMPT = 'last_mood_prompt_date';
 const KEY_HEALTH_CARD_ORDER = 'health_card_order';
 const KEY_QUICK_FUNCTION_ORDER = 'quick_function_order';
 const KEY_DAILY_CALORIE = "dailyCalorie";
+// 远程新增三大营养素key
 const KEY_DAILY_PROTEIN = "daily_protein";
 const KEY_DAILY_FAT = "daily_fat";
 const KEY_DAILY_CARBS = "daily_carbs";
+// 本地新增成就系统key
+const KEY_ACHIEVEMENT_DAYS = 'achievement_days'; // 已解锁的成就天数列表
+const KEY_LAST_ACHIEVEMENT_CHECK_DATE = 'last_achievement_check_date'; // 上次检查成就的日期
 
 export class PreferenceHelper {
   private pref_: preferences.Preferences | null = null;
@@ -46,6 +51,7 @@ export class PreferenceHelper {
       weightKg: await this.pref.get(KEY_WEIGHT_GOAL, 70) as number,
       heightCm: await this.pref.get(KEY_HEIGHT_CM, 170) as number,
       dailyCalorie: await this.pref.getSync(KEY_DAILY_CALORIE,2000) as number,
+      // 远程新增营养素读取
       dailyProtein: await this.pref.get(KEY_DAILY_PROTEIN, 60) as number,
       dailyFat: await this.pref.get(KEY_DAILY_FAT, 60) as number,
       dailyCarbs: await this.pref.get(KEY_DAILY_CARBS, 250) as number,
@@ -60,6 +66,7 @@ export class PreferenceHelper {
     await this.pref.put(KEY_WEIGHT_GOAL, config.weightKg);
     await this.pref.put(KEY_HEIGHT_CM, config.heightCm);
     await this.pref.putSync(KEY_DAILY_CALORIE,config.dailyCalorie);
+    // 远程新增营养素保存
     await this.pref.put(KEY_DAILY_PROTEIN, config.dailyProtein ?? 60);
     await this.pref.put(KEY_DAILY_FAT, config.dailyFat ?? 60);
     await this.pref.put(KEY_DAILY_CARBS, config.dailyCarbs ?? 250);
@@ -242,6 +249,48 @@ export class PreferenceHelper {
       await this.pref.flush();
     } catch (err) {
       console.error('setQuickFunctionOrder error:', JSON.stringify(err));
+    }
+  }
+
+  // ========== 本地新增：成就系统相关方法 ==========
+  async getAchievementDays(): Promise<number[]> {
+    try {
+      const daysStr = await this.pref.get(KEY_ACHIEVEMENT_DAYS, '') as string;
+      if (daysStr === '') {
+        return [];
+      }
+      return daysStr.split(',').map(d => parseInt(d)).filter(d => !isNaN(d));
+    } catch (err) {
+      console.error('getAchievementDays error:', JSON.stringify(err));
+      return [];
+    }
+  }
+
+  async setAchievementDays(days: number[]): Promise<void> {
+    try {
+      const daysStr = days.join(',');
+      await this.pref.put(KEY_ACHIEVEMENT_DAYS, daysStr);
+      await this.pref.flush();
+    } catch (err) {
+      console.error('setAchievementDays error:', JSON.stringify(err));
+    }
+  }
+
+  async getLastAchievementCheckDate(): Promise<string> {
+    try {
+      return await this.pref.get(KEY_LAST_ACHIEVEMENT_CHECK_DATE, '') as string;
+    } catch (err) {
+      console.error('getLastAchievementCheckDate error:', JSON.stringify(err));
+      return '';
+    }
+  }
+
+  async setLastAchievementCheckDate(date: string): Promise<void> {
+    try {
+      await this.pref.put(KEY_LAST_ACHIEVEMENT_CHECK_DATE, date);
+      await this.pref.flush();
+    } catch (err) {
+      console.error('setLastAchievementCheckDate error:', JSON.stringify(err));
     }
   }
 }

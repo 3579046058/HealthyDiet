@@ -90,6 +90,9 @@ struct DietPage {
       this.amountG = '';
       this.showInput = false;
       await this.loadData();
+      
+      // 通知 Index 页面数据已更新
+      AppStorage.setOrCreate('dataUpdateTrigger', `diet_${Date.now()}`);
     } catch (err) {
       console.error('DietPage saveRecord error:', JSON.stringify(err));
     }

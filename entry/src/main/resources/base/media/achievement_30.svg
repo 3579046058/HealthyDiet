@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 银牌 - 30天成就 -->
+  <defs>
+    <linearGradient id="silver" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#C0C0C0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#A8A8A8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#808080;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- 奖牌主体 -->
+  <circle cx="50" cy="55" r="35" fill="url(#silver)" stroke="#808080" stroke-width="2"/>
+  <!-- 奖牌内圈 -->
+  <circle cx="50" cy="55" r="28" fill="none" stroke="#FFFFFF" stroke-width="1.5" opacity="0.6"/>
+  <!-- 数字30 -->
+  <text x="50" y="62" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle">30</text>
+  <!-- 奖牌顶部装饰 -->
+  <path d="M30 20 Q50 10 70 20 L65 25 Q50 18 35 25 Z" fill="#C0C0C0" stroke="#808080" stroke-width="1"/>
+  <!-- 双星装饰 -->
+  <polygon points="35,35 37,39 41,39 38,42 39,46 35,43 31,46 32,42 29,39 33,39" fill="#FFFFFF" opacity="0.8"/>
+  <polygon points="65,35 67,39 71,39 68,42 69,46 65,43 61,46 62,42 59,39 63,39" fill="#FFFFFF" opacity="0.8"/>
+</svg>

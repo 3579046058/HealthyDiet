@@ -41,6 +41,9 @@ struct WaterPage {
       }
       this.currentMl = total;
       await GlobalData.db.updateDailySummaryField(today, 'water_ml', total);
+      
+      // 通知 Index 页面数据已更新
+      AppStorage.setOrCreate('dataUpdateTrigger', `water_${Date.now()}`);
     } catch (err) {
       console.error('WaterPage loadData error:', JSON.stringify(err));
     }
@@ -72,6 +75,9 @@ struct WaterPage {
       }
       this.currentMl = total;
       await GlobalData.db.updateDailySummaryField(date, 'water_ml', total);
+      
+      // 通知 Index 页面数据已更新
+      AppStorage.setOrCreate('dataUpdateTrigger', `water_${Date.now()}`);
     } catch (err) {
       console.error('WaterPage syncWaterSummary error:', JSON.stringify(err));
     }
