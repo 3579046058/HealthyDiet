@@ -2,6 +2,7 @@
 import { Want } from '@kit.AbilityKit';
 
 import { GlobalData } from '../common/GlobalData';
+import { DbRow } from '../common/Constants';
 
 interface FormData {
   steps: string;
@@ -9,24 +10,26 @@ interface FormData {
   stepPercent: string;
   heartRate: string;
   waterMl: string;
+  waterGoal: string;
   date: string;
+  // 快捷卡片数据
+  sleepPercent: string;
+  moodPercent: string;
+  stepValue: string;
+  sleepValue: string;
+  moodValue: string;
+  healthScore: string;
+  scoreColor: string;
+  isSleeping: string;
 }
 
 /**
  * 健康 Widget 服务卡片
- * 在桌面上显示今日步数、心率和活动状态
+ * 提供健康卡片（步数/心率/喝水）和快捷健康卡片（喝水/睡眠/评分）
  */
 export default class HealthFormAbility extends FormExtensionAbility {
   onAddForm(want: Want): formBindingData.FormBindingData {
-    const defaultData: FormData = {
-      steps: '0',
-      stepGoal: '8000',
-      stepPercent: '0',
-      heartRate: '--',
-      waterMl: '0',
-      date: ''
-    };
-    return formBindingData.createFormBindingData(defaultData);
+    return this.createDefaultData();
   }
 
   onCastToNormalForm(formId: string): void {
@@ -42,14 +45,53 @@ export default class HealthFormAbility extends FormExtensionAbility {
   }
 
   onFormEvent(formId: string, message: string): void {
-    // 处理卡片事件
-    if (message === 'refresh') {
+    console.info('HealthForm onFormEvent: ' + message);
+    // 处理卡片按钮事件：water / sleep_toggle
+    // message 可能是 {"action":"water"} 或直接 "water"
+    let action = message;
+    try {
+      if (message.indexOf('{') === 0) {
+        const parsed = JSON.parse(message) as Record<string, Object>;
+        const a = parsed['action'];
+        if (typeof a === 'string') {
+          action = a;
+        }
+      }
+    } catch (err) {
+      // 非 JSON，直接用原始 message
+    }
+    if (action === 'water' || action === 'sleep_toggle') {
+      this.handleAction(action).then(() => {
+        this.refreshForm(formId);
+      });
+    } else if (action === 'refresh') {
       this.refreshForm(formId);
     }
   }
 
   onUpdateForm(formId: string): void {
     this.refreshForm(formId);
+  }
+
+  private createDefaultData(): formBindingData.FormBindingData {
+    const defaultData: FormData = {
+      steps: '0',
+      stepGoal: '8000',
+      stepPercent: '0',
+      heartRate: '--',
+      waterMl: '0',
+      waterGoal: '2000',
+      date: '',
+      sleepPercent: '0',
+      moodPercent: '0',
+      stepValue: '--',
+      sleepValue: '--',
+      moodValue: '--',
+      healthScore: '0',
+      scoreColor: '#4CAF50',
+      isSleeping: 'false'
+    };
+    return formBindingData.createFormBindingData(defaultData);
   }
 
   private async refreshForm(formId: string): Promise<void> {
@@ -61,18 +103,139 @@ export default class HealthFormAbility extends FormExtensionAbility {
     }
   }
 
+  private async handleAction(action: string): Promise<void> {
+    try {
+      await GlobalData.init(this.context);
+      const today = await GlobalData.getTodayDate();
+
+      if (action === 'water') {
+        // 快速记录一杯水（200ml）
+        const config = await GlobalData.prefs.getGoalConfig();
+        const summary = await GlobalData.db.getDailySummary(today);
+        const current = summary ? Number(summary.water_ml) || 0 : 0;
+        const newMl = current + 200;
+        await GlobalData.db.updateDailySummaryField(today, 'water_ml', newMl);
+        await GlobalData.db.addWaterTimeline(today, this.getNowTime(), 200);
+      } else if (action === 'sleep_toggle') {
+        const latestSleep = await GlobalData.db.getLatestSleepStartRecord();
+        if (latestSleep) {
+          // 正在睡眠中 → 醒来，保存睡眠记录
+          const endTime = this.getNowTime();
+          const startTime = String(latestSleep.start_time || '07:00');
+          const startParts = startTime.split(':');
+          const endParts = endTime.split(':');
+          const sh = parseInt(startParts[0]) || 0;
+          const sm = parseInt(startParts[1]) || 0;
+          const eh = parseInt(endParts[0]) || 0;
+          const em = parseInt(endParts[1]) || 0;
+          let totalMin = (eh * 60 + em) - (sh * 60 + sm);
+          if (totalMin < 0) {
+            totalMin += 24 * 60;
+          }
+          const d: number = Math.round(totalMin * 0.2);
+          const l: number = Math.round(totalMin * 0.55);
+          const r: number = Math.round(totalMin * 0.25);
+          const score = this.calcSleepScore(totalMin);
+          const record: DbRow = {
+            date: today,
+            start_time: startTime,
+            end_time: endTime,
+            deep_sleep_min: d,
+            light_sleep_min: l,
+            rem_min: r,
+            total_minutes: totalMin,
+            score: score,
+          };
+          await GlobalData.db.addSleepRecord(record);
+          await GlobalData.db.updateDailySummaryField(today, 'sleep_score', score);
+          if (latestSleep.id) {
+            await GlobalData.db.deleteSleepStartRecord(Number(latestSleep.id));
+          }
+        } else {
+          // 未在睡眠 → 入睡
+          await GlobalData.db.addSleepStartRecord(today, this.getNowTime());
+        }
+      }
+    } catch (err) {
+      console.error('HealthFormAbility handleAction error:', JSON.stringify(err));
+    }
+  }
+
+  private moodEmoji(mood: number): string {
+    if (mood >= 4.5) { return '😄'; }
+    if (mood >= 3.5) { return '🙂'; }
+    if (mood >= 2.5) { return '😐'; }
+    if (mood >= 1.5) { return '😔'; }
+    return '😢';
+  }
+
+  private calcSleepScore(totalMin: number): number {
+    if (totalMin >= 420 && totalMin <= 540) {
+      return 100;
+    }
+    if (totalMin >= 360 && totalMin <= 600) {
+      return 80;
+    }
+    if (totalMin >= 300) {
+      return 60;
+    }
+    if (totalMin >= 180) {
+      return 40;
+    }
+    return 20;
+  }
+
+  private getNowTime(): string {
+    const now = new Date();
+    const h = now.getHours();
+    const m = now.getMinutes();
+    return (h < 10 ? '0' + h : '' + h) + ':' + (m < 10 ? '0' + m : '' + m);
+  }
+
   private async getFormData(): Promise<formBindingData.FormBindingData> {
     try {
       await GlobalData.init(this.context);
       const today = await GlobalData.getTodayDate();
       const config = await GlobalData.prefs.getGoalConfig();
       const summary = await GlobalData.db.getDailySummary(today);
+      const latestSleep = await GlobalData.db.getLatestSleepStartRecord();
 
       const steps = summary?.steps ? Number(summary.steps) : 0;
       const heartRate = summary?.heart_rate_avg ? Number(summary.heart_rate_avg) : 72;
       const waterMl = summary?.water_ml ? Number(summary.water_ml) : 0;
+      const sleepHours = summary?.sleep_hours ? Number(summary.sleep_hours) : 0;
+      const sleepScore = summary?.sleep_score ? Number(summary.sleep_score) : 0;
       const stepGoal = config.dailySteps;
+      const waterGoal = config.dailyWaterMl;
       const stepPercent = stepGoal > 0 ? Math.round(steps / stepGoal * 100) : 0;
+      const sleepPercent = Math.min(100, Math.round(sleepHours / 8 * 100));
+
+      // 心情：读当天情绪记录（1-5），按比例
+      const moodRows = await GlobalData.db.getMoodRecords(today, today);
+      let moodVal = 0;
+      if (moodRows.length > 0) {
+        const lastMood = moodRows[moodRows.length - 1];
+        moodVal = Number(lastMood.mood) || 0;
+      }
+      const moodPercent = Math.min(100, Math.round((moodVal / 5) * 100));
+      const moodValue = moodVal > 0 ? this.moodEmoji(moodVal) : '--';
+
+      // 健康评分（与应用首页算法一致）
+      let score = 0;
+      if (steps > 0) {
+        score += Math.min(30, Math.round(steps / (stepGoal || 8000) * 30));
+      }
+      if (sleepScore > 0) {
+        score += Math.min(25, Math.round(sleepScore * 0.3));
+      }
+      if (waterMl > 0) {
+        score += Math.min(25, Math.round(waterMl / (waterGoal || 2000) * 25));
+      }
+      score = Math.round(score);
+      const scoreColor = score >= 80 ? '#4CAF50' : (score >= 60 ? '#FF9800' : (score >= 40 ? '#FFC107' : '#F44336'));
+
+      const stepValue = steps > 0 ? String(steps) : '--';
+      const sleepValue = sleepHours > 0 ? sleepHours.toFixed(1) + 'h' : '--';
 
       const formData: FormData = {
         steps: String(steps),
@@ -80,20 +243,21 @@ export default class HealthFormAbility extends FormExtensionAbility {
         stepPercent: String(stepPercent),
         heartRate: String(heartRate),
         waterMl: String(waterMl),
+        waterGoal: String(waterGoal),
         date: today,
+        sleepPercent: String(sleepPercent),
+        moodPercent: String(moodPercent),
+        stepValue: stepValue,
+        sleepValue: sleepValue,
+        moodValue: moodValue,
+        healthScore: String(score),
+        scoreColor: scoreColor,
+        isSleeping: latestSleep ? 'true' : 'false'
       };
       return formBindingData.createFormBindingData(formData);
     } catch (err) {
-      const defaultData: FormData = {
-        steps: '0',
-        stepGoal: '8000',
-        stepPercent: '0',
-        heartRate: '--',
-        waterMl: '0',
-        date: ''
-      };
-      return formBindingData.createFormBindingData(defaultData);
+      console.error('HealthFormAbility getFormData error:', JSON.stringify(err));
+      return this.createDefaultData();
     }
   }
 }
-

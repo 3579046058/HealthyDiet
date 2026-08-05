@@ -100,6 +100,40 @@ export default class EntryAbility extends UIAbility {
     return 'light';
   }
 
+  // 处理服务卡片 router 事件（点击卡片跳转指定页面）
+  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    hilog.info(DOMAIN, TAG, 'Ability onNewWant');
+    let target: string = '';
+    if (want.parameters && want.parameters['params']) {
+      try {
+        const raw = want.parameters['params'];
+        if (typeof raw === 'string') {
+          const params = JSON.parse(raw) as Record<string, Object>;
+          const t = params['targetPage'];
+          if (typeof t === 'string') {
+            target = t;
+          }
+        } else {
+          const params = JSON.parse(JSON.stringify(raw)) as Record<string, Object>;
+          const t = params['targetPage'];
+          if (typeof t === 'string') {
+            target = t;
+          }
+        }
+      } catch (err) {
+        hilog.error(DOMAIN, TAG, 'onNewWant parse error: %{public}s', JSON.stringify(err));
+      }
+    }
+    // 兜底：直接读取 want.parameters.targetPage
+    if (target.length === 0 && want.parameters && typeof want.parameters['targetPage'] === 'string') {
+      target = want.parameters['targetPage'] as string;
+    }
+    if (target.length > 0) {
+      hilog.info(DOMAIN, TAG, 'Card router to: %{public}s', target);
+      AppStorage.setOrCreate('cardTarget', target);
+    }
+  }
+
   px2vp(px: number): number {
     try {
       const density: number = display.getDefaultDisplaySync().densityPixels;

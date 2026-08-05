@@ -13,6 +13,17 @@ struct WaterPage {
   @State timeline: DbRow[] = [];
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  private lastClickTime: number = 0;
+
+  isDoubleClick(): boolean {
+    const now = Date.now();
+    if (now - this.lastClickTime < 400) {
+      this.lastClickTime = 0;
+      return true;
+    }
+    this.lastClickTime = now;
+    return false;
+  }
 
   aboutToAppear(): void {
     this.loadData();
@@ -119,8 +130,15 @@ struct WaterPage {
             .width('80%').margin({ top: 16 })
             Text('已喝 ' + String(Math.floor(this.currentMl / this.cupMl)) + ' 杯')
               .fontSize(14).fontColor(this.sub()).margin({ top: 8 })
+            Text('双击 💧 快速记录一杯 (' + String(this.cupMl) + 'ml)')
+              .fontSize(11).fontColor(this.sub()).margin({ top: 6 })
           }
           .width('100%').padding(32)
+          .onClick(() => {
+            if (this.isDoubleClick()) {
+              this.addCup();
+            }
+          })
 
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
             ForEach([100, 150, 200, 250, 300, 500], (ml: number) => {
@@ -130,7 +148,14 @@ struct WaterPage {
                 .borderRadius(23)
                 .fontColor(this.cupMl === ml ? '#FFFFFF' : this.sub())
                 .margin(6)
-                .onClick(() => { this.cupMl = ml; })
+                .onClick(() => {
+                  if (this.isDoubleClick()) {
+                    this.cupMl = ml;
+                    this.addCup();
+                  } else {
+                    this.cupMl = ml;
+                  }
+                })
             })
           }
           .margin({ top: 16 })
@@ -145,22 +170,35 @@ struct WaterPage {
           if (this.timeline.length > 0) {
             Text('喝水时间线').fontSize(16).fontWeight(FontWeight.Bold)
               .width('100%').padding({ left: 16, top: 24, bottom: 8 })
-            Column() {
-              ForEach(this.timeline, (item: DbRow) => {
-                Row() {
-                  Text(String(item.time)).fontSize(14).fontColor(this.sub()).width(60)
-                  Row()
-                    .width(Math.min(200, Number(item.ml) / 5) + 30)
-                    .height(24).backgroundColor('#03A9F4').borderRadius(12)
-                    .margin({ left: 8 })
-                  Text(String(item.ml) + 'ml').fontSize(13).fontColor(this.sub()).margin({ left: 8 })
-                  Blank()
-                  Text('🗑').fontSize(14).margin({ left: 4 })
-                    .onClick(() => { this.deleteTimelineItem(Number(item.id)); })
-                }
-                .width('100%').padding({ left: 16, right: 16, bottom: 6 })
-              })
+            // 柱状图：每根柱子代表一次喝水，高度按 ml 比例
+            Scroll() {
+              Row() {
+                ForEach(this.timeline, (item: DbRow) => {
+                  Column() {
+                    // 删除按钮（柱子顶部）
+                    Text('🗑').fontSize(12).opacity(0.7)
+                      .onClick(() => { this.deleteTimelineItem(Number(item.id)); })
+                    // 柱子
+                    Row()
+                      .width(20)
+                      .height(Math.max(10, Math.min(90, Number(item.ml) / 5)))
+                      .backgroundColor('#03A9F4')
+                      .borderRadius({ topLeft: 6, topRight: 6 })
+                    // 时间
+                    Text(String(item.time)).fontSize(10).fontColor(this.sub()).margin({ top: 4 })
+                    // 水量
+                    Text(String(item.ml)).fontSize(10).fontColor(this.sub()).margin({ top: 2 })
+                  }
+                  .alignItems(HorizontalAlign.Center)
+                  .margin({ left: 10, right: 10 })
+                })
+              }
+              .alignItems(VerticalAlign.Bottom)
+              .padding({ left: 16, right: 16, top: 8, bottom: 8 })
             }
+            .scrollable(ScrollDirection.Horizontal)
+            .width('100%')
+            .height(180)
           }
 
           Text('💧 每天喝水，健康又美丽')
