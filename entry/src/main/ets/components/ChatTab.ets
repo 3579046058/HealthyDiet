@@ -1,7 +1,9 @@
-import { display } from '@kit.ArkUI';
+import { display, promptAction } from '@kit.ArkUI';
+import { abilityAccessCtrl } from '@kit.AbilityKit';
 import { ThemeColors } from '../common/Constants';
 import { ChatMessage, ChatRole, ChatSession } from '../model/ChatModels';
 import { ChatController, ChatViewModel } from '../controller/ChatController';
+import { VoiceInputService, VoiceInputCallbacks } from '../services/VoiceInputService';
 
 @ComponentV2
 export struct ChatTab {
@@ -10,6 +12,13 @@ export struct ChatTab {
   @Local vm: ChatViewModel = new ChatViewModel();
   @Local scroller: Scroller = new Scroller();
   private controller: ChatController = new ChatController(this.vm);
+  private quickPrompts: Array<string> = [
+    '我今天的运动量怎么样',
+    '今天吃什么',
+    '今天卡路里摄入情况',
+    '我今天的睡眠怎么样',
+    '推荐一份健康早餐'
+  ];
 
   aboutToAppear(): void {
     const h: number | undefined = AppStorage.get<number>('statusBarHeight');
@@ -21,6 +30,13 @@ export struct ChatTab {
     setTimeout(() => {
       this.scroller.scrollEdge(Edge.Bottom);
     }, 400);
+  }
+
+  aboutToDisappear(): void {
+    if (this.vm.isRecording) {
+      VoiceInputService.getInstance().cancel();
+      this.vm.isRecording = false;
+    }
   }
 
   private applyAdaptiveLayout(): void {
@@ -51,6 +67,11 @@ export struct ChatTab {
     this.controller.stop();
   }
 
+  private askQuickPrompt(prompt: string): void {
+    this.vm.inputContent = prompt;
+    this.send();
+  }
+
   private openSession(id: string): void {
     this.controller.openSession(id);
     setTimeout(() => {
@@ -75,6 +96,47 @@ export struct ChatTab {
     const h: string = String(d.getHours()).padStart(2, '0');
     const min: string = String(d.getMinutes()).padStart(2, '0');
     return m + '-' + day + ' ' + h + ':' + min;
+  }
+
+  private async toggleVoice(): Promise<void> {
+    if (this.vm.isRecording) {
+      await VoiceInputService.getInstance().stop();
+      return;
+    }
+    const ctx = this.getUIContext().getHostContext();
+    if (ctx === undefined) {
+      return;
+    }
+    try {
+      const atManager: abilityAccessCtrl.AtManager = abilityAccessCtrl.createAtManager();
+      const req = await atManager.requestPermissionsFromUser(ctx,
+        ['ohos.permission.MICROPHONE']);
+      if (req.authResults.length === 0 || req.authResults[0] !== abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
+        promptAction.showToast({ message: '需要麦克风权限才能使用语音输入' });
+        return;
+      }
+    } catch (err) {
+      console.error('ChatTab mic permission error:', JSON.stringify(err));
+      promptAction.showToast({ message: '麦克风权限申请失败' });
+      return;
+    }
+    const callbacks: VoiceInputCallbacks = {
+      onPartial: (text: string) => {
+        this.vm.inputContent = text;
+      },
+      onFinal: (text: string) => {
+        this.vm.inputContent = text;
+      },
+      onError: (message: string) => {
+        promptAction.showToast({ message: message });
+      },
+      onStateChange: (recording: boolean) => {
+        this.vm.isRecording = recording;
+      }
+    };
+    VoiceInputService.getInstance().setCallbacks(callbacks);
+    this.vm.isRecording = true;
+    await VoiceInputService.getInstance().start();
   }
 
   @Builder
@@ -277,6 +339,22 @@ export struct ChatTab {
               Text('健康助手已就绪').fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.txt()).margin({ top: 12 })
               Text('可以问我饮食、运动、睡眠、喝水等健康问题\n回答会结合你今天的真实健康记录').fontSize(13).fontColor(this.sub())
                 .textAlign(TextAlign.Center).margin({ top: 8 })
+
+              Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
+                ForEach(this.quickPrompts, (prompt: string) => {
+                  Text(prompt)
+                    .fontSize(13)
+                    .fontColor(this.txt())
+                    .backgroundColor(this.card())
+                    .borderRadius(16)
+                    .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+                    .margin({ left: 6, right: 6, top: 6 })
+                    .onClick(() => { this.askQuickPrompt(prompt); })
+                }, (prompt: string): string => prompt)
+              }
+              .width('100%')
+              .margin({ top: 18 })
+              .padding({ left: 12, right: 12 })
             }
             .width('100%')
             .layoutWeight(1)
@@ -296,8 +374,18 @@ export struct ChatTab {
             .padding({ left: 16, right: 16, top: 4 })
           }
 
-          Row() {
-            TextInput({ placeholder: '输入你的健康问题…', text: this.vm.inputContent })
+        Row() {
+          Button(this.vm.isRecording ? '⏹' : '🎤')
+            .fontSize(18)
+            .fontColor(Color.White)
+            .backgroundColor(this.vm.isRecording ? '#FF5722' : this.card())
+            .width(44)
+            .height(44)
+            .borderRadius(22)
+            .margin({ right: 10 })
+            .onClick(() => { this.toggleVoice(); })
+
+          TextInput({ placeholder: this.vm.isRecording ? '正在聆听，点击⏹结束…' : '输入你的健康问题…', text: this.vm.inputContent })
               .layoutWeight(1)
               .height(44)
               .fontSize(15)
