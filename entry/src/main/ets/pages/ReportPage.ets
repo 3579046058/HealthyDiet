@@ -1,8 +1,10 @@
 import { router } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { Constants, DbRow, ThemeColors } from '../common/Constants';
+import { HealthScoreUtil } from '../services/HealthScoreUtil';
 import { TrendChart } from '../components/TrendChart';
 import { BarChart } from '../components/BarChart';
+import { ScoreTrendChart } from '../components/ScoreTrendChart';
 
 @Entry
 @Component
@@ -14,6 +16,8 @@ struct ReportPage {
   @State weekTotalHours: number = 0;
   @State weekAvgWater: number = 0;
   @State weekAvgSleep: number = 0;
+  @State weekScores: number[] = [];
+  @State monthScores: number[] = [];
   @State weekTotalCalories: number = 0;
   @State monthSteps: number[] = [];
   @State monthLabels: string[] = [];
@@ -75,6 +79,10 @@ struct ReportPage {
       this.weekSteps = days.map((item: DbRow) => Number(item.steps) || 0);
       this.weekWaterData = days.map((item: DbRow) => Number(item.water_ml) || 0);
       this.weekSleepData = days.map((item: DbRow) => Number(item.sleep_hours) || 0);
+      
+      // 计算每天的评分
+      this.weekScores = days.map((item: DbRow) => this.calculateDailyScore(item));
+      
       this.weekAvgSteps = Math.round(this.weekSteps.reduce((a: number, b: number) => a + b, 0) / 7);
       this.weekTotalHours = days.reduce((s: number, d: DbRow) => s + (Number(d.exercise_minutes) || 0), 0) / 60;
       this.weekAvgWater = Math.round(days.reduce((s: number, d: DbRow) => s + (Number(d.water_ml) || 0), 0) / 7);
@@ -117,12 +125,28 @@ struct ReportPage {
       );
       this.monthLabels = monthRows.map((r: DbRow) => String(new Date(String(r.date)).getDate()));
       this.monthSteps = monthRows.map((item: DbRow) => Number(item.steps) || 0);
+      
+      // 计算月度评分
+      this.monthScores = monthRows.map((item: DbRow) => this.calculateDailyScore(item));
+      
       this.monthAvgSteps = this.monthSteps.length > 0
         ? Math.round(this.monthSteps.reduce((a: number, b: number) => a + b, 0) / this.monthSteps.length)
         : 0;
     } catch (err) {
       console.error('ReportPage loadData error:', JSON.stringify(err));
     }
+  }
+
+  // 计算每日评分（简化版，历史日期无饮食记录故不计饮食分）
+  calculateDailyScore(day: DbRow): number {
+    const steps = Number(day.steps) || 0;
+    const sleepHours = Number(day.sleep_hours) || 0;
+    const waterMl = Number(day.water_ml) || 0;
+    const exerciseMin = Number(day.exercise_minutes) || 0;
+    // 睡眠小时数转为评分（8小时满分，近似映射）
+    const sleepScore = Math.min(100, Math.round(sleepHours / 8 * 100));
+    return HealthScoreUtil.calcByData(steps, HealthScoreUtil.STEP_GOAL_DEFAULT,
+      sleepScore, waterMl, HealthScoreUtil.WATER_GOAL_DEFAULT, exerciseMin, 0, 0);
   }
 
   bg(): string { return ThemeColors.pageBg(this.theme); }
@@ -219,6 +243,18 @@ struct ReportPage {
                 unit: 'h'
               }).height(140).padding({ left: 16, right: 16 })
             }
+
+            // 评分趋势图
+            if (this.weekScores.length > 0) {
+              ScoreTrendChart({
+                scores: this.weekScores,
+                dates: this.weekLabels,
+                textColor: this.txt(),
+                subTextColor: this.sub(),
+                cardColor: this.card(),
+                theme: this.theme
+              }).margin({ left: 16, right: 16, top: 16 })
+            }
           } else {
             Text('本月概况').fontSize(18).fontWeight(FontWeight.Bold)
               .width('100%').padding({ left: 16, bottom: 8 })
@@ -241,6 +277,18 @@ struct ReportPage {
                 fillColor: '#FF980022',
                 labels: this.monthLabels
               }).height(200).padding({ left: 16, right: 16 })
+            }
+
+            // 月度评分趋势图
+            if (this.monthScores.length > 0) {
+              ScoreTrendChart({
+                scores: this.monthScores,
+                dates: this.monthLabels,
+                textColor: this.txt(),
+                subTextColor: this.sub(),
+                cardColor: this.card(),
+                theme: this.theme
+              }).margin({ left: 16, right: 16, top: 16 })
             }
           }
 

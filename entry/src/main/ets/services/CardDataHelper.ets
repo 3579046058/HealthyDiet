@@ -1,5 +1,7 @@
 import { formBindingData, formProvider } from '@kit.FormKit';
 import { GlobalData } from '../common/GlobalData';
+import { DbRow, GoalConfig } from '../common/Constants';
+import { HealthScoreUtil } from './HealthScoreUtil';
 
 export interface CardFormFields {
   steps: string;
@@ -17,6 +19,7 @@ export interface CardFormFields {
   healthScore: string;
   scoreColor: string;
   isSleeping: string;
+  updateTime: string;
 }
 
 /**
@@ -44,13 +47,24 @@ export class CardDataHelper {
       moodValue: '--',
       healthScore: '0',
       scoreColor: '#4CAF50',
-      isSleeping: 'false'
+      isSleeping: 'false',
+      updateTime: ''
     };
     try {
       const today = await GlobalData.getTodayDate();
-      const config = await GlobalData.prefs.getGoalConfig();
-      const summary = await GlobalData.db.getDailySummary(today);
-      const latestSleep = await GlobalData.db.getLatestSleepStartRecord();
+      // 并行执行相互独立的 DB 查询，避免串行等待拖慢卡片刷新
+      const results = await Promise.all([
+        GlobalData.prefs.getGoalConfig(),
+        GlobalData.db.getDailySummary(today),
+        GlobalData.db.getLatestSleepStartRecord(),
+        GlobalData.db.getMoodRecords(today, today),
+        HealthScoreUtil.getCalorieIntake(today)
+      ]);
+      const config = results[0] as GoalConfig;
+      const summary = results[1] as DbRow | null;
+      const latestSleep = results[2] as DbRow | null;
+      const moodRows = results[3] as DbRow[];
+      const calorieIntake = results[4] as number;
 
       const steps = summary?.steps ? Number(summary.steps) : 0;
       const heartRate = summary?.heart_rate_avg ? Number(summary.heart_rate_avg) : 72;
@@ -63,7 +77,6 @@ export class CardDataHelper {
       const sleepPercent = Math.min(100, Math.round(sleepHours / 8 * 100));
 
       // 心情
-      const moodRows = await GlobalData.db.getMoodRecords(today, today);
       let moodVal = 0;
       if (moodRows.length > 0) {
         const lastMood = moodRows[moodRows.length - 1];
@@ -72,22 +85,20 @@ export class CardDataHelper {
       const moodPercent = Math.min(100, Math.round((moodVal / 5) * 100));
       const moodValue = moodVal > 0 ? CardDataHelper.moodEmoji(moodVal) : '--';
 
-      // 健康评分（与应用首页算法一致）
-      let score = 0;
-      if (steps > 0) {
-        score += Math.min(30, Math.round(steps / (stepGoal || 8000) * 30));
-      }
-      if (sleepScore > 0) {
-        score += Math.min(25, Math.round(sleepScore * 0.3));
-      }
-      if (waterMl > 0) {
-        score += Math.min(25, Math.round(waterMl / (waterGoal || 2000) * 25));
-      }
-      score = Math.round(score);
-      const scoreColor = score >= 80 ? '#4CAF50' : (score >= 60 ? '#FF9800' : (score >= 40 ? '#FFC107' : '#F44336'));
+      // 健康评分（与应用首页统一的加权累加 + 短板加权算法）
+      const exerciseMin = summary?.exercise_minutes ? Number(summary.exercise_minutes) : 0;
+      const hasData = steps > 0 || sleepScore > 0 || waterMl > 0 || exerciseMin > 0;
+      const score = hasData ? HealthScoreUtil.calcByData(steps, stepGoal, sleepScore, waterMl, waterGoal,
+        exerciseMin, calorieIntake, config.dailyCalorie) : 0;
+      const scoreColor = !hasData ? '#9E9E9E' : (score >= 80 ? '#4CAF50' : (score >= 60 ? '#FF9800' : (score >= 40 ? '#FFC107' : '#F44336')));
+      const scoreValue = hasData ? String(score) : '--';
 
       const stepValue = steps > 0 ? String(steps) : '--';
       const sleepValue = sleepHours > 0 ? sleepHours.toFixed(1) + 'h' : '--';
+
+      // 生成更新时间（HH:MM 格式）
+      const now = new Date();
+      const updateTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
 
       const formData: CardFormFields = {
         steps: String(steps),
@@ -102,9 +113,10 @@ export class CardDataHelper {
         stepValue: stepValue,
         sleepValue: sleepValue,
         moodValue: moodValue,
-        healthScore: String(score),
+        healthScore: scoreValue,
         scoreColor: scoreColor,
-        isSleeping: latestSleep ? 'true' : 'false'
+        isSleeping: latestSleep ? 'true' : 'false',
+        updateTime: updateTime
       };
       return formBindingData.createFormBindingData(formData);
     } catch (err) {
@@ -122,10 +134,16 @@ export class CardDataHelper {
   }
 
   /**
-   * 刷新桌面小组件数据
+   * 刷新桌面小组件数据（带节流：2 秒内多次调用只执行一次，避免频繁刷新）
    * 在任何健康数据更新后调用此方法
    */
+  static lastRefreshTs: number = 0;
   static async refreshWidget(context: Context): Promise<void> {
+    const now = Date.now();
+    if (now - CardDataHelper.lastRefreshTs < 2000) {
+      return;
+    }
+    CardDataHelper.lastRefreshTs = now;
     try {
       const raw = await GlobalData.prefs.get('card_form_id', '');
       const formId = typeof raw === 'string' ? raw : '';

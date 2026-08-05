@@ -144,6 +144,13 @@ struct QuickActionsCard {
       }
       .width('100%')
       .margin({ top: 8 })
+
+      // 更新时间提示
+      Text('每次开屏更新，具体信息请进入应用查看')
+        .fontSize(9)
+        .fontColor('#999999')
+        .width('100%')
+        .margin({ top: 6 })
     }
     .width('100%')
     .height('100%')

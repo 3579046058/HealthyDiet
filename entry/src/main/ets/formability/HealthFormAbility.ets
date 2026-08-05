@@ -31,16 +31,25 @@ interface FormData {
 export default class HealthFormAbility extends FormExtensionAbility {
   onAddForm(want: Want): formBindingData.FormBindingData {
     // 保存 formId 用于应用内刷新卡片
-    try {
-      const formId = want.parameters ? want.parameters['ohos.extra.param.key.form_identity'] : undefined;
-      if (formId && GlobalData.initialized) {
-        GlobalData.prefs.put('card_form_id', String(formId));
-        GlobalData.prefs.flush();
-      }
-    } catch (err) {
-      console.error('HealthFormAbility onAddForm save formId error:', JSON.stringify(err));
+    // 注意：onAddForm 是卡片进程首次执行，GlobalData 尚未初始化，必须自行初始化
+    const formId = want.parameters ? want.parameters['ohos.extra.param.key.form_identity'] : undefined;
+    if (formId) {
+      this.saveFormId(String(formId));
     }
     return this.createDefaultData();
+  }
+
+  private saveFormId(formId: string): void {
+    try {
+      GlobalData.init(this.context).then(() => {
+        GlobalData.prefs.put('card_form_id', formId);
+        GlobalData.prefs.flush();
+      }).catch((err: Error) => {
+        console.error('HealthFormAbility saveFormId init error:', JSON.stringify(err));
+      });
+    } catch (err) {
+      console.error('HealthFormAbility saveFormId error:', JSON.stringify(err));
+    }
   }
 
   onCastToNormalForm(formId: string): void {

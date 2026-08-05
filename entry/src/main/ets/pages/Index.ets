@@ -6,6 +6,7 @@ import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { image } from '@kit.ImageKit';
 import { GlobalData } from '../common/GlobalData';
+import { HealthScoreUtil } from '../services/HealthScoreUtil';
 import { Constants, GoalConfig, StreakData, DbRow, ThemeColors } from '../common/Constants';
 import { RingProgress } from '../components/RingProgress';
 import { HealthCard } from '../components/HealthCard';
@@ -60,6 +61,7 @@ struct Index {
   @State stepGoal: number = 8000;
   @State heartRate: number = 0;
   @State todayCalorieIntake: number = 0; // 今日摄入热量
+  @State recommendCalorie: number = 2000; // 体重页计算的推荐热量
   @StorageLink('liveSteps') liveSteps: number = 0;
   @StorageLink('bandHeartRate') bandHeartRate: number = 0;
   @StorageLink('inAppAlarm') @Watch('onInAppAlarm') inAppAlarm: string = '';
@@ -324,6 +326,7 @@ struct Index {
       const goalConfig: GoalConfig = await GlobalData.prefs.getGoalConfig();
       this.stepGoal = goalConfig.dailySteps;
       this.waterGoal = goalConfig.dailyWaterMl;
+      this.recommendCalorie = goalConfig.dailyCalorie;
 
       const summary = await GlobalData.db.getDailySummary(today);
       if (summary) {
@@ -562,57 +565,44 @@ struct Index {
   }
 
   getHealthScore(): number {
-    let score: number = 0;
-    if (this.stepCount > 0) {
-      score += Math.min(30, Math.round(this.stepCount / (this.stepGoal || 8000) * 30));
-    }
-    if (this.sleepScore > 0) {
-      score += Math.min(25, Math.round(this.sleepScore * 0.3));
-    }
-    if (this.waterMl > 0) {
-      score += Math.min(25, Math.round(this.waterMl / (this.waterGoal || 2000) * 25));
-    }
-    if (this.exerciseMin > 0) {
-      score += Math.min(20, Math.round(this.exerciseMin / 60 * 20));
-    }
-    return Math.round(score);
+    // 与首页健康Tab/桌面卡片/报告统一的加权累加 + 短板加权算法
+    const currentSteps = this.liveSteps > 0 ? this.liveSteps : this.stepCount;
+    return HealthScoreUtil.calcByData(
+      currentSteps, this.stepGoal, this.sleepScore, this.waterMl, this.waterGoal,
+      this.exerciseMin, this.todayCalorieIntake, this.recommendCalorie
+    );
+  }
+
+  // 是否有有效评分数据（任一正项有记录）
+  hasScoreData(): boolean {
+    const currentSteps = this.liveSteps > 0 ? this.liveSteps : this.stepCount;
+    return currentSteps > 0 || this.sleepScore > 0 || this.waterMl > 0 || this.exerciseMin > 0;
   }
 
   getScoreDetails(): string {
-    let details: string[] = [];
-    
-    // 步数得分
-    if (this.stepCount > 0) {
-      let stepScore = Math.min(30, Math.round(this.stepCount / (this.stepGoal || 8000) * 30));
-      if (stepScore > 0) {
-        details.push(`步数+${stepScore}`);
-      }
+    const currentSteps = this.liveSteps > 0 ? this.liveSteps : this.stepCount;
+    const bd = HealthScoreUtil.calcBreakdown(
+      currentSteps, this.stepGoal, this.sleepScore, this.waterMl, this.waterGoal,
+      this.exerciseMin, this.todayCalorieIntake, this.recommendCalorie
+    );
+    const details: string[] = [];
+    if (bd.stepScore > 0) {
+      details.push(`步数+${bd.stepScore}`);
     }
-    
-    // 睡眠得分
-    if (this.sleepScore > 0) {
-      let sleepScoreValue = Math.min(25, Math.round(this.sleepScore * 0.3));
-      if (sleepScoreValue > 0) {
-        details.push(`睡眠+${sleepScoreValue}`);
-      }
+    if (bd.sleepScoreOut > 0) {
+      details.push(`睡眠+${bd.sleepScoreOut}`);
     }
-    
-    // 饮水得分
-    if (this.waterMl > 0) {
-      let waterScore = Math.min(25, Math.round(this.waterMl / (this.waterGoal || 2000) * 25));
-      if (waterScore > 0) {
-        details.push(`饮水+${waterScore}`);
-      }
+    if (bd.waterScore > 0) {
+      details.push(`饮水+${bd.waterScore}`);
     }
-    
-    // 运动得分
-    if (this.exerciseMin > 0) {
-      let exerciseScore = Math.min(20, Math.round(this.exerciseMin / 60 * 20));
-      if (exerciseScore > 0) {
-        details.push(`运动+${exerciseScore}`);
-      }
+    if (bd.exerciseScore > 0) {
+      details.push(`运动+${bd.exerciseScore}`);
     }
-    
+    if (bd.dietScore > 0) {
+      details.push(`饮食+${bd.dietScore}`);
+    } else if (bd.dietScore < 0) {
+      details.push(`饮食${bd.dietScore}`);
+    }
     return details.join(' ');
   }
 
@@ -707,12 +697,12 @@ struct Index {
               sleepHours: this.sleepHours,
               moodValue: this.moodValue,
               moodProgress: this.moodProgress,
-              sleepScore: this.sleepScore,
+                            sleepScore: this.sleepScore,
               waterMl: this.waterMl,
               waterGoal: this.waterGoal,
               todayCalorieIntake: this.todayCalorieIntake,
               exerciseMin: this.exerciseMin,
-              liveSteps: this.liveSteps,
+              recommendCalorie: this.recommendCalorie,
               healthCardOrder: this.healthCardOrder,
               quickFunctionOrder: this.quickFunctionOrder,
               onToggleTheme: () => { this.toggleTheme(); },
@@ -865,7 +855,9 @@ struct Index {
         Row() {
           Column() {
             Text('健康评分').fontSize(11).fontColor(this.subTextColor)
-            Text(String(this.getHealthScore())).fontSize(30).fontWeight(FontWeight.Bold).fontColor(this.getScoreColor(this.getHealthScore()))
+            Text(this.hasScoreData() ? String(this.getHealthScore()) : '--')
+              .fontSize(30).fontWeight(FontWeight.Bold)
+              .fontColor(this.hasScoreData() ? this.getScoreColor(this.getHealthScore()) : this.subTextColor)
           }
           .onClick(() => { this.navigateTo(Constants.PAGE_REPORT); })
           Column() {
@@ -979,4 +971,4 @@ struct Index {
     PageTransitionEnter({ duration: 300, curve: Curve.Friction }).slide(SlideEffect.Right)
     PageTransitionExit({ duration: 200, curve: Curve.FastOutLinearIn }).slide(SlideEffect.Left)
   }
-}
+}

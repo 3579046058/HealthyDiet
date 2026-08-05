@@ -6,6 +6,7 @@ import { PedometerService } from '../services/PedometerService';
 import { PermissionService } from '../services/PermissionService';
 import { ReminderScheduler } from '../services/ReminderScheduler';
 import { FoodRecognitionService } from '../services/FoodRecognitionService';
+import { CardDataHelper } from '../services/CardDataHelper';
 
 const DOMAIN = 0x0000;
 const TAG = 'HarmonyHealth';
@@ -83,8 +84,16 @@ export default class EntryAbility extends UIAbility {
     });
 
     PermissionService.getInstance().requestRequiredPermissions(this.context).then(() => {
+      let lastRefreshSteps = 0;
       PedometerService.getInstance().startListening((steps: number) => {
         hilog.info(DOMAIN, TAG, 'Pedometer steps: %{public}d', steps);
+        // 步数变化超过50步时刷新卡片（避免频繁刷新）
+        if (Math.abs(steps - lastRefreshSteps) >= 50) {
+          lastRefreshSteps = steps;
+          CardDataHelper.refreshWidget(this.context).catch((err: Error) => {
+            hilog.error(DOMAIN, TAG, 'Refresh widget error: %{public}s', JSON.stringify(err));
+          });
+        }
       });
       ReminderScheduler.getInstance().startAll();
     });
@@ -195,6 +204,10 @@ export default class EntryAbility extends UIAbility {
     const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') +
       '-' + String(now.getDate()).padStart(2, '0');
     AppStorage.setOrCreate('appForegroundDate', todayStr);
+    // 开屏/回到前台时主动刷新桌面卡片（updateForm 不消耗定时刷新配额）
+    CardDataHelper.refreshWidget(this.context).catch((err: Error) => {
+      hilog.error(DOMAIN, TAG, 'Foreground refresh widget error: %{public}s', JSON.stringify(err));
+    });
     hilog.info(DOMAIN, TAG, 'Ability onForeground, date=%{public}s', todayStr);
   }
 
