@@ -155,6 +155,10 @@ export class PreferenceHelper {
     }
   }
 
+  async delete(key: string): Promise<void> {
+    await this.pref.delete(key);
+  }
+
   async flush(): Promise<void> {
     await this.pref.flush();
   }

@@ -48,6 +48,50 @@ struct SleepPage {
     this.stopAutoRefresh();
   }
 
+  // 处理返回逻辑（左上角返回按钮和系统返回键共用）
+  handleBackPress(): void {
+    console.info('[SleepPage] handleBackPress, isSleeping:', this.isSleeping);
+    
+    // 如果正在睡眠中，弹出对话框询问
+    if (this.isSleeping) {
+      this.getUIContext().getPromptAction().showDialog({
+        title: '睡眠进行中',
+        message: `当前已入睡（${this.sleepStartTime}），请选择：`,
+        buttons: [
+          { text: '取消入睡', color: '#FF5737' },
+          { text: '后台继续', color: '#007DFF' }
+        ]
+      }).then(async (result) => {
+        console.info('[SleepPage] 用户选择:', result.index);
+        if (result.index === 1) {
+          // 后台继续：保持睡眠状态，返回主页
+          router.back();
+        } else {
+          // 取消入睡：删除入睡记录，返回主页
+          await this.deleteSleepStartRecord();
+          this.isSleeping = false;
+          router.back();
+        }
+      }).catch((error: Error) => {
+        console.error('[SleepPage] 对话框错误:', error);
+      });
+    } else {
+      // 没有正在进行的睡眠，直接返回
+      router.back();
+    }
+  }
+
+  // 拦截系统返回键
+  onBackPress(): boolean {
+    // 如果正在睡眠中，调用处理方法并拦截返回键
+    if (this.isSleeping) {
+      this.handleBackPress();
+      return true; // 拦截返回键
+    }
+    // 没有正在进行的睡眠，正常返回
+    return false;
+  }
+
   private refreshTimer: number = -1;
 
   startAutoRefresh(): void {
@@ -252,8 +296,8 @@ struct SleepPage {
       promptAction.showToast({ message: '入睡和醒来时间不能相同' });
       return;
     }
-    if (sleepDuration < 120) {
-      promptAction.showToast({ message: '睡眠时长太短，至少2小时' });
+    if (sleepDuration < 30) {
+      promptAction.showToast({ message: '睡眠时长太短，至少半小时' });
       return;
     }
     if (sleepDuration > 18 * 60) {
@@ -394,7 +438,7 @@ struct SleepPage {
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { router.back(); })
+        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { this.handleBackPress(); })
         Text('睡眠分析').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
         Button('+')

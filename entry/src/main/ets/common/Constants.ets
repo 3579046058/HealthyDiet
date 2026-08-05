@@ -87,6 +87,18 @@ export interface SportTypeDef {
   icon: string;
 }
 
+export interface SportState {
+  currentSport: string;
+  durationSec: number;
+  distanceKm: number;
+  calorieBurn: number;
+  heartRateAvg: number;
+  intensity: string;
+  startTime: number;
+  savedAt: number;
+  isBackground?: boolean; // 是否在后台继续计时
+}
+
 export interface DailySummary {
   date: string;
   steps: number;
