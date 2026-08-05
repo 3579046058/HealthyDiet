@@ -5,6 +5,7 @@ import { GlobalData } from '../common/GlobalData';
 @Component
 export struct AccountTab {
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  @StorageLink('dataUpdateTrigger') @Watch('onDataUpdate') dataUpdateTrigger: string = '';
   @Prop textColor: string = '#FFFFFF';
   @Prop subTextColor: string = '#AAAAAA';
   @Prop cardColor: string = '#1E1E2E';
@@ -22,6 +23,13 @@ export struct AccountTab {
   
   aboutToAppear(): void {
     this.loadAchievements();
+  }
+  
+  // 监听数据更新触发器
+  onDataUpdate(): void {
+    if (this.dataUpdateTrigger.length > 0) {
+      this.loadAchievements();
+    }
   }
   
   async loadAchievements(): Promise<void> {

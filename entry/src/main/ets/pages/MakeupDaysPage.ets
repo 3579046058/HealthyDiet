@@ -1,5 +1,5 @@
 import router from '@ohos.router';
-import { Constants } from '../common/Constants';
+import { Constants, ThemeColors } from '../common/Constants';
 import { PreferenceHelper } from '../model/PreferenceHelper';
 import { AchievementHelper } from '../model/AchievementHelper';
 import { GlobalData } from '../common/GlobalData';
@@ -8,6 +8,10 @@ import { GlobalData } from '../common/GlobalData';
 @Component
 struct MakeupDaysPage {
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  @StorageLink('themeMode') themeMode: string = 'follow';
+  @StorageLink('systemDark') systemDark: boolean = false;
+  @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('dataUpdateTrigger') dataUpdateTrigger: string = '';
   @State makeupDays: string[] = [];
   @State currentYear: number = new Date().getFullYear();
   @State currentMonth: number = new Date().getMonth();
@@ -15,6 +19,13 @@ struct MakeupDaysPage {
   @State isLoading: boolean = true;
 
   private achievementHelper: AchievementHelper = new AchievementHelper(GlobalData.prefs);
+
+  // 主题颜色辅助方法
+  private bg(): string { return ThemeColors.pageBg(this.theme); }
+  private card(): string { return ThemeColors.cardBg(this.theme); }
+  private txt(): string { return ThemeColors.textPrimary(this.theme); }
+  private sub(): string { return ThemeColors.textSecondary(this.theme); }
+  private inputBg(): string { return ThemeColors.inputBg(this.theme); }
 
   async aboutToAppear() {
     await this.loadMakeupDays();
@@ -60,11 +71,15 @@ struct MakeupDaysPage {
     } else {
       this.selectedDates.add(dateStr);
       await GlobalData.prefs.addMakeupDay(dateStr);
-      // 触发成就检查
-      const totalDays = this.selectedDates.size;
-      await this.achievementHelper.checkAchievements(totalDays);
     }
+    
+    // 触发成就检查（无论添加还是删除）
+    const totalDays = this.selectedDates.size;
+    await this.achievementHelper.checkAchievements(totalDays);
+    
     this.makeupDays = Array.from(this.selectedDates);
+    // 触发数据更新，通知其他页面刷新
+    this.dataUpdateTrigger = Date.now().toString();
   }
 
   prevMonth() {
@@ -91,21 +106,21 @@ struct MakeupDaysPage {
       Row() {
         Text('‹')
           .fontSize(28)
-          .fontColor('#FFFFFF')
+          .fontColor(this.txt())
           .onClick(() => {
             router.back();
           })
 
         Text('补录达标天数')
           .fontSize(18)
-          .fontColor('#FFFFFF')
+          .fontColor(this.txt())
           .fontWeight(FontWeight.Medium)
           .margin({ left: 12 })
           .layoutWeight(1)
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: this.statusBarHeight + 8, bottom: 12 })
-      .backgroundColor('#1A1A2E')
+      .backgroundColor(this.card())
 
       if (this.isLoading) {
         Column() {
@@ -115,7 +130,7 @@ struct MakeupDaysPage {
             .color('#4CAF50')
           Text('加载中...')
             .fontSize(14)
-            .fontColor('#AAAAAA')
+            .fontColor(this.sub())
             .margin({ top: 12 })
         }
         .width('100%')
@@ -129,7 +144,7 @@ struct MakeupDaysPage {
               Column() {
                 Text('已补录天数')
                   .fontSize(12)
-                  .fontColor('#AAAAAA')
+                  .fontColor(this.sub())
                 Text(this.makeupDays.length.toString())
                   .fontSize(24)
                   .fontColor('#4CAF50')
@@ -141,17 +156,17 @@ struct MakeupDaysPage {
               Column() {
                 Text('提示')
                   .fontSize(12)
-                  .fontColor('#AAAAAA')
+                  .fontColor(this.sub())
                 Text('点击日期添加/移除')
                   .fontSize(12)
-                  .fontColor('#FFFFFF')
+                  .fontColor(this.txt())
                   .margin({ top: 4 })
               }
               .layoutWeight(1)
             }
             .width('100%')
             .padding(16)
-            .backgroundColor('#1E1E2E')
+            .backgroundColor(this.card())
             .borderRadius(12)
             .margin({ top: 12, left: 16, right: 16 })
 
@@ -161,19 +176,19 @@ struct MakeupDaysPage {
               Row() {
                 Text('‹')
                   .fontSize(28)
-                  .fontColor('#FFFFFF')
+                  .fontColor(this.txt())
                   .onClick(() => this.prevMonth())
 
                 Text(`${this.currentYear}年${this.currentMonth + 1}月`)
                   .fontSize(18)
-                  .fontColor('#FFFFFF')
+                  .fontColor(this.txt())
                   .fontWeight(FontWeight.Medium)
                   .layoutWeight(1)
                   .textAlign(TextAlign.Center)
 
                 Text('›')
                   .fontSize(28)
-                  .fontColor('#FFFFFF')
+                  .fontColor(this.txt())
                   .onClick(() => this.nextMonth())
               }
               .width('100%')
@@ -186,7 +201,7 @@ struct MakeupDaysPage {
                     .width('14.28%')
                     .textAlign(TextAlign.Center)
                     .fontSize(14)
-                    .fontColor('#AAAAAA')
+                    .fontColor(this.sub())
                 })
               }
               .width('100%')
@@ -209,8 +224,9 @@ struct MakeupDaysPage {
                     Column() {
                       Text((index + 1).toString())
                         .fontSize(16)
-                        .fontColor(this.isFutureDate(this.currentYear, this.currentMonth, index + 1) ? '#555555' : 
-                          (this.selectedDates.has(this.formatDate(this.currentYear, this.currentMonth, index + 1)) ? '#FFFFFF' : '#FFFFFF'))
+                        .fontColor(this.isFutureDate(this.currentYear, this.currentMonth, index + 1) ? 
+                          (this.theme === 'dark' ? '#555555' : '#CCCCCC') : 
+                          (this.selectedDates.has(this.formatDate(this.currentYear, this.currentMonth, index + 1)) ? '#FFFFFF' : this.txt()))
                         .fontWeight(this.isToday(this.currentYear, this.currentMonth, index + 1) ? FontWeight.Bold : FontWeight.Normal)
                     }
                     .width('14.28%')
@@ -234,7 +250,7 @@ struct MakeupDaysPage {
               .padding({ left: 8, right: 8, bottom: 16 })
             }
             .width('100%')
-            .backgroundColor('#1E1E2E')
+            .backgroundColor(this.card())
             .borderRadius(12)
             .margin({ top: 12, left: 16, right: 16 })
 
@@ -243,7 +259,7 @@ struct MakeupDaysPage {
               Column() {
                 Text('已补录日期')
                   .fontSize(14)
-                  .fontColor('#AAAAAA')
+                  .fontColor(this.sub())
                   .width('100%')
                   .margin({ bottom: 8 })
 
@@ -251,7 +267,7 @@ struct MakeupDaysPage {
                   Row() {
                     Text(date)
                       .fontSize(14)
-                      .fontColor('#FFFFFF')
+                      .fontColor(this.txt())
                       .layoutWeight(1)
 
                     Text('×')
@@ -263,14 +279,14 @@ struct MakeupDaysPage {
                   }
                   .width('100%')
                   .padding(12)
-                  .backgroundColor('#2A2A3E')
+                  .backgroundColor(this.inputBg())
                   .borderRadius(8)
                   .margin({ bottom: 8 })
                 })
               }
               .width('100%')
               .padding(16)
-              .backgroundColor('#1E1E2E')
+              .backgroundColor(this.card())
               .borderRadius(12)
               .margin({ top: 12, left: 16, right: 16, bottom: 16 })
             }
@@ -283,6 +299,6 @@ struct MakeupDaysPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#0F0F1E')
+    .backgroundColor(this.bg())
   }
 }
