@@ -1,6 +1,7 @@
 ﻿import { relationalStore } from '@kit.ArkData';
 import { Constants, DbRow } from '../common/Constants';
 import { SleepOverlap } from '../common/SleepOverlap';
+import { RecycleBinHelper, DataType } from './RecycleBinHelper';
 
 const TABLE_DAILY = 'daily_summary';
 const TABLE_WEIGHT = 'weight_records';
@@ -21,6 +22,7 @@ const TABLE_SLEEP_START = 'sleep_start_records';
 
 export class DatabaseHelper {
   private rdbStore: relationalStore.RdbStore | null = null;
+  public recycleBin: RecycleBinHelper = new RecycleBinHelper();
   private context: Context;
 
   constructor(context: Context) {
@@ -35,6 +37,7 @@ export class DatabaseHelper {
     this.rdbStore = await relationalStore.getRdbStore(this.context, config);
     await this.createTables();
     await this.migrateSchema();
+    await this.recycleBin.init(this.rdbStore);
   }
 
   // 旧库结构迁移：为已存在的表补充新增字段（列已存在时 ALTER 会报错，捕获即可）
@@ -293,9 +296,36 @@ export class DatabaseHelper {
 
   async deleteHeightRecord(id: number): Promise<void> {
     if (!this.rdbStore) return;
+    // 查询数据并添加到回收站（与体重一致，保证可恢复）
     const pred = new relationalStore.RdbPredicates(TABLE_HEIGHT);
     pred.equalTo('id', id);
+    const resultSet = await this.rdbStore.query(pred);
+    if (resultSet.goToFirstRow()) {
+      const data = resultSet.getRow();
+      await this.recycleBin.addToRecycleBin(DataType.HEIGHT, id, JSON.stringify(data));
+    }
+    resultSet.close();
     await this.rdbStore.delete(pred);
+  }
+
+  // 从回收站恢复身高记录
+  async restoreHeightRecord(recycleBinId: number): Promise<boolean> {
+    const dataContent = await this.recycleBin.restoreFromRecycleBin(recycleBinId);
+    if (!dataContent || !this.rdbStore) return false;
+
+    try {
+      const data = JSON.parse(dataContent) as relationalStore.ValuesBucket;
+      const newData: relationalStore.ValuesBucket = {
+        height_cm: data.height_cm,
+        date: data.date,
+        timestamp: data.timestamp
+      };
+      await this.rdbStore.insert(TABLE_HEIGHT, newData);
+      return true;
+    } catch (err) {
+      console.error('restoreHeightRecord error:', JSON.stringify(err));
+      return false;
+    }
   }
 
   async getWaterRecord(date: string): Promise<DbRow | null> {
@@ -542,9 +572,41 @@ export class DatabaseHelper {
 
   async deleteMedicationRecord(id: number): Promise<void> {
     if (!this.rdbStore) return;
+    // 查询数据并添加到回收站
     const pred = new relationalStore.RdbPredicates(TABLE_MEDICATION);
     pred.equalTo('id', id);
+    const resultSet = await this.rdbStore.query(pred);
+    if (resultSet.goToFirstRow()) {
+      const data = resultSet.getRow();
+      await this.recycleBin.addToRecycleBin(DataType.MEDICATION, id, JSON.stringify(data));
+    }
+    resultSet.close();
     await this.rdbStore.delete(pred);
+  }
+
+  // 从回收站恢复用药记录
+  async restoreMedicationRecord(recycleBinId: number): Promise<boolean> {
+    const dataContent = await this.recycleBin.restoreFromRecycleBin(recycleBinId);
+    if (!dataContent || !this.rdbStore) return false;
+
+    try {
+      const data = JSON.parse(dataContent) as relationalStore.ValuesBucket;
+      const newData: relationalStore.ValuesBucket = {
+        name: data.name,
+        dosage: data.dosage,
+        time: data.time,
+        frequency: data.frequency,
+        start_date: data.start_date,
+        end_date: data.end_date,
+        reminder_ids: data.reminder_ids,
+        timestamp: data.timestamp
+      };
+      await this.rdbStore.insert(TABLE_MEDICATION, newData);
+      return true;
+    } catch (err) {
+      console.error('restoreMedicationRecord error:', JSON.stringify(err));
+      return false;
+    }
   }
 
   async addPeriodRecord(record: DbRow): Promise<void> {
@@ -623,68 +685,124 @@ export class DatabaseHelper {
     return this.readAllRows(result);
   }
 
-  async deleteWorkoutPlan(id: number): Promise<void> {
-    if (!this.rdbStore) return;
-    const pred = new relationalStore.RdbPredicates(TABLE_PLAN);
-    pred.equalTo('id', id);
-    await this.rdbStore.delete(pred);
-  }
-
   async deleteWeightRecord(id: number): Promise<void> {
     if (!this.rdbStore) return;
+    
+    // 查询数据并添加到回收站
     const pred = new relationalStore.RdbPredicates(TABLE_WEIGHT);
     pred.equalTo('id', id);
+    const resultSet = await this.rdbStore.query(pred);
+    if (resultSet.goToFirstRow()) {
+      const data = resultSet.getRow();
+      await this.recycleBin.addToRecycleBin(DataType.WEIGHT, id, JSON.stringify(data));
+    }
+    resultSet.close();
+    
+    // 删除原数据
     await this.rdbStore.delete(pred);
   }
 
   async deleteSportRecord(id: number): Promise<void> {
     if (!this.rdbStore) return;
+    
+    // 查询数据并添加到回收站
     const pred = new relationalStore.RdbPredicates(TABLE_SPORT);
     pred.equalTo('id', id);
+    const resultSet = await this.rdbStore.query(pred);
+    if (resultSet.goToFirstRow()) {
+      const data = resultSet.getRow();
+      await this.recycleBin.addToRecycleBin(DataType.SPORT, id, JSON.stringify(data));
+    }
+    resultSet.close();
+    
+    // 删除原数据
     await this.rdbStore.delete(pred);
   }
 
   async deleteSleepRecord(id: number): Promise<void> {
     if (!this.rdbStore) return;
+    
+    // 查询数据并添加到回收站
     const pred = new relationalStore.RdbPredicates(TABLE_SLEEP);
     pred.equalTo('id', id);
+    const resultSet = await this.rdbStore.query(pred);
+    if (resultSet.goToFirstRow()) {
+      const data = resultSet.getRow();
+      await this.recycleBin.addToRecycleBin(DataType.SLEEP, id, JSON.stringify(data));
+    }
+    resultSet.close();
+    
+    // 删除原数据
     await this.rdbStore.delete(pred);
   }
 
   async deleteDietRecord(id: number): Promise<void> {
     if (!this.rdbStore) return;
+    
+    // 查询数据并添加到回收站
     const pred = new relationalStore.RdbPredicates(TABLE_DIET);
     pred.equalTo('id', id);
+    const resultSet = await this.rdbStore.query(pred);
+    if (resultSet.goToFirstRow()) {
+      const data = resultSet.getRow();
+      await this.recycleBin.addToRecycleBin(DataType.DIET, id, JSON.stringify(data));
+    }
+    resultSet.close();
+    
+    // 删除原数据
     await this.rdbStore.delete(pred);
   }
 
   async deleteMoodRecord(id: number): Promise<void> {
     if (!this.rdbStore) return;
     console.info('DatabaseHelper deleteMoodRecord id=' + String(id));
+    
+    // 查询数据并添加到回收站
     const pred = new relationalStore.RdbPredicates(TABLE_MOOD);
     pred.equalTo('id', id);
+    const resultSet = await this.rdbStore.query(pred);
+    if (resultSet.goToFirstRow()) {
+      const data = resultSet.getRow();
+      await this.recycleBin.addToRecycleBin(DataType.MOOD, id, JSON.stringify(data));
+    }
+    resultSet.close();
+    
+    // 删除原数据
     const rows = await this.rdbStore.delete(pred);
     console.info('DatabaseHelper deleteMoodRecord deleted rows=' + String(rows));
   }
 
   async deletePeriodRecord(id: number): Promise<void> {
     if (!this.rdbStore) return;
+    
+    // 查询数据并添加到回收站
     const pred = new relationalStore.RdbPredicates(TABLE_PERIOD);
     pred.equalTo('id', id);
-    await this.rdbStore.delete(pred);
-  }
-
-  async deleteBodyCompositionRecord(id: number): Promise<void> {
-    if (!this.rdbStore) return;
-    const pred = new relationalStore.RdbPredicates(TABLE_BODY_COMP);
-    pred.equalTo('id', id);
+    const resultSet = await this.rdbStore.query(pred);
+    if (resultSet.goToFirstRow()) {
+      const data = resultSet.getRow();
+      await this.recycleBin.addToRecycleBin(DataType.PERIOD, id, JSON.stringify(data));
+    }
+    resultSet.close();
+    
+    // 删除原数据
     await this.rdbStore.delete(pred);
   }
 
   async deleteWaterTimelineItem(id: number): Promise<void> {
     if (!this.rdbStore) return;
+    
+    // 查询数据并添加到回收站
     const pred = new relationalStore.RdbPredicates(TABLE_WATER_TIMELINE);
     pred.equalTo('id', id);
+    const resultSet = await this.rdbStore.query(pred);
+    if (resultSet.goToFirstRow()) {
+      const data = resultSet.getRow();
+      await this.recycleBin.addToRecycleBin(DataType.WATER, id, JSON.stringify(data));
+    }
+    resultSet.close();
+    
+    // 删除原数据
     await this.rdbStore.delete(pred);
   }
 
@@ -731,5 +849,153 @@ export class DatabaseHelper {
       } while (resultSet.goToNextRow());
     }
     return rows;
+  }
+
+  // 恢复数据方法
+  async restoreWeightRecord(recycleBinId: number): Promise<boolean> {
+    const dataContent = await this.recycleBin.restoreFromRecycleBin(recycleBinId);
+    if (!dataContent || !this.rdbStore) return false;
+    
+    try {
+      const data = JSON.parse(dataContent) as relationalStore.ValuesBucket;
+      const newData: relationalStore.ValuesBucket = {
+        weight: data.weight,
+        date: data.date,
+        timestamp: data.timestamp
+      };
+      await this.rdbStore.insert(TABLE_WEIGHT, newData);
+      return true;
+    } catch (e) {
+      console.error('Failed to restore weight record:', e);
+      return false;
+    }
+  }
+
+  async restoreSportRecord(recycleBinId: number): Promise<boolean> {
+    const dataContent = await this.recycleBin.restoreFromRecycleBin(recycleBinId);
+    if (!dataContent || !this.rdbStore) return false;
+    
+    try {
+      const data = JSON.parse(dataContent) as relationalStore.ValuesBucket;
+      const newData: relationalStore.ValuesBucket = {
+        name: data.name,
+        duration: data.duration,
+        calories: data.calories,
+        date: data.date,
+        timestamp: data.timestamp
+      };
+      await this.rdbStore.insert(TABLE_SPORT, newData);
+      return true;
+    } catch (e) {
+      console.error('Failed to restore sport record:', e);
+      return false;
+    }
+  }
+
+  async restoreSleepRecord(recycleBinId: number): Promise<boolean> {
+    const dataContent = await this.recycleBin.restoreFromRecycleBin(recycleBinId);
+    if (!dataContent || !this.rdbStore) return false;
+    
+    try {
+      const data = JSON.parse(dataContent) as relationalStore.ValuesBucket;
+      const newData: relationalStore.ValuesBucket = {
+        start_time: data.start_time,
+        end_time: data.end_time,
+        duration: data.duration,
+        quality: data.quality,
+        date: data.date,
+        timestamp: data.timestamp
+      };
+      await this.rdbStore.insert(TABLE_SLEEP, newData);
+      return true;
+    } catch (e) {
+      console.error('Failed to restore sleep record:', e);
+      return false;
+    }
+  }
+
+  async restoreDietRecord(recycleBinId: number): Promise<boolean> {
+    const dataContent = await this.recycleBin.restoreFromRecycleBin(recycleBinId);
+    if (!dataContent || !this.rdbStore) return false;
+    
+    try {
+      const data = JSON.parse(dataContent) as relationalStore.ValuesBucket;
+      const newData: relationalStore.ValuesBucket = {
+        meal_type: data.meal_type,
+        food_name: data.food_name,
+        calories: data.calories,
+        protein: data.protein,
+        carbs: data.carbs,
+        fat: data.fat,
+        date: data.date,
+        timestamp: data.timestamp
+      };
+      await this.rdbStore.insert(TABLE_DIET, newData);
+      return true;
+    } catch (e) {
+      console.error('Failed to restore diet record:', e);
+      return false;
+    }
+  }
+
+  async restoreMoodRecord(recycleBinId: number): Promise<boolean> {
+    const dataContent = await this.recycleBin.restoreFromRecycleBin(recycleBinId);
+    if (!dataContent || !this.rdbStore) return false;
+    
+    try {
+      const data = JSON.parse(dataContent) as relationalStore.ValuesBucket;
+      const newData: relationalStore.ValuesBucket = {
+        mood: data.mood,
+        note: data.note,
+        date: data.date,
+        timestamp: data.timestamp
+      };
+      await this.rdbStore.insert(TABLE_MOOD, newData);
+      return true;
+    } catch (e) {
+      console.error('Failed to restore mood record:', e);
+      return false;
+    }
+  }
+
+  async restorePeriodRecord(recycleBinId: number): Promise<boolean> {
+    const dataContent = await this.recycleBin.restoreFromRecycleBin(recycleBinId);
+    if (!dataContent || !this.rdbStore) return false;
+    
+    try {
+      const data = JSON.parse(dataContent) as relationalStore.ValuesBucket;
+      const newData: relationalStore.ValuesBucket = {
+        start_date: data.start_date,
+        end_date: data.end_date,
+        cycle_length: data.cycle_length,
+        period_length: data.period_length,
+        timestamp: data.timestamp
+      };
+      await this.rdbStore.insert(TABLE_PERIOD, newData);
+      return true;
+    } catch (e) {
+      console.error('Failed to restore period record:', e);
+      return false;
+    }
+  }
+
+  async restoreWaterTimelineItem(recycleBinId: number): Promise<boolean> {
+    const dataContent = await this.recycleBin.restoreFromRecycleBin(recycleBinId);
+    if (!dataContent || !this.rdbStore) return false;
+    
+    try {
+      const data = JSON.parse(dataContent) as relationalStore.ValuesBucket;
+      const newData: relationalStore.ValuesBucket = {
+        date: data.date,
+        time: data.time,
+        amount: data.amount,
+        timestamp: data.timestamp
+      };
+      await this.rdbStore.insert(TABLE_WATER_TIMELINE, newData);
+      return true;
+    } catch (e) {
+      console.error('Failed to restore water timeline item:', e);
+      return false;
+    }
   }
 }

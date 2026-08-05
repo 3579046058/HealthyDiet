@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
 import { ThemeColors } from '../common/Constants';
 import { GlobalData } from '../common/GlobalData';
 import { ReminderScheduler } from '../services/ReminderScheduler';
@@ -10,8 +10,10 @@ struct NotificationPage {
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
   @State waterReminderEnabled: boolean = false;
   @State sedentaryReminderEnabled: boolean = false;
-  @State waterReminderTime: string = '10:00';
-  @State sedentaryReminderTime: string = '14:00';
+  @State waterTimes: string[] = ['10:00'];
+  @State sedentaryTimes: string[] = ['14:00'];
+  @State waterEditTime: string = '10:00';
+  @State sedentaryEditTime: string = '14:00';
   @State showWaterTimePicker: boolean = false;
   @State showSedentaryTimePicker: boolean = false;
 
@@ -32,9 +34,17 @@ struct NotificationPage {
       const sedentaryRaw: string | number | boolean = await GlobalData.prefs.get('sedentary_reminder_enabled', 'false');
       this.sedentaryReminderEnabled = String(sedentaryRaw) === 'true';
       const waterTimeRaw: string | number | boolean = await GlobalData.prefs.get('water_reminder_time', '10:00');
-      this.waterReminderTime = String(waterTimeRaw);
+      this.waterTimes = String(waterTimeRaw).split(',').filter((t: string) => t.length > 0);
+      if (this.waterTimes.length === 0) {
+        this.waterTimes = ['10:00'];
+      }
+      this.waterEditTime = this.waterTimes[0];
       const sedentaryTimeRaw: string | number | boolean = await GlobalData.prefs.get('sedentary_reminder_time', '14:00');
-      this.sedentaryReminderTime = String(sedentaryTimeRaw);
+      this.sedentaryTimes = String(sedentaryTimeRaw).split(',').filter((t: string) => t.length > 0);
+      if (this.sedentaryTimes.length === 0) {
+        this.sedentaryTimes = ['14:00'];
+      }
+      this.sedentaryEditTime = this.sedentaryTimes[0];
     } catch (err) {
       console.error('NotificationPage load error:', JSON.stringify(err));
     }
@@ -57,6 +67,64 @@ struct NotificationPage {
     return hStr + ':' + mStr;
   }
 
+  // ===== 喝水提醒多时间点操作 =====
+  addWaterTime(): void {
+    const t: string = this.waterEditTime;
+    if (t.length === 0) {
+      promptAction.showToast({ message: '请先选择时间' });
+      return;
+    }
+    if (this.waterTimes.indexOf(t) >= 0) {
+      promptAction.showToast({ message: '该时间点已存在' });
+      return;
+    }
+    const list: string[] = this.waterTimes.slice();
+    list.push(t);
+    list.sort();
+    this.waterTimes = list;
+    ReminderScheduler.getInstance().setWaterTimes(this.waterTimes);
+  }
+
+  removeWaterTime(t: string): void {
+    const list: string[] = [];
+    for (const x of this.waterTimes) {
+      if (x !== t) {
+        list.push(x);
+      }
+    }
+    this.waterTimes = list.length > 0 ? list : ['10:00'];
+    ReminderScheduler.getInstance().setWaterTimes(this.waterTimes);
+  }
+
+  // ===== 久坐提醒多时间点操作 =====
+  addSedentaryTime(): void {
+    const t: string = this.sedentaryEditTime;
+    if (t.length === 0) {
+      promptAction.showToast({ message: '请先选择时间' });
+      return;
+    }
+    if (this.sedentaryTimes.indexOf(t) >= 0) {
+      promptAction.showToast({ message: '该时间点已存在' });
+      return;
+    }
+    const list: string[] = this.sedentaryTimes.slice();
+    list.push(t);
+    list.sort();
+    this.sedentaryTimes = list;
+    ReminderScheduler.getInstance().setSedentaryTimes(this.sedentaryTimes);
+  }
+
+  removeSedentaryTime(t: string): void {
+    const list: string[] = [];
+    for (const x of this.sedentaryTimes) {
+      if (x !== t) {
+        list.push(x);
+      }
+    }
+    this.sedentaryTimes = list.length > 0 ? list : ['14:00'];
+    ReminderScheduler.getInstance().setSedentaryTimes(this.sedentaryTimes);
+  }
+
   build() {
     Column() {
       Row() {
@@ -68,52 +136,86 @@ struct NotificationPage {
 
       Scroll() {
         Column() {
-          this.notifCard('💧 喝水提醒', '每天 ' + this.waterReminderTime + ' 提醒喝水', this.waterReminderEnabled, (on: boolean) => {
+          this.notifCard('💧 喝水提醒', '每天 ' + this.waterTimes.join(' / ') + ' 提醒喝水', this.waterReminderEnabled, (on: boolean) => {
             this.waterReminderEnabled = on;
             ReminderScheduler.getInstance().toggleWaterReminder(on);
           })
+
+          // 喝水多时间点列表
+          Flex({ wrap: FlexWrap.Wrap }) {
+            ForEach(this.waterTimes, (t: string) => {
+              Row() {
+                Text(t).fontSize(14).fontColor(this.txt())
+                Text('✕').fontSize(14).fontColor('#F44336').margin({ left: 6 })
+                  .onClick(() => { this.removeWaterTime(t); })
+              }
+              .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+              .backgroundColor('#1E3A5F').borderRadius(12)
+              .margin({ right: 6, bottom: 6 })
+            }, (t: string): string => t)
+          }
+          .width('100%').padding({ left: 16, right: 16, bottom: 4 })
+
           Row() {
-            Text('⏰ 设置时间').fontSize(14).fontColor(this.sub()).layoutWeight(1)
-            Text(this.waterReminderTime)
-              .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
+            Text(this.waterEditTime).fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
               .onClick(() => { this.showWaterTimePicker = !this.showWaterTimePicker; })
+            Button('＋ 添加时间点').fontSize(13).backgroundColor('#03A9F4').borderRadius(16)
+              .height(32).margin({ left: 12 })
+              .onClick(() => { this.addWaterTime(); })
+            Blank()
             Text('✏️').fontSize(16).margin({ left: 8 })
               .onClick(() => { this.showWaterTimePicker = !this.showWaterTimePicker; })
           }
           .width('100%').padding({ left: 16, right: 16, bottom: 4 })
 
           if (this.showWaterTimePicker) {
-            TimePicker({ selected: this.parseReminderTime(this.waterReminderTime) })
+            TimePicker({ selected: this.parseReminderTime(this.waterEditTime) })
               .useMilitaryTime(true)
               .width(200).height(120)
               .onChange((value: TimePickerResult) => {
-                this.waterReminderTime = this.formatReminderTime(value);
-                ReminderScheduler.getInstance().setWaterTime(this.waterReminderTime);
+                this.waterEditTime = this.formatReminderTime(value);
               })
               .margin({ left: 16, bottom: 8 })
           }
 
-          this.notifCard('🪑 久坐提醒', '每天 ' + this.sedentaryReminderTime + ' 提醒起身活动', this.sedentaryReminderEnabled, (on: boolean) => {
+          this.notifCard('🪑 久坐提醒', '每天 ' + this.sedentaryTimes.join(' / ') + ' 提醒起身活动', this.sedentaryReminderEnabled, (on: boolean) => {
             this.sedentaryReminderEnabled = on;
             ReminderScheduler.getInstance().toggleSedentaryReminder(on);
           })
+
+          // 久坐多时间点列表
+          Flex({ wrap: FlexWrap.Wrap }) {
+            ForEach(this.sedentaryTimes, (t: string) => {
+              Row() {
+                Text(t).fontSize(14).fontColor(this.txt())
+                Text('✕').fontSize(14).fontColor('#F44336').margin({ left: 6 })
+                  .onClick(() => { this.removeSedentaryTime(t); })
+              }
+              .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+              .backgroundColor('#1E3A5F').borderRadius(12)
+              .margin({ right: 6, bottom: 6 })
+            }, (t: string): string => t)
+          }
+          .width('100%').padding({ left: 16, right: 16, bottom: 4 })
+
           Row() {
-            Text('⏰ 设置时间').fontSize(14).fontColor(this.sub()).layoutWeight(1)
-            Text(this.sedentaryReminderTime)
-              .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
+            Text(this.sedentaryEditTime).fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
               .onClick(() => { this.showSedentaryTimePicker = !this.showSedentaryTimePicker; })
+            Button('＋ 添加时间点').fontSize(13).backgroundColor('#03A9F4').borderRadius(16)
+              .height(32).margin({ left: 12 })
+              .onClick(() => { this.addSedentaryTime(); })
+            Blank()
             Text('✏️').fontSize(16).margin({ left: 8 })
               .onClick(() => { this.showSedentaryTimePicker = !this.showSedentaryTimePicker; })
           }
           .width('100%').padding({ left: 16, right: 16, bottom: 4 })
 
           if (this.showSedentaryTimePicker) {
-            TimePicker({ selected: this.parseReminderTime(this.sedentaryReminderTime) })
+            TimePicker({ selected: this.parseReminderTime(this.sedentaryEditTime) })
               .useMilitaryTime(true)
               .width(200).height(120)
               .onChange((value: TimePickerResult) => {
-                this.sedentaryReminderTime = this.formatReminderTime(value);
-                ReminderScheduler.getInstance().setSedentaryTime(this.sedentaryReminderTime);
+                this.sedentaryEditTime = this.formatReminderTime(value);
               })
               .margin({ left: 16, bottom: 8 })
           }

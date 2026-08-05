@@ -17,6 +17,11 @@ export interface SnackJudge {
   reason: string;
 }
 
+export interface FoodJudge {
+  isFood: boolean;
+  reason: string;
+}
+
 export class RecognitionMode {
   static readonly LOCAL: string = 'local';
   static readonly CLOUD: string = 'cloud';
@@ -198,6 +203,12 @@ export class FoodRecognitionService {
     }
     const key: string = foodName.trim();
     if (key === '') {
+      return -1;
+    }
+    // 非食物内容驳回：先判断是否可食用，不是则直接返回 -1
+    const judge: FoodJudge = await this.askIsFood(key);
+    if (!judge.isFood) {
+      console.info('calculateCalories rejected non-food: ' + key + ' reason=' + judge.reason);
       return -1;
     }
     // 命中缓存：同一食物热量固定，避免多次识别数值漂移
@@ -451,6 +462,79 @@ export class FoodRecognitionService {
     } catch (err) {
       const e = err as BusinessError;
       console.error('askIsSnack error: ' + e.code + ' ' + e.message);
+      return result;
+    }
+  }
+
+  /**
+   * 判断输入的名称是否是可食用的食物（驳回非食物内容）
+   */
+  async askIsFood(foodName: string): Promise<FoodJudge> {
+    const result: FoodJudge = { isFood: false, reason: '' };
+    const key = foodName.trim();
+    if (!this.isCloudConfigured() || key.length === 0) {
+      // 云端不可用时保守放行（回退本地食物库），避免误伤正常食物
+      result.isFood = true;
+      result.reason = '云端不可用，跳过校验';
+      return result;
+    }
+    try {
+      const promptText = '判断"' + key + '"是否是可食用的食物或饮品（包括水果、蔬菜、肉类、主食、零食、饮料、调味品等任何可以吃进肚子里的东西）。' +
+        '如果是食物或饮品回答"是"，如果是手机、桌子、汽车、电脑、书本等非食用物品回答"不是"。' +
+        '用以下格式回答，不要多余文字：' +
+        '是或不是' + '|' + '简要理由（15字以内）';
+      const textContent: GlmContent = { type: 'text', text: promptText };
+      const contents: Array<GlmContent> = [textContent];
+      const message: GlmMessage = { role: 'user', content: contents };
+      const messages: Array<GlmMessage> = [message];
+      const requestBody: GlmRequestBody = {
+        model: FoodRecognitionService.GLM_MODEL,
+        messages: messages,
+        temperature: 0
+      };
+
+      const request = http.createHttp();
+      const response = await request.request(FoodRecognitionService.GLM_URL, {
+        method: http.RequestMethod.POST,
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + this.glmApiKey
+        },
+        extraData: JSON.stringify(requestBody),
+        connectTimeout: 15000,
+        readTimeout: 30000
+      });
+      request.destroy();
+
+      const code: number = response.responseCode;
+      if (code !== 200) {
+        console.error('askIsFood http failed code=' + String(code));
+        // 网络异常时保守放行，避免误伤
+        result.isFood = true;
+        result.reason = '校验服务异常，放行';
+        return result;
+      }
+      const resp: string = typeof response.result === 'string' ? response.result : JSON.stringify(response.result);
+      const parsed: Record<string, Object> = JSON.parse(resp) as Record<string, Object>;
+      const choicesObj = parsed['choices'];
+      if (choicesObj !== undefined && Array.isArray(choicesObj)) {
+        const choicesArr = choicesObj as Array<Record<string, Object>>;
+        if (choicesArr.length > 0) {
+          const messageObj = choicesArr[0]['message'] as Record<string, Object>;
+          const content: string = String(messageObj['content'] ?? '');
+          const parts: string[] = content.split('|');
+          const answer: string = parts.length > 0 ? parts[0].trim() : '';
+          result.isFood = answer.indexOf('是') >= 0 && answer.indexOf('不是') < 0;
+          result.reason = parts.length > 1 ? parts[1].trim() : content;
+        }
+      }
+      return result;
+    } catch (err) {
+      const e = err as BusinessError;
+      console.error('askIsFood error: ' + e.code + ' ' + e.message);
+      // 异常时保守放行
+      result.isFood = true;
+      result.reason = '校验异常，放行';
       return result;
     }
   }

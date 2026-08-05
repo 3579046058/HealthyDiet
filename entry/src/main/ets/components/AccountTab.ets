@@ -67,6 +67,7 @@ export struct AccountTab {
         this.accountMenuItem('👤', '个人信息', '身高、体重、性别设置', () => { this.onNavigate(Constants.PAGE_PROFILE); })
         this.accountMenuItem('⚙️', '设置', '通知、目标、主题、关于', () => { this.onNavigate(Constants.PAGE_SETTINGS); })
         this.accountMenuItem('📊', '健康报告', '查看周报月报', () => { this.onNavigate(Constants.PAGE_REPORT); })
+        this.accountMenuItem('🗑️', '回收站', '恢复已删除的数据', () => { this.onNavigate(Constants.PAGE_RECYCLE_BIN); })
 
         // 成就墙（卡片样式）
         Row() {
@@ -91,7 +92,7 @@ export struct AccountTab {
     }
     .bindSheet($$this.showAchievementDialog, this.achievementSheet(), {
       height: '70%',
-      backgroundColor: '#1A1A2E',
+      backgroundColor: this.cardColor,
       dragBar: true,
       showClose: false
     })
@@ -246,7 +247,7 @@ export struct AccountTab {
             .padding({ bottom: 40 })
           }
           .width('85%')
-          .backgroundColor('#2A2A3E')
+          .backgroundColor(this.cardColor)
           .borderRadius(20)
           .padding(20)
         }

@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { DbRow, ThemeColors } from '../common/Constants';
 import { ReminderScheduler } from '../services/ReminderScheduler';
@@ -12,6 +12,8 @@ struct MedicationPage {
   @State time: string = '';
   @State timeList: string[] = [];
   @State frequency: string = '';
+  // 提醒星期（1=周一 ... 7=周日），默认全周
+  @State selectedDays: number[] = [1, 2, 3, 4, 5, 6, 7];
   @State startDate: string = '';
   @State endDate: string = '';
   @State records: DbRow[] = [];
@@ -38,6 +40,11 @@ struct MedicationPage {
     if (this.name === '' || this.dosage === '' || this.timeList.length === 0 || this.startDate === '' || this.endDate === '') {
       return;
     }
+    // 校验日期区间：结束日期不能早于开始日期
+    if (this.endDate < this.startDate) {
+      promptAction.showToast({ message: '结束日期不能早于开始日期' });
+      return;
+    }
     try {
       const record: DbRow = {
         name: this.name,
@@ -49,9 +56,9 @@ struct MedicationPage {
         reminder_ids: ''
       };
       const newId = await GlobalData.db.addMedicationRecord(record);
-      // 发布多时间点闹铃
+      // 发布多时间点闹铃（按选定星期重复）
       const newIds: number[] = await ReminderScheduler.getInstance()
-        .scheduleMedicationReminder(this.timeList, this.name, []);
+        .scheduleMedicationReminder(this.timeList, this.name, [], this.selectedDays);
       if (newId > 0 && newIds.length > 0) {
         await GlobalData.db.updateMedicationReminderIds(newId, newIds.join(','));
       }
@@ -60,6 +67,7 @@ struct MedicationPage {
       this.time = '';
       this.timeList = [];
       this.frequency = '';
+      this.selectedDays = [1, 2, 3, 4, 5, 6, 7];
       this.startDate = '';
       this.endDate = '';
       this.showInput = false;
@@ -170,6 +178,64 @@ struct MedicationPage {
     this.checkedIds = newArr;
   }
 
+  // ===== 提醒星期选择 =====
+  isDaySelected(day: number): boolean {
+    return this.selectedDays.indexOf(day) >= 0;
+  }
+
+  toggleDay(day: number): void {
+    const list: number[] = [];
+    let found: boolean = false;
+    for (const d of this.selectedDays) {
+      if (d === day) {
+        found = true;
+      } else {
+        list.push(d);
+      }
+    }
+    if (!found) {
+      list.push(day);
+      list.sort();
+    }
+    this.selectedDays = list.length > 0 ? list : [day];
+  }
+
+  selectAllDays(): void {
+    this.selectedDays = [1, 2, 3, 4, 5, 6, 7];
+  }
+
+  selectWorkdays(): void {
+    this.selectedDays = [1, 2, 3, 4, 5];
+  }
+
+  selectWeekend(): void {
+    this.selectedDays = [6, 7];
+  }
+
+  dayLabel(day: number): string {
+    const labels: string[] = ['', '一', '二', '三', '四', '五', '六', '日'];
+    return labels[day];
+  }
+
+  selectedDaysText(): string {
+    if (this.selectedDays.length === 7) {
+      return '每天';
+    }
+    if (this.selectedDays.length === 5 &&
+      this.selectedDays.indexOf(1) >= 0 && this.selectedDays.indexOf(5) >= 0) {
+      return '工作日';
+    }
+    if (this.selectedDays.length === 2 &&
+      this.selectedDays.indexOf(6) >= 0 && this.selectedDays.indexOf(7) >= 0) {
+      return '周末';
+    }
+    let s: string = '';
+    for (const d of this.selectedDays) {
+      s += (s.length > 0 ? '、' : '') + '周' + this.dayLabel(d);
+    }
+    return s;
+  }
+
   bg(): string { return ThemeColors.pageBg(this.theme); }
   card(): string { return ThemeColors.cardBg(this.theme); }
   txt(): string { return ThemeColors.textPrimary(this.theme); }
@@ -253,11 +319,17 @@ struct MedicationPage {
               .width('100%').height(36).backgroundColor('#00897B').borderRadius(8)
               .margin({ bottom: 8 })
               .onClick(() => {
-                if (this.time.length > 0 && this.timeList.indexOf(this.time) < 0) {
-                  const newList: string[] = this.timeList.slice();
-                  newList.push(this.time);
-                  this.timeList = newList;
+                if (this.time.length === 0) {
+                  promptAction.showToast({ message: '请先选择时间' });
+                  return;
                 }
+                if (this.timeList.indexOf(this.time) >= 0) {
+                  promptAction.showToast({ message: '该时间点已存在' });
+                  return;
+                }
+                const newList: string[] = this.timeList.slice();
+                newList.push(this.time);
+                this.timeList = newList;
               })
 
               // 已选时间点列表
@@ -285,12 +357,31 @@ struct MedicationPage {
                 .width('100%').margin({ bottom: 8 })
               }
 
-              TextInput({ placeholder: '频率 (如 每天)', text: this.frequency })
-                .backgroundColor(ThemeColors.inputBg(this.theme))
-                .fontColor(this.txt())
-                .placeholderColor(ThemeColors.textSecondary(this.theme))
-                .onChange((value: string) => { this.frequency = value; })
-                .width('100%').height(44).margin({ bottom: 8 })
+              // 提醒星期选择（频率）
+              Text('提醒星期：' + this.selectedDaysText()).fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
+              Row() {
+                Button('每天').fontSize(12).backgroundColor('#00897B').borderRadius(14).height(28)
+                  .onClick(() => { this.selectAllDays(); })
+                Button('工作日').fontSize(12).backgroundColor('#00897B').borderRadius(14).height(28).margin({ left: 8 })
+                  .onClick(() => { this.selectWorkdays(); })
+                Button('周末').fontSize(12).backgroundColor('#00897B').borderRadius(14).height(28).margin({ left: 8 })
+                  .onClick(() => { this.selectWeekend(); })
+              }
+              .width('100%').margin({ bottom: 6 })
+
+              Flex({ wrap: FlexWrap.Wrap }) {
+                ForEach([1, 2, 3, 4, 5, 6, 7], (day: number) => {
+                  Text('周' + this.dayLabel(day))
+                    .fontSize(13)
+                    .fontColor(this.isDaySelected(day) ? '#FFFFFF' : this.sub())
+                    .backgroundColor(this.isDaySelected(day) ? '#00897B' : '#1E3A5F')
+                    .borderRadius(16)
+                    .width(42).height(32).textAlign(TextAlign.Center)
+                    .margin({ right: 6, bottom: 6 })
+                    .onClick(() => { this.toggleDay(day); })
+                }, (day: number): string => String(day))
+              }
+              .width('100%').margin({ bottom: 8 })
 
               Text('开始日期').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
               DatePicker({ selected: this.parseDate(this.startDate) })

@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { DbRow, ThemeColors, FoodCalories, GoalConfig, Constants, NutritionInfo, FoodLevel } from '../common/Constants';
 import { FoodRecognitionService } from '../services/FoodRecognitionService';
@@ -67,11 +67,15 @@ struct DietPage {
     }
     // 本地计算完整营养素（热量+三大宏量）
     const nutrition = FoodCalories.getNutrition(name, grams);
-    // 云端计算卡路里（优先），失败则用本地食物库热量（逻辑与原版本完全一致）
+    // 云端计算卡路里（优先），失败则用本地食物库热量
     let calories: number = nutrition.cal;
     const cloud = await FoodRecognitionService.getInstance().calculateCalories(name, grams);
     if (cloud >= 0) {
       calories = cloud;
+    } else if (nutrition.cal <= 0) {
+      // 云端驳回（返回 -1）且本地库也没有该食物：非食物内容，驳回保存
+      promptAction.showToast({ message: '"' + name + '" 不是可食用的食物，无法记录' });
+      return;
     }
     const record: DbRow = {
       date: this.date,

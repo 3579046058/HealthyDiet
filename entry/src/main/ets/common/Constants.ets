@@ -45,6 +45,7 @@ export class Constants {
   static readonly PAGE_NOTIFICATION: string = 'pages/NotificationPage';
   static readonly PAGE_PROFILE: string = 'pages/ProfilePage';
   static readonly PAGE_SETTINGS: string = 'pages/SettingsPage';
+  static readonly PAGE_RECYCLE_BIN: string = 'pages/RecycleBinPage';
 
   static readonly SPORT_TYPES: SportTypeDef[] = [
     { label: '步行', value: 'walk', icon: '🚶' },

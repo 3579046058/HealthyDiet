@@ -268,6 +268,37 @@ struct WeightPage {
     await this.loadData();
   }
 
+  // 按日期删除该日的体重/身高记录（历史列表用，displayDate 为 MM-DD）
+  async deleteHistoryByDate(displayDate: string): Promise<void> {
+    try {
+      // 删除匹配的体重记录
+      const deleteWeightRows: number[] = [];
+      for (const r of this.records) {
+        if (String(r.date).slice(5) === displayDate) {
+          deleteWeightRows.push(Number(r.id));
+        }
+      }
+      for (const id of deleteWeightRows) {
+        await GlobalData.db.deleteWeightRecord(id);
+      }
+
+      // 删除匹配的身高记录
+      const deleteHeightRows: number[] = [];
+      for (const r of this.heightRecords) {
+        if (String(r.date).slice(5) === displayDate) {
+          deleteHeightRows.push(Number(r.id));
+        }
+      }
+      for (const id of deleteHeightRows) {
+        await GlobalData.db.deleteHeightRecord(id);
+      }
+
+      await this.loadData();
+    } catch (err) {
+      console.error('deleteHistoryByDate error:', JSON.stringify(err));
+    }
+  }
+
   calcRecommendCalorie(heightCm: number, currentWeightKg: number, age: number, isMale: boolean): number {
     let bmr: number;
     if (isMale) {
@@ -628,6 +659,11 @@ Text('历史记录')
                     .fontColor(this.txt())
                     .width(50)
                     .textAlign(TextAlign.Center)
+
+                  Text('🗑')
+                    .fontSize(16)
+                    .margin({ left: 6 })
+                    .onClick(() => { this.deleteHistoryByDate(date); })
                 }
                 .width('100%')
                 .padding(14)

@@ -15,6 +15,7 @@
     "pages/NotificationPage",
     "pages/ProfilePage",
     "pages/SettingsPage",
-    "pages/PermissionPage"
+    "pages/PermissionPage",
+    "pages/RecycleBinPage"
   ]
 }

@@ -58,6 +58,9 @@ struct SettingsPage {
           Text('关于').fontSize(14).fontColor(this.sub()).width('100%')
             .padding({ left: 20, top: 20, bottom: 8 })
 
+          this.settingItem('⭐', '评分标准', '查看健康评分规则说明', () => {
+            this.showScoreRule();
+          })
           this.settingItem('ℹ️', '关于', 'Harmony健康 v1.0', () => {
             this.showAbout();
           })
@@ -75,6 +78,23 @@ struct SettingsPage {
 
   navigate(page: string): void {
     router.pushUrl({ url: page }).catch(() => {});
+  }
+
+  showScoreRule(): void {
+    AlertDialog.show({
+      title: '评分标准',
+      message: '每项按完成率计分后加总：\n' +
+        '· 步数（满分30）：完成率 × 30\n' +
+        '· 喝水（满分30）：完成率 × 30\n' +
+        '· 睡眠（满分20）：睡眠评分 × 0.2\n' +
+        '· 运动（满分20）：运动分钟/60 × 20\n' +
+        '· 饮食（±10）：摄入量在推荐热量的90%~110% 得满分 +10；' +
+        '偏低递减；超标 110%~130% 扣8、130%~160% 扣15、超160% 扣20\n\n' +
+        '短板加权：完成率最低的一项权重提升 1.5 倍，其余项按比例缩小，总分满分保持 100。\n\n' +
+        '未记录的项目不参与评分；完全没有数据时显示 "--"。\n' +
+        '总分范围 -100 ~ 100。',
+      confirm: { value: '知道了', action: () => {} }
+    });
   }
 
   showAbout(): void {
