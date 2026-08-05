@@ -1,0 +1,21 @@
+{
+  "src": [
+    "pages/Index",
+    "pages/WeightPage",
+    "pages/WaterPage",
+    "pages/SportPage",
+    "pages/SleepPage",
+    "pages/ReportPage",
+    "pages/GoalPage",
+    "pages/DietPage",
+    "pages/WomenHealthPage",
+    "pages/MedicationPage",
+    "pages/MoodPage",
+    "pages/LoginPage",
+    "pages/NotificationPage",
+    "pages/ProfilePage",
+    "pages/SettingsPage",
+    "pages/PermissionPage",
+    "pages/RecycleBinPage"
+  ]
+}

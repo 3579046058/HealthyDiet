@@ -1,0 +1,15 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="weightGrad" x1="12" y1="3" x2="12" y2="21" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="currentColor" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="currentColor"/>
+    </linearGradient>
+  </defs>
+  <rect x="5" y="10" width="14" height="10" rx="2" fill="url(#weightGrad)" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M8 10V7C8 5.5 9.5 4 12 4C14.5 4 16 5.5 16 7V10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="9" cy="7" r="1.5" fill="currentColor"/>
+  <circle cx="15" cy="7" r="1.5" fill="currentColor"/>
+  <path d="M8 15H16" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <circle cx="12" cy="15" r="1" fill="white" opacity="0.4"/>
+  <path d="M7 17L9 17M15 17L17 17" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+</svg>

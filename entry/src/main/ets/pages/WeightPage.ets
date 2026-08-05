@@ -1,0 +1,692 @@
+import { router } from '@kit.ArkUI';
+import { GlobalData } from '../common/GlobalData';
+import { Constants, DbRow, GoalConfig, ThemeColors } from '../common/Constants';
+import { TrendChart } from '../components/TrendChart';
+
+@Entry
+@Component
+struct WeightPage {
+  @State weightInput: string = '';
+  @State heightInput: string = '';
+  @State targetWeightInput: string = '';
+  @State recommendCalorieText: string = '';
+  @State targetEstimateText: string = '';
+  @State currentWeight: string = '--';
+  @State currentHeight: string = '--';
+  @State bmi: string = '--';
+  @State bmiStatus: string = '';
+  @State gender: string = '男';
+  @State heightCm: number = 170;
+  @State historyDates: string[] = [];
+  @State historyWeights: number[] = [];
+  @State historyHeights: number[] = [];
+  @State historyBmis: number[] = [];
+  @State records: DbRow[] = [];
+  @State heightRecords: DbRow[] = [];
+  @StorageLink('currentTheme') theme: string = 'dark';
+  @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+
+  aboutToAppear(): void {
+    this.loadData();
+    this.startAutoRefresh();
+  }
+
+  aboutToDisappear(): void {
+    this.stopAutoRefresh();
+  }
+
+  private refreshTimer: number = -1;
+
+  startAutoRefresh(): void {
+    if (this.refreshTimer !== -1) {
+      clearInterval(this.refreshTimer);
+    }
+    this.refreshTimer = setInterval(() => {
+      this.loadData();
+    }, 15000);
+  }
+
+  stopAutoRefresh(): void {
+    if (this.refreshTimer !== -1) {
+      clearInterval(this.refreshTimer);
+      this.refreshTimer = -1;
+    }
+  }
+
+  async loadData(): Promise<void> {
+    try {
+      const goalConfig: GoalConfig = await GlobalData.prefs.getGoalConfig();
+      this.heightCm = goalConfig.heightCm;
+      const g = await GlobalData.prefs.getGender();
+      if (g.length > 0) {
+        this.gender = g;
+      }
+
+      // 获取最新的体重记录
+      const latestWeight = await GlobalData.db.getLatestWeight();
+      if (latestWeight) {
+        this.currentWeight = Number(latestWeight.weight_kg).toFixed(1);
+      }
+
+      // 获取最新的身高记录
+      const latestHeight = await GlobalData.db.getLatestHeight();
+      if (latestHeight) {
+        this.currentHeight = Number(latestHeight.height_cm).toFixed(0);
+        this.heightCm = Number(latestHeight.height_cm);
+      } else {
+        this.currentHeight = String(this.heightCm);
+      }
+
+      // 计算BMI
+      if (latestWeight && this.heightCm > 0) {
+        const bmiVal = this.calcBMI(Number(latestWeight.weight_kg));
+        this.bmi = bmiVal.toFixed(1);
+        this.bmiStatus = this.getBmiStatus(Number(bmiVal));
+      }
+
+      // 获取最近30天记录
+      const end = new Date();
+      const start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      // 获取体重记录
+      const weightRows = await GlobalData.db.getWeightRecords(
+        GlobalData.formatDate(start), GlobalData.formatDate(end)
+      );
+      this.records = weightRows;
+
+      // 获取身高记录
+      const heightRows = await GlobalData.db.getHeightRecords(
+        GlobalData.formatDate(start), GlobalData.formatDate(end)
+      );
+      this.heightRecords = heightRows;
+
+      // 合并日期
+      const allDates = new Set<string>();
+      weightRows.forEach((item: DbRow) => allDates.add(String(item.date)));
+      heightRows.forEach((item: DbRow) => allDates.add(String(item.date)));
+
+      const sortedDates = Array.from(allDates).sort();
+      this.historyDates = sortedDates.map((date: string) => date.slice(5));
+
+      // 构建体重历史数据（按 timestamp 排序，保留最新的记录）
+      const sortedWeightRows = weightRows.slice().sort((a: DbRow, b: DbRow) =>
+      Number(a.timestamp) - Number(b.timestamp)
+      );
+      const weightMap = new Map<string, number>();
+      sortedWeightRows.forEach((item: DbRow) => {
+        weightMap.set(String(item.date), Number(item.weight_kg));
+      });
+
+      // 构建身高历史数据（按 timestamp 排序，保留最新的记录）
+      const sortedHeightRows = heightRows.slice().sort((a: DbRow, b: DbRow) =>
+      Number(a.timestamp) - Number(b.timestamp)
+      );
+      const heightMap = new Map<string, number>();
+      sortedHeightRows.forEach((item: DbRow) => {
+        heightMap.set(String(item.date), Number(item.height_cm));
+      });
+
+      // 填充历史数据
+      this.historyWeights = [];
+      this.historyHeights = [];
+      this.historyBmis = [];
+
+      let lastWeight: number | null = null;
+      let lastHeight: number | null = null;
+
+      sortedDates.forEach((date: string) => {
+        const weight = weightMap.get(date) || lastWeight;
+        const height = heightMap.get(date) || lastHeight;
+
+        if (weight) lastWeight = weight;
+        if (height) lastHeight = height;
+
+        this.historyWeights.push(weight || 0);
+        this.historyHeights.push(height || 0);
+
+        if (weight && height && height > 0) {
+          const bmiVal = weight / Math.pow(height / 100, 2);
+          this.historyBmis.push(Number(bmiVal.toFixed(1)));
+        } else {
+          this.historyBmis.push(0);
+        }
+      });
+
+      // 自动计算推荐热量（基于当前身高体重）
+      await this.autoCalcCalorie();
+    } catch (err) {
+      console.error('WeightPage loadData error:', JSON.stringify(err));
+    }
+  }
+
+  async autoCalcCalorie(): Promise<void> {
+    try {
+      const latestHeightRow = await GlobalData.db.getLatestHeight();
+      const latestWeightRow = await GlobalData.db.getLatestWeight();
+      let h: number = this.heightCm;
+      if (latestHeightRow) {
+        h = Number(latestHeightRow.height_cm);
+      }
+      if (!latestWeightRow) {
+        this.recommendCalorieText = "请先记录当前体重";
+        return;
+      }
+      const currentW = Number(latestWeightRow.weight_kg);
+      const isMale = this.gender === "男";
+      const age = 25;
+      const recCal = this.calcRecommendCalorie(h, currentW, age, isMale);
+      this.recommendCalorieText = `推荐每日摄入：${recCal} kcal`;
+      const goalCfg = await GlobalData.prefs.getGoalConfig();
+      goalCfg.dailyCalorie = recCal;
+      await GlobalData.prefs.saveGoalConfig(goalCfg);
+    } catch (err) {
+      console.error('WeightPage autoCalcCalorie error:', JSON.stringify(err));
+    }
+  }
+
+  calcBMI(weightKg: number): number {
+    const h = this.heightCm;
+    if (h <= 0) {
+      return 0;
+    }
+    return weightKg / ((h / 100) * (h / 100));
+  }
+
+  getBmiStatus(bmiVal: number): string {
+    if (bmiVal <= 0) {
+      return '';
+    }
+    let low = 18.5;
+    let high = 24;
+    if (this.gender === '男') {
+      low = 18.5;
+      high = 24;
+    } else if (this.gender === '女') {
+      low = 18;
+      high = 23;
+    }
+    if (bmiVal < low) {
+      return '偏瘦';
+    }
+    if (bmiVal <= high) {
+      return '正常';
+    }
+    if (bmiVal < 28) {
+      return '偏胖';
+    }
+    return '肥胖';
+  }
+
+  getBmiColor(): string {
+    if (this.bmiStatus === '正常') {
+      return '#4CAF50';
+    }
+    if (this.bmiStatus === '偏瘦' || this.bmiStatus === '偏胖') {
+      return '#FF9800';
+    }
+    return '#F44336';
+  }
+
+  async saveRecord(): Promise<void> {
+    const today = await GlobalData.getTodayDate();
+
+    // 保存体重
+    const weightVal = parseFloat(this.weightInput);
+    if (!isNaN(weightVal) && weightVal > 0) {
+      const existingWeight = await GlobalData.db.getWeightRecords(today, today);
+      for (const record of existingWeight) {
+        await GlobalData.db.deleteWeightRecord(Number(record.id));
+      }
+      await GlobalData.db.addWeightRecord(today, weightVal);
+      this.weightInput = '';
+    }
+
+    // 保存身高
+    const heightVal = parseFloat(this.heightInput);
+    if (!isNaN(heightVal) && heightVal > 0) {
+      const existingHeight = await GlobalData.db.getHeightRecords(today, today);
+      for (const record of existingHeight) {
+        await GlobalData.db.deleteHeightRecord(Number(record.id));
+      }
+      await GlobalData.db.addHeightRecord(today, heightVal);
+      const cfg = await GlobalData.prefs.getGoalConfig();
+      cfg.heightCm = heightVal;
+      await GlobalData.prefs.saveGoalConfig(cfg);
+      this.heightInput = '';
+    }
+
+    await this.loadData();
+  }
+
+  async deleteWeight(id: number): Promise<void> {
+    await GlobalData.db.deleteWeightRecord(id);
+    await this.loadData();
+  }
+
+  async deleteHeight(id: number): Promise<void> {
+    await GlobalData.db.deleteHeightRecord(id);
+    await this.loadData();
+  }
+
+  // 按日期删除该日的体重/身高记录（历史列表用，displayDate 为 MM-DD）
+  async deleteHistoryByDate(displayDate: string): Promise<void> {
+    try {
+      // 删除匹配的体重记录
+      const deleteWeightRows: number[] = [];
+      for (const r of this.records) {
+        if (String(r.date).slice(5) === displayDate) {
+          deleteWeightRows.push(Number(r.id));
+        }
+      }
+      for (const id of deleteWeightRows) {
+        await GlobalData.db.deleteWeightRecord(id);
+      }
+
+      // 删除匹配的身高记录
+      const deleteHeightRows: number[] = [];
+      for (const r of this.heightRecords) {
+        if (String(r.date).slice(5) === displayDate) {
+          deleteHeightRows.push(Number(r.id));
+        }
+      }
+      for (const id of deleteHeightRows) {
+        await GlobalData.db.deleteHeightRecord(id);
+      }
+
+      await this.loadData();
+    } catch (err) {
+      console.error('deleteHistoryByDate error:', JSON.stringify(err));
+    }
+  }
+
+  calcRecommendCalorie(heightCm: number, currentWeightKg: number, age: number, isMale: boolean): number {
+    let bmr: number;
+    if (isMale) {
+      bmr = 10 * currentWeightKg + 6.25 * heightCm - 5 * age + 5;
+    } else {
+      bmr = 10 * currentWeightKg + 6.25 * heightCm - 5 * age - 161;
+    }
+    const tdee = bmr * 1.375;
+    let targetCal = tdee - 550;
+    if (!isMale) {
+      targetCal = Math.max(1200, targetCal);
+    } else {
+      targetCal = Math.max(1500, targetCal);
+    }
+    return Math.round(targetCal);
+  }
+
+  calcEstimateTime(currentW: number, targetW: number, recCal: number, heightCm: number, age: number, isMale: boolean): string {
+    const deltaWeight = currentW - targetW;
+    if (Math.abs(deltaWeight) < 0.2) {
+      return "你的体重已经接近目标体重";
+    }
+    let bmr: number;
+    if (isMale) {
+      bmr = 10 * currentW + 6.25 * heightCm - 5 * age + 5;
+    } else {
+      bmr = 10 * currentW + 6.25 * heightCm - 5 * age - 161;
+    }
+    const tdee = bmr * 1.375;
+    const dailyGap = tdee - recCal;
+
+    if (dailyGap <= 0 && deltaWeight > 0) {
+      return "当前推荐热量无法制造减重缺口，请适当降低摄入或增加运动";
+    }
+    if (deltaWeight < 0) {
+      const totalNeedCal = Math.abs(deltaWeight) * 7700;
+      const dayNeed = Math.round(totalNeedCal / (recCal - tdee));
+      const weekNeed = (dayNeed / 7).toFixed(1);
+      return `按推荐热量饮食，预计${dayNeed}天（约${weekNeed}周）可以达到目标体重（增重）`;
+    } else {
+      const totalNeedCal = deltaWeight * 7700;
+      const dayNeed = Math.round(totalNeedCal / dailyGap);
+      const weekNeed = (dayNeed / 7).toFixed(1);
+      const monthNeed = (dayNeed / 30).toFixed(1);
+      return `按推荐热量饮食，预计${dayNeed}天（约${weekNeed}周 / ${monthNeed}个月）可以达到目标体重`;
+    }
+  }
+
+  async onClickCalcCalorie() {
+    // 统一从最新记录读取身高体重，与页面显示一致
+    const goalCfg = await GlobalData.prefs.getGoalConfig();
+    let h = goalCfg.heightCm;
+    const latestHeightRow = await GlobalData.db.getLatestHeight();
+    if (latestHeightRow) {
+      h = Number(latestHeightRow.height_cm);
+    }
+    const latestWeightRow = await GlobalData.db.getLatestWeight();
+    if (!latestWeightRow) {
+      this.recommendCalorieText = "请先记录当前体重";
+      return;
+    }
+    const currentW = Number(latestWeightRow.weight_kg);
+    const isMale = this.gender === "男";
+    const age = 25;
+    const recCal = this.calcRecommendCalorie(h, currentW, age, isMale);
+    this.recommendCalorieText = `推荐每日摄入：${recCal} kcal`;
+    goalCfg.dailyCalorie = recCal;
+    await GlobalData.prefs.saveGoalConfig(goalCfg);
+
+    const targetW = parseFloat(this.targetWeightInput);
+    if (!isNaN(targetW) && targetW >= 30 && targetW <= 220) {
+      this.targetEstimateText = this.calcEstimateTime(currentW, targetW, recCal, h, age, isMale);
+    } else {
+      this.targetEstimateText = "";
+    }
+  }
+
+  bg(): string { return ThemeColors.pageBg(this.theme); }
+  card(): string { return ThemeColors.cardBg(this.theme); }
+  txt(): string { return ThemeColors.textPrimary(this.theme); }
+  sub(): string { return ThemeColors.textSecondary(this.theme); }
+
+  build() {
+    Column() {
+      Row() {
+        Text('←')
+          .fontSize(22)
+          .fontColor(this.txt())
+          .accessibilityText('返回上一页')
+          .accessibilityLevel('important')
+          .onClick(() => { router.back(); })
+        Text('体重记录')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.txt())
+          .margin({ left: 12 })
+        Blank()
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
+
+      Scroll() {
+        Column() {
+          // 当前数据展示
+          Row() {
+            Column() {
+              Text(this.currentHeight)
+                .fontSize(36)
+                .fontWeight(FontWeight.Bold)
+              Text('身高')
+                .fontSize(14)
+                .fontColor(this.sub())
+                .margin({ top: 4 })
+            }
+            .layoutWeight(1)
+
+            Divider()
+              .vertical(true)
+              .height(60)
+              .margin({ left: 10, right: 10 })
+
+            Column() {
+              Text(this.currentWeight)
+                .fontSize(36)
+                .fontWeight(FontWeight.Bold)
+              Text('体重')
+                .fontSize(14)
+                .fontColor(this.sub())
+                .margin({ top: 4 })
+            }
+            .layoutWeight(1)
+
+            Divider()
+              .vertical(true)
+              .height(60)
+              .margin({ left: 10, right: 10 })
+
+            Column() {
+              Text(this.bmi)
+                .fontSize(36)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(this.getBmiColor())
+              Text('BMI')
+                .fontSize(14)
+                .fontColor(this.sub())
+                .margin({ top: 4 })
+              if (this.bmiStatus.length > 0) {
+                Text(this.bmiStatus)
+                  .fontSize(12)
+                  .fontColor(this.getBmiColor())
+                  .margin({ top: 2 })
+              }
+            }
+            .layoutWeight(1)
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.Center)
+          .padding(20)
+          .backgroundColor(this.card())
+          .borderRadius(16)
+          .margin({ left: 16, right: 16 })
+
+          // 记录数据卡片
+          Column() {
+            Text('记录数据')
+              .fontSize(16)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.txt())
+              .width('100%')
+              .margin({ bottom: 12 })
+
+            Row() {
+              TextInput({ placeholder: '身高', text: this.heightInput })
+                .layoutWeight(1)
+                .type(InputType.Number)
+                .backgroundColor(ThemeColors.inputBg(this.theme))
+                .fontColor(this.txt())
+                .placeholderColor(ThemeColors.textSecondary(this.theme))
+                .onChange((value: string) => { this.heightInput = value; })
+
+              TextInput({ placeholder: '体重', text: this.weightInput })
+                .layoutWeight(1)
+                .type(InputType.Number)
+                .backgroundColor(ThemeColors.inputBg(this.theme))
+                .fontColor(this.txt())
+                .placeholderColor(ThemeColors.textSecondary(this.theme))
+                .onChange((value: string) => { this.weightInput = value; })
+                .margin({ left: 12 })
+
+              Button('提交')
+                .backgroundColor(Constants.COLOR_WEIGHT)
+                .fontColor('#fff')
+                .borderRadius(20)
+                .margin({ left: 12 })
+                .onClick(() => { this.saveRecord(); })
+            }
+          }
+          .width('100%')
+          .padding(16)
+          .backgroundColor(this.card())
+          .borderRadius(16)
+          .margin({ left: 16, right: 16, top: 8 })
+
+          // 目标体重卡片
+Column() {
+Text('目标体重')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.margin({ bottom: 12 })
+
+            Row() {
+              TextInput({ placeholder: "请输入目标体重(kg)", text: this.targetWeightInput })
+                .layoutWeight(1)
+                .type(InputType.Number)
+                .backgroundColor(ThemeColors.inputBg(this.theme))
+                .fontColor(this.txt())
+                .placeholderColor(ThemeColors.textSecondary(this.theme))
+                .onChange((v: string) => {
+                  this.targetWeightInput = v;
+                })
+            }
+            if (this.targetEstimateText.length > 0) {
+              Text(this.targetEstimateText)
+                .fontSize(14)
+                .fontColor(this.txt())
+                .margin({ top: 10 })
+                .width('100%')
+            }
+          }
+          .width('100%')
+          .padding(16)
+          .backgroundColor(this.card())
+          .borderRadius(16)
+          .margin({ left: 16, right: 16, top: 12 })
+
+          // 热量推荐卡片
+Column() {
+Text('热量推荐')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.margin({ bottom: 12 })
+
+            if (this.recommendCalorieText.length > 0) {
+              Text(this.recommendCalorieText)
+                .fontSize(15)
+                .fontColor("#4CAF50")
+                .margin({ top: 10 })
+                .width('100%')
+            }
+            Text('根据当前身高、体重自动计算').fontSize(11).fontColor(this.sub())
+              .width('100%').margin({ top: 6 })
+          }
+          .width('100%')
+          .padding(16)
+          .backgroundColor(this.card())
+          .borderRadius(16)
+          .margin({ left: 16, right: 16, top: 12 })
+
+          // 趋势图
+          if (this.historyHeights.length > 1) {
+Column() {
+Text('身高趋势 (30天)')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.padding({ left: 16, bottom: 8 })
+              TrendChart({
+                dataPoints: this.historyHeights,
+                lineColor: '#2196F3',
+                fillColor: '#2196F322',
+                labels: this.historyDates
+              })
+                .height(150)
+                .padding({ left: 16, right: 16 })
+            }
+            .width('100%')
+            .margin({ top: 16 })
+          }
+
+          if (this.historyWeights.length > 1) {
+Column() {
+Text('体重趋势 (30天)')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.padding({ left: 16, bottom: 8 })
+              TrendChart({
+                dataPoints: this.historyWeights,
+                lineColor: Constants.COLOR_WEIGHT,
+                fillColor: '#4CAF5022',
+                labels: this.historyDates
+              })
+                .height(150)
+                .padding({ left: 16, right: 16 })
+            }
+            .width('100%')
+            .margin({ top: 16 })
+          }
+
+          if (this.historyBmis.length > 1) {
+Column() {
+Text('BMI趋势 (30天)')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.padding({ left: 16, bottom: 8 })
+              TrendChart({
+                dataPoints: this.historyBmis,
+                lineColor: '#FF9800',
+                fillColor: '#FF980022',
+                labels: this.historyDates
+              })
+                .height(150)
+                .padding({ left: 16, right: 16 })
+            }
+            .width('100%')
+            .margin({ top: 16 })
+          }
+
+// 历史记录
+Text('历史记录')
+.fontSize(16)
+.fontWeight(FontWeight.Bold)
+.fontColor(this.txt())
+.width('100%')
+.padding({ left: 16, top: 20, bottom: 8 })
+
+          List() {
+            ForEach(this.historyDates, (date: string, index: number) => {
+              ListItem() {
+                Row() {
+                  Text(date)
+                    .fontSize(14)
+                    .layoutWeight(1)
+
+                  Text(this.historyHeights[index] > 0 ? this.historyHeights[index].toFixed(0) + ' cm' : '--')
+                    .fontSize(14)
+                    .fontColor(this.txt())
+                    .width(70)
+                    .textAlign(TextAlign.Center)
+
+                  Text(this.historyWeights[index] > 0 ? this.historyWeights[index].toFixed(1) + ' kg' : '--')
+                    .fontSize(14)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor(this.txt())
+                    .width(70)
+                    .textAlign(TextAlign.Center)
+
+                  Text(this.historyBmis[index] > 0 ? this.historyBmis[index].toFixed(1) : '--')
+                    .fontSize(14)
+                    .fontColor(this.txt())
+                    .width(50)
+                    .textAlign(TextAlign.Center)
+
+                  Text('🗑')
+                    .fontSize(16)
+                    .margin({ left: 6 })
+                    .onClick(() => { this.deleteHistoryByDate(date); })
+                }
+                .width('100%')
+                .padding(14)
+                .backgroundColor(this.card())
+                .borderRadius(10)
+                .margin({ bottom: 8 })
+              }
+            })
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16 })
+          .height(300)
+        }
+        .width('100%')
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor(this.bg())
+  }
+
+  pageTransition() {
+    PageTransitionEnter({ duration: 300, curve: Curve.Friction }).slide(SlideEffect.Right)
+    PageTransitionExit({ duration: 200, curve: Curve.FastOutLinearIn }).slide(SlideEffect.Left)
+  }
+}

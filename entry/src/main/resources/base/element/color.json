@@ -1,0 +1,15 @@
+{
+  "color": [
+    {"name": "start_window_background", "value": "#F5F5F5"},
+    {"name": "card_bg", "value": "#FFFFFF"},
+    {"name": "page_bg", "value": "#F0F0F5"},
+    {"name": "accent_orange", "value": "#FF6B35"},
+    {"name": "accent_green", "value": "#4CAF50"},
+    {"name": "accent_blue", "value": "#03A9F4"},
+    {"name": "text_primary", "value": "#1A1A1A"},
+    {"name": "text_secondary", "value": "#666666"},
+    {"name": "text_on_card", "value": "#555555"},
+    {"name": "divider_color", "value": "#DDDDDD"},
+    {"name": "streak_gold", "value": "#FFD700"}
+  ]
+}
