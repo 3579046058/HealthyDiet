@@ -2,6 +2,7 @@ import { http } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { ChatHistoryItem } from '../model/ChatModels';
 import { GlobalData } from '../common/GlobalData';
+import { AiDefaults } from '../common/Constants';
 
 export interface ChatCallbacks {
   onChunk: (chunk: string) => void;
@@ -47,8 +48,8 @@ interface GlmChatResult {
 
 export class ChatService {
   private static instance: ChatService;
-  private static readonly GLM_URL: string = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-  private static readonly GLM_MODEL: string = 'glm-4-flash';
+  private apiUrl: string = AiDefaults.API_URL;
+  private model: string = AiDefaults.CHAT_MODEL;
   private glmApiKey: string = '';
   private request: http.HttpRequest | null = null;
   private decoder: util.TextDecoder = util.TextDecoder.create('utf-8');
@@ -62,28 +63,36 @@ export class ChatService {
   }
 
   async init(context: Context): Promise<void> {
-    await this.loadApiKey(context);
+    await this.loadConfig(context);
   }
 
-  async reloadApiKey(context: Context): Promise<void> {
+  async reloadConfig(context: Context): Promise<void> {
     this.glmApiKey = '';
+    this.apiUrl = AiDefaults.API_URL;
+    this.model = AiDefaults.CHAT_MODEL;
     this.initError = '';
-    await this.loadApiKey(context);
+    await this.loadConfig(context);
   }
 
-  private async loadApiKey(context: Context): Promise<void> {
+  private async loadConfig(context: Context): Promise<void> {
     try {
       if (GlobalData.initialized) {
-        const custom: string = await GlobalData.prefs.getAiApiKey();
-        if (custom.length > 0) {
-          this.glmApiKey = custom;
+        const cfg = await GlobalData.prefs.getAiConfig();
+        if (cfg.apiUrl.length > 0) {
+          this.apiUrl = cfg.apiUrl;
+        }
+        if (cfg.chatModel.length > 0) {
+          this.model = cfg.chatModel;
+        }
+        if (cfg.apiKey.length > 0) {
+          this.glmApiKey = cfg.apiKey;
           this.initError = '';
-          console.info('ChatService key loaded from user settings, keyLen=' + String(custom.length));
+          console.info('ChatService key loaded from user settings, keyLen=' + String(cfg.apiKey.length));
           return;
         }
       }
     } catch (err) {
-      console.error('ChatService prefs key error:', JSON.stringify(err));
+      console.error('ChatService prefs config error:', JSON.stringify(err));
     }
     let rawText: string = '';
     try {
@@ -122,6 +131,20 @@ export class ChatService {
     return this.initError;
   }
 
+  private normalizeUrl(url: string): string {
+    let result: string = url.trim();
+    if (result.length === 0) {
+      return AiDefaults.API_URL;
+    }
+    while (result.endsWith('/')) {
+      result = result.substring(0, result.length - 1);
+    }
+    if (!result.endsWith('/chat/completions')) {
+      result = result + '/chat/completions';
+    }
+    return result;
+  }
+
   async sendMessage(messages: Array<ChatHistoryItem>, callbacks: ChatCallbacks): Promise<void> {
     if (this.glmApiKey.length === 0) {
       const reason: string = this.initError.length > 0 ? this.initError : '未配置 AI 服务密钥，请检查 rawfile/ai_config.json';
@@ -135,7 +158,7 @@ export class ChatService {
       reqMessages.push(msg);
     }
     const body: GlmRequestBody = {
-      model: ChatService.GLM_MODEL,
+      model: this.model,
       messages: reqMessages,
       stream: true,
       temperature: 0.7
@@ -179,7 +202,7 @@ export class ChatService {
               const delta: GlmDelta | undefined = choice.delta;
               if (delta !== undefined) {
                 const text: string | undefined = delta.content;
-                if (text !== undefined) {
+                if (text !== undefined && text !== null) {
                   callbacks.onChunk(text);
                 }
               }
@@ -201,7 +224,7 @@ export class ChatService {
     });
 
     try {
-      const code: number = await httpRequest.requestInStream(ChatService.GLM_URL, {
+      const code: number = await httpRequest.requestInStream(this.normalizeUrl(this.apiUrl), {
         method: http.RequestMethod.POST,
         header: {
           'Content-Type': 'application/json',
@@ -245,14 +268,14 @@ export class ChatService {
       { role: 'user', content: firstMessage }
     ];
     const titleBody: GlmRequestBody = {
-      model: ChatService.GLM_MODEL,
+      model: this.model,
       messages: titleMessages,
       stream: false,
       temperature: 0.3
     };
     const titleRequest: http.HttpRequest = http.createHttp();
     try {
-      const response = await titleRequest.request(ChatService.GLM_URL, {
+      const response = await titleRequest.request(this.normalizeUrl(this.apiUrl), {
         method: http.RequestMethod.POST,
         header: {
           'Content-Type': 'application/json',
@@ -276,7 +299,7 @@ export class ChatService {
         const message: GlmChatMessageResult | undefined = choice.message;
         if (message !== undefined) {
           const content: string | undefined = message.content;
-          if (content !== undefined) {
+          if (content !== undefined && content !== null) {
             const title: string = content.trim();
             return title.length > 12 ? title.slice(0, 12) : title;
           }

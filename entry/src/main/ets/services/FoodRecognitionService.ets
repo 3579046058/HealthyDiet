@@ -3,8 +3,7 @@ import { fileIo } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { http } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
-import { FoodCalories } from '../common/Constants';
-import { GlobalData } from '../common/GlobalData';
+import { FoodCalories, AiDefaults } from '../common/Constants';
 
 export interface RecognitionOutcome {
   foodName: string;
@@ -53,8 +52,8 @@ interface GlmRequestBody {
 export class FoodRecognitionService {
   private static instance: FoodRecognitionService;
   private glmApiKey: string = '';
-  private static readonly GLM_URL: string = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-  private static readonly GLM_MODEL: string = 'glm-4v-flash';
+  private static readonly VISION_URL: string = AiDefaults.API_URL;
+  private static readonly VISION_MODEL: string = AiDefaults.VISION_MODEL;
   // 每100克热量缓存：同一食物首次云端计算后固定，避免多次识别数值漂移
   private per100Cache: Map<string, number> = new Map<string, number>();
 
@@ -65,28 +64,8 @@ export class FoodRecognitionService {
     return FoodRecognitionService.instance;
   }
 
-  // 从用户设置或 rawfile/ai_config.json 异步加载 API 密钥（用户设置优先，避免硬编码在源码）
+  // 识图模型固定使用智谱 GLM（视觉管道与本地 CoreVisionKit 绑定），仅从 rawfile 加载内置密钥
   async init(context: Context): Promise<void> {
-    await this.loadApiKey(context);
-  }
-
-  async reloadApiKey(context: Context): Promise<void> {
-    await this.loadApiKey(context);
-  }
-
-  private async loadApiKey(context: Context): Promise<void> {
-    try {
-      if (GlobalData.initialized) {
-        const custom: string = await GlobalData.prefs.getAiApiKey();
-        if (custom.length > 0) {
-          this.glmApiKey = custom;
-          console.info('FoodRecognitionService key loaded from user settings, keyLen=' + String(custom.length));
-          return;
-        }
-      }
-    } catch (err) {
-      console.error('FoodRecognitionService prefs key error:', JSON.stringify(err));
-    }
     try {
       const resourceMgr = context.resourceManager;
       const data: Uint8Array = await resourceMgr.getRawFileContent('ai_config.json');
@@ -161,12 +140,12 @@ export class FoodRecognitionService {
       const message: GlmMessage = { role: 'user', content: contents };
       const messages: Array<GlmMessage> = [message];
       const requestBody: GlmRequestBody = {
-        model: FoodRecognitionService.GLM_MODEL,
+        model: FoodRecognitionService.VISION_MODEL,
         messages: messages
       };
 
       const request = http.createHttp();
-      const response = await request.request(FoodRecognitionService.GLM_URL, {
+      const response = await request.request(FoodRecognitionService.VISION_URL, {
         method: http.RequestMethod.POST,
         header: {
           'Content-Type': 'application/json',
@@ -239,13 +218,13 @@ export class FoodRecognitionService {
       const message: GlmMessage = { role: 'user', content: contents };
       const messages: Array<GlmMessage> = [message];
       const requestBody: GlmRequestBody = {
-        model: FoodRecognitionService.GLM_MODEL,
+        model: FoodRecognitionService.VISION_MODEL,
         messages: messages,
         temperature: 0
       };
 
       const request = http.createHttp();
-      const response = await request.request(FoodRecognitionService.GLM_URL, {
+      const response = await request.request(FoodRecognitionService.VISION_URL, {
         method: http.RequestMethod.POST,
         header: {
           'Content-Type': 'application/json',
@@ -358,13 +337,13 @@ export class FoodRecognitionService {
       const message: GlmMessage = { role: 'user', content: contents };
       const messages: Array<GlmMessage> = [message];
       const requestBody: GlmRequestBody = {
-        model: FoodRecognitionService.GLM_MODEL,
+        model: FoodRecognitionService.VISION_MODEL,
         messages: messages,
         temperature: 0
       };
 
       const request = http.createHttp();
-      const response = await request.request(FoodRecognitionService.GLM_URL, {
+      const response = await request.request(FoodRecognitionService.VISION_URL, {
         method: http.RequestMethod.POST,
         header: {
           'Content-Type': 'application/json',
@@ -431,13 +410,13 @@ export class FoodRecognitionService {
       const message: GlmMessage = { role: 'user', content: contents };
       const messages: Array<GlmMessage> = [message];
       const requestBody: GlmRequestBody = {
-        model: FoodRecognitionService.GLM_MODEL,
+        model: FoodRecognitionService.VISION_MODEL,
         messages: messages,
         temperature: 0
       };
 
       const request = http.createHttp();
-      const response = await request.request(FoodRecognitionService.GLM_URL, {
+      const response = await request.request(FoodRecognitionService.VISION_URL, {
         method: http.RequestMethod.POST,
         header: {
           'Content-Type': 'application/json',

@@ -1,8 +1,7 @@
 import { router, promptAction } from '@kit.ArkUI';
-import { ThemeColors } from '../common/Constants';
+import { ThemeColors, AiConfig, AiDefaults } from '../common/Constants';
 import { GlobalData } from '../common/GlobalData';
 import { ChatService } from '../services/ChatService';
-import { FoodRecognitionService } from '../services/FoodRecognitionService';
 
 @Entry
 @Component
@@ -11,11 +10,15 @@ struct SettingsPage {
   @StorageLink('systemDark') systemDark: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  @State apiUrlInput: string = '';
   @State apiKeyInput: string = '';
+  @State chatModelInput: string = '';
   @State keyStatus: string = '';
+  @State aiJsonText: string = '';
 
   aboutToAppear(): void {
-    this.refreshKeyStatus();
+    this.refreshAiStatus();
+    this.refreshAiJson();
   }
 
   bg(): string { return ThemeColors.pageBg(this.theme); }
@@ -70,28 +73,58 @@ struct SettingsPage {
             Row() {
               Text('🤖').fontSize(20)
               Column() {
-                Text('AI 问答密钥').fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.txt())
+                Text('AI 模型服务').fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.txt())
                 Text(this.keyStatus).fontSize(11).fontColor(this.sub()).margin({ top: 2 })
               }
               .alignItems(HorizontalAlign.Start).margin({ left: 12 }).layoutWeight(1)
             }
             .width('100%')
 
-            TextInput({ placeholder: '粘贴新的 API Key（留空保存则恢复内置）', text: this.apiKeyInput })
+            TextInput({ placeholder: 'API 地址（默认智谱开放平台）', text: this.apiUrlInput })
               .width('100%')
               .height(42)
-              .fontSize(14)
+              .fontSize(13)
+              .fontColor(this.txt())
+              .placeholderColor(this.sub())
+              .backgroundColor(this.bg())
+              .borderRadius(10)
+              .padding({ left: 12, right: 12 })
+              .margin({ top: 10 })
+              .onChange((value: string) => { this.apiUrlInput = value; })
+
+            TextInput({ placeholder: 'API Key', text: this.apiKeyInput })
+              .width('100%')
+              .height(42)
+              .fontSize(13)
               .fontColor(this.txt())
               .placeholderColor(this.sub())
               .type(InputType.Password)
               .backgroundColor(this.bg())
               .borderRadius(10)
               .padding({ left: 12, right: 12 })
-              .margin({ top: 12 })
+              .margin({ top: 10 })
               .onChange((value: string) => { this.apiKeyInput = value; })
 
+            TextInput({ placeholder: '对话模型（默认 glm-4-flash，可换其他厂商模型）', text: this.chatModelInput })
+              .width('100%')
+              .height(42)
+              .fontSize(13)
+              .fontColor(this.txt())
+              .placeholderColor(this.sub())
+              .backgroundColor(this.bg())
+              .borderRadius(10)
+              .padding({ left: 12, right: 12 })
+              .margin({ top: 10 })
+              .onChange((value: string) => { this.chatModelInput = value; })
+
+            Text('识图模型固定使用智谱 GLM（glm-4v-flash），不可更改')
+              .fontSize(10)
+              .fontColor(this.sub())
+              .width('100%')
+              .margin({ top: 8 })
+
             Row() {
-              Button('保存密钥')
+              Button('保存配置')
                 .fontSize(14)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(Color.White)
@@ -99,7 +132,7 @@ struct SettingsPage {
                 .layoutWeight(1)
                 .height(38)
                 .borderRadius(10)
-                .onClick(() => { this.saveApiKey(); })
+                .onClick(() => { this.saveAiConfig(); })
 
               Button('恢复内置')
                 .fontSize(14)
@@ -110,10 +143,37 @@ struct SettingsPage {
                 .height(38)
                 .borderRadius(10)
                 .margin({ left: 10 })
-                .onClick(() => { this.clearApiKey(); })
+                .onClick(() => { this.clearAiConfig(); })
             }
             .width('100%')
-            .margin({ top: 10 })
+            .margin({ top: 12 })
+
+            Divider().margin({ top: 14, bottom: 4 })
+
+            Text('当前配置（JSON，可直接编辑后导入）').fontSize(12).fontColor(this.sub()).width('100%')
+
+            TextArea({ text: this.aiJsonText, placeholder: '{\n  "apiUrl": "",\n  "apiKey": "",\n  "chatModel": ""\n}' })
+              .width('100%')
+              .height(150)
+              .fontSize(11)
+              .fontColor(this.txt())
+              .placeholderColor(this.sub())
+              .backgroundColor(this.bg())
+              .borderRadius(10)
+              .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+              .margin({ top: 8 })
+              .onChange((value: string) => { this.aiJsonText = value; })
+
+            Button('导入 JSON 配置')
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Color.White)
+              .backgroundColor('#9C27B0')
+              .width('100%')
+              .height(38)
+              .borderRadius(10)
+              .margin({ top: 10 })
+              .onClick(() => { this.importAiJson(); })
           }
           .width('100%')
           .padding(14)
@@ -143,39 +203,77 @@ struct SettingsPage {
     router.pushUrl({ url: page }).catch(() => {});
   }
 
-  async refreshKeyStatus(): Promise<void> {
-    const custom: string = await GlobalData.prefs.getAiApiKey();
-    if (custom.length > 0) {
-      const head: string = custom.length > 6 ? custom.slice(0, 6) : custom;
-      const tail: string = custom.length > 4 ? custom.slice(-4) : '';
-      this.keyStatus = '自定义密钥已配置（' + head + '…' + tail + '）';
-    } else {
-      this.keyStatus = '使用内置密钥（ai_config.json）';
+  async refreshAiStatus(): Promise<void> {
+    const cfg: AiConfig = await GlobalData.prefs.getAiConfig();
+    let status: string = '使用内置配置';
+    if (cfg.apiUrl.length > 0 || cfg.apiKey.length > 0 || cfg.chatModel.length > 0) {
+      const chat: string = cfg.chatModel.length > 0 ? cfg.chatModel : AiDefaults.CHAT_MODEL;
+      let keyText: string = '内置密钥';
+      if (cfg.apiKey.length > 0) {
+        const head: string = cfg.apiKey.length > 6 ? cfg.apiKey.slice(0, 6) : cfg.apiKey;
+        keyText = head + '…';
+      }
+      status = chat + '｜' + keyText;
     }
+    this.keyStatus = status;
   }
 
-  async saveApiKey(): Promise<void> {
-    const key: string = this.apiKeyInput.trim();
-    if (key.length === 0) {
-      promptAction.showToast({ message: '请输入 API Key' });
+  async refreshAiJson(): Promise<void> {
+    const cfg: AiConfig = await GlobalData.prefs.getAiConfig();
+    this.aiJsonText = JSON.stringify(cfg, null, 2);
+  }
+
+  async importAiJson(): Promise<void> {
+    const text: string = this.aiJsonText.trim();
+    if (text.length === 0) {
+      promptAction.showToast({ message: '请输入 JSON 配置' });
       return;
     }
-    await GlobalData.prefs.setAiApiKey(key);
-    const ctx: Context = getContext(this);
-    await ChatService.getInstance().reloadApiKey(ctx);
-    await FoodRecognitionService.getInstance().reloadApiKey(ctx);
-    this.apiKeyInput = '';
-    await this.refreshKeyStatus();
-    promptAction.showToast({ message: 'API Key 已保存并生效' });
+    try {
+      const parsed = JSON.parse(text) as Record<string, Object>;
+      const cfg: AiConfig = new AiConfig();
+      cfg.apiUrl = String(parsed['apiUrl'] ?? '');
+      cfg.apiKey = String(parsed['apiKey'] ?? '');
+      cfg.chatModel = String(parsed['chatModel'] ?? '');
+      await GlobalData.prefs.setAiConfig(cfg);
+      const ctx: Context = getContext(this);
+      await ChatService.getInstance().reloadConfig(ctx);
+      await this.refreshAiStatus();
+      await this.refreshAiJson();
+      promptAction.showToast({ message: 'JSON 配置已导入并生效' });
+    } catch (err) {
+      promptAction.showToast({ message: 'JSON 格式错误，请检查' });
+    }
   }
 
-  async clearApiKey(): Promise<void> {
-    await GlobalData.prefs.setAiApiKey('');
+  async saveAiConfig(): Promise<void> {
+    const cfg: AiConfig = new AiConfig();
+    cfg.apiUrl = this.apiUrlInput.trim();
+    cfg.apiKey = this.apiKeyInput.trim();
+    cfg.chatModel = this.chatModelInput.trim();
+    if (cfg.apiUrl.length === 0 && cfg.apiKey.length === 0 && cfg.chatModel.length === 0) {
+      promptAction.showToast({ message: '请输入至少一项配置' });
+      return;
+    }
+    await GlobalData.prefs.setAiConfig(cfg);
     const ctx: Context = getContext(this);
-    await ChatService.getInstance().reloadApiKey(ctx);
-    await FoodRecognitionService.getInstance().reloadApiKey(ctx);
-    await this.refreshKeyStatus();
-    promptAction.showToast({ message: '已恢复内置密钥' });
+    await ChatService.getInstance().reloadConfig(ctx);
+    this.apiUrlInput = '';
+    this.apiKeyInput = '';
+    this.chatModelInput = '';
+    await this.refreshAiStatus();
+    await this.refreshAiJson();
+    promptAction.showToast({ message: 'AI 配置已保存并生效' });
+  }
+
+  async clearAiConfig(): Promise<void> {
+    const empty: AiConfig = new AiConfig();
+    await GlobalData.prefs.setAiConfig(empty);
+    const ctx: Context = getContext(this);
+    await ChatService.getInstance().reloadConfig(ctx);
+    await this.refreshAiStatus();
+    await this.refreshAiJson();
+    promptAction.showToast({ message: '已恢复内置配置' });
   }
 
   showAbout(): void {
