@@ -30,9 +30,48 @@ export struct FoodRecognitionTab {
     this.subTextColor = ThemeColors.subText(this.theme);
   }
 
+  // 启动扫描动画
+  startScanAnimation(): void {
+    this.stopScanAnimation(); // 先停止之前的动画
+    this.scanLineY = 0; // 从顶部开始
+    this.scanDirection = 1; // 向下移动
+    
+    // 计算扫描区域高度
+    const scanAreaHeight = this.imageWidth > 0 && this.imageHeight > 0 ? 
+      (this.imageHeight / this.imageWidth * 320) : 220;
+    
+    // 每30ms更新一次位置，实现平滑动画
+    this.scanTimer = setInterval(() => {
+      const speed = 3; // 移动速度
+      this.scanLineY += speed * this.scanDirection;
+      
+      // 到达底部时反向
+      if (this.scanLineY >= scanAreaHeight - 3) {
+        this.scanLineY = scanAreaHeight - 3;
+        this.scanDirection = -1;
+      }
+      // 到达顶部时反向
+      else if (this.scanLineY <= 0) {
+        this.scanLineY = 0;
+        this.scanDirection = 1;
+      }
+    }, 30);
+  }
+
+  // 停止扫描动画
+  stopScanAnimation(): void {
+    if (this.scanTimer !== -1) {
+      clearInterval(this.scanTimer);
+      this.scanTimer = -1;
+    }
+  }
+
   @State recognizedFood: string = '';
   @State isRecognizing: boolean = false;
   @State scanAnim: boolean = false;
+  @State scanLineY: number = 0; // 扫描线Y位置
+  private scanTimer: number = -1; // 扫描动画定时器
+  private scanDirection: number = 1; // 扫描方向：1向下，-1向上
   @State resultMsg: string = '对准食物拍照或从相册选择，看看它是什么菜';
   @State recogSource: string = '';
   @State gramsInput: string = '200';
@@ -75,6 +114,11 @@ export struct FoodRecognitionTab {
     console.info('FoodRecognitionTab theme=' + this.theme);
   }
 
+  aboutToDisappear(): void {
+    // 组件销毁时停止扫描动画，避免内存泄漏
+    this.stopScanAnimation();
+  }
+
   async takePhoto(): Promise<void> {
     if (!this.uiContext) {
       return;
@@ -114,6 +158,7 @@ export struct FoodRecognitionTab {
   async recognizeFromUri(uri: string): Promise<void> {
     this.isRecognizing = true;
     this.scanAnim = true;
+    this.startScanAnimation(); // 启动扫描动画
     this.savedSuccess = false;
     this.resultMsg = '正在识别...';
 
@@ -125,6 +170,7 @@ export struct FoodRecognitionTab {
         console.error('recognize error:', JSON.stringify(err));
         this.resultMsg = '识别失败，请重试';
       } finally {
+        this.stopScanAnimation(); // 停止扫描动画
         this.isRecognizing = false;
         this.scanAnim = false;
       }
@@ -330,13 +376,25 @@ export struct FoodRecognitionTab {
           .backgroundColor(this.cardColor)
           .border({ width: 2, color: '#FF6B35', style: BorderStyle.Dashed })
 
+          // 扫描线动画
           if (this.scanAnim) {
             Column()
               .width('100%').height(3)
-              .backgroundColor('#FF6B35')
-              .offset({ y: this.scanAnim ? 0 : (this.imageWidth > 0 && this.imageHeight > 0 ? 
-                (this.imageHeight / this.imageWidth * 320 - 10) : 210) })
-              .animation({ duration: 1200, curve: Curve.Linear, iterations: -1 })
+              .linearGradient({
+                angle: 90,
+                colors: [
+                  ['rgba(255, 107, 53, 0)', 0],
+                  ['#FF6B35', 0.5],
+                  ['rgba(255, 107, 53, 0)', 1]
+                ]
+              })
+              .shadow({
+                radius: 8,
+                color: '#FF6B35',
+                offsetX: 0,
+                offsetY: 0
+              })
+              .position({ x: 0, y: this.scanLineY })
           }
 
           if (this.isRecognizing) {
