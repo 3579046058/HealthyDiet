@@ -33,6 +33,17 @@ export class DatabaseHelper {
     };
     this.rdbStore = await relationalStore.getRdbStore(this.context, config);
     await this.createTables();
+    await this.migrateSchema();
+  }
+
+  // 旧库结构迁移：为已存在的表补充新增字段（列已存在时 ALTER 会报错，捕获即可）
+  private async migrateSchema(): Promise<void> {
+    if (!this.rdbStore) return;
+    try {
+      await this.rdbStore.executeSql('ALTER TABLE ' + TABLE_MEDICATION + ' ADD COLUMN reminder_ids TEXT');
+    } catch (err) {
+      // 列已存在，忽略
+    }
   }
 
   private async createTables(): Promise<void> {
@@ -129,6 +140,7 @@ export class DatabaseHelper {
         frequency TEXT,
         start_date TEXT,
         end_date TEXT,
+        reminder_ids TEXT,
         timestamp INTEGER
       )`,
       `CREATE TABLE IF NOT EXISTS ${TABLE_PERIOD} (
@@ -470,8 +482,8 @@ export class DatabaseHelper {
     return this.readAllRows(result);
   }
 
-  async addMedicationRecord(record: DbRow): Promise<void> {
-    if (!this.rdbStore) return;
+  async addMedicationRecord(record: DbRow): Promise<number> {
+    if (!this.rdbStore) return -1;
     const values: relationalStore.ValuesBucket = {
       name: String(record.name),
       dosage: String(record.dosage),
@@ -479,9 +491,21 @@ export class DatabaseHelper {
       frequency: String(record.frequency),
       start_date: String(record.start_date),
       end_date: String(record.end_date),
+      reminder_ids: record.reminder_ids ? String(record.reminder_ids) : '',
       timestamp: Date.now()
     };
-    await this.rdbStore.insert(TABLE_MEDICATION, values);
+    return await this.rdbStore.insert(TABLE_MEDICATION, values);
+  }
+
+  // 更新药品的 reminder_ids（修改闹铃后回写）
+  async updateMedicationReminderIds(id: number, reminderIdsStr: string): Promise<void> {
+    if (!this.rdbStore) return;
+    const values: relationalStore.ValuesBucket = {
+      reminder_ids: reminderIdsStr
+    };
+    const pred = new relationalStore.RdbPredicates(TABLE_MEDICATION);
+    pred.equalTo('id', id);
+    await this.rdbStore.update(values, pred);
   }
 
   async getMedicationRecords(): Promise<DbRow[]> {

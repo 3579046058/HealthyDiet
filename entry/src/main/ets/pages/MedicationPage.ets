@@ -10,6 +10,7 @@ struct MedicationPage {
   @State name: string = '';
   @State dosage: string = '';
   @State time: string = '';
+  @State timeList: string[] = [];
   @State frequency: string = '';
   @State startDate: string = '';
   @State endDate: string = '';
@@ -34,23 +35,30 @@ struct MedicationPage {
   }
 
   async saveRecord(): Promise<void> {
-    if (this.name === '' || this.dosage === '' || this.time === '' || this.frequency === '' || this.startDate === '' || this.endDate === '') {
+    if (this.name === '' || this.dosage === '' || this.timeList.length === 0 || this.startDate === '' || this.endDate === '') {
       return;
     }
     try {
       const record: DbRow = {
         name: this.name,
         dosage: this.dosage,
-        time: this.time,
+        time: this.timeList.join(','),
         frequency: this.frequency,
         start_date: this.startDate,
-        end_date: this.endDate
+        end_date: this.endDate,
+        reminder_ids: ''
       };
-      await GlobalData.db.addMedicationRecord(record);
-      ReminderScheduler.getInstance().scheduleMedicationReminder(this.time, this.name);
+      const newId = await GlobalData.db.addMedicationRecord(record);
+      // 发布多时间点闹铃
+      const newIds: number[] = await ReminderScheduler.getInstance()
+        .scheduleMedicationReminder(this.timeList, this.name, []);
+      if (newId > 0 && newIds.length > 0) {
+        await GlobalData.db.updateMedicationReminderIds(newId, newIds.join(','));
+      }
       this.name = '';
       this.dosage = '';
       this.time = '';
+      this.timeList = [];
       this.frequency = '';
       this.startDate = '';
       this.endDate = '';
@@ -100,11 +108,29 @@ struct MedicationPage {
 
   async deleteRecord(id: number): Promise<void> {
     try {
+      // 先取消该药品的所有闹铃
+      for (const r of this.records) {
+        if (Number(r.id) === id) {
+          const idsStr: string = r.reminder_ids ? String(r.reminder_ids) : '';
+          if (idsStr.length > 0) {
+            const ids: number[] = [];
+            for (const part of idsStr.split(',')) {
+              const n = parseInt(part);
+              if (!isNaN(n)) {
+                ids.push(n);
+              }
+            }
+            await ReminderScheduler.getInstance().cancelMedicationReminders(ids);
+          }
+          break;
+        }
+      }
       await GlobalData.db.deleteMedicationRecord(id);
       await this.loadData();
     } catch (err) {
       console.error('MedicationPage deleteRecord error:', JSON.stringify(err));
-    }  }
+    }
+  }
 
   getTodaysMeds(records: DbRow[]): DbRow[] {
     const today: string = new Date().toISOString().split('T')[0];
@@ -179,7 +205,7 @@ struct MedicationPage {
                     .onClick(() => { this.toggleCheck(Number(item.id)); })
                   Column() {
                     Text(String(item.name)).fontSize(16).fontColor(this.txt())
-                    Text(String(item.dosage) + ' - ' + String(item.time))
+                    Text(String(item.dosage) + ' - ' + String(item.time).split(',').join(' / '))
                       .fontSize(13).fontColor(this.sub())
                   }
                   .margin({ left: 10 }).alignItems(HorizontalAlign.Start)
@@ -217,12 +243,47 @@ struct MedicationPage {
                 .onChange((value: string) => { this.dosage = value; })
                 .width('100%').height(44).margin({ bottom: 8 })
 
-              Text('服用时间').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
+              Text('服用时间（可添加多个）').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
               TimePicker({ selected: this.parseTimeToDate(this.time) })
                 .useMilitaryTime(true)
                 .width(180).height(80)
                 .onChange((value: TimePickerResult) => { this.time = this.formatPickerTime(value); })
-                .margin({ bottom: 8 })
+                .margin({ bottom: 4 })
+              Button() { Text('＋ 添加此时间点').fontSize(14).fontColor(this.txt()) }
+              .width('100%').height(36).backgroundColor('#00897B').borderRadius(8)
+              .margin({ bottom: 8 })
+              .onClick(() => {
+                if (this.time.length > 0 && this.timeList.indexOf(this.time) < 0) {
+                  const newList: string[] = this.timeList.slice();
+                  newList.push(this.time);
+                  this.timeList = newList;
+                }
+              })
+
+              // 已选时间点列表
+              if (this.timeList.length > 0) {
+                Flex({ wrap: FlexWrap.Wrap }) {
+                  ForEach(this.timeList, (t: string) => {
+                    Row() {
+                      Text(t).fontSize(14).fontColor(this.txt())
+                      Text('✕').fontSize(14).fontColor('#F44336').margin({ left: 6 })
+                        .onClick(() => {
+                          const newList: string[] = [];
+                          for (const x of this.timeList) {
+                            if (x !== t) {
+                              newList.push(x);
+                            }
+                          }
+                          this.timeList = newList;
+                        })
+                    }
+                    .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                    .backgroundColor('#1E3A5F').borderRadius(12)
+                    .margin({ right: 6, bottom: 6 })
+                  }, (t: string): string => t)
+                }
+                .width('100%').margin({ bottom: 8 })
+              }
 
               TextInput({ placeholder: '频率 (如 每天)', text: this.frequency })
                 .backgroundColor(ThemeColors.inputBg(this.theme))
@@ -265,7 +326,7 @@ struct MedicationPage {
                 Row() {
                   Column() {
                     Text(String(item.name)).fontSize(16).fontColor(this.txt())
-                    Text(String(item.dosage) + ' | ' + String(item.time) + ' | ' + String(item.frequency))
+                    Text(String(item.dosage) + ' | ' + String(item.time).split(',').join(' / ') + ' | ' + String(item.frequency))
                       .fontSize(13).fontColor(this.sub())
                     Text(String(item.start_date) + ' ~ ' + String(item.end_date))
                       .fontSize(12).fontColor(this.sub())

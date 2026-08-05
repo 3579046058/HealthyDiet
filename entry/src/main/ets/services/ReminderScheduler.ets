@@ -90,10 +90,35 @@ export class ReminderScheduler {
     this.sedentaryReminderId = await this.publishAlarm(h, m, 1002, '🚶 久坐提醒', '起来活动一下吧！久坐不利于健康～');
   }
 
-  async scheduleMedicationReminder(time: string, name: string): Promise<void> {
-    const h: number = this.parseHour(time);
-    const m: number = this.parseMinute(time);
-    await this.publishAlarm(h, m, 1003, '💊 用药提醒', '该服用 ' + name + ' 了！');
+  /**
+   * 发布用药提醒（支持一天多个时间点）
+   * @param times 时间点列表，如 ["08:00","12:00","18:00"]
+   * @param name 药品名称
+   * @param oldReminderIds 该药品之前发布的 reminderId 列表（先取消旧的）
+   * @returns 新发布的 reminderId 列表
+   */
+  async scheduleMedicationReminder(times: string[], name: string, oldReminderIds: number[]): Promise<number[]> {
+    // 1. 先取消旧的提醒
+    for (const id of oldReminderIds) {
+      if (id > 0) {
+        try {
+          await reminderAgentManager.cancelReminder(id);
+        } catch (err) {
+          console.error('scheduleMedicationReminder cancel old id=' + String(id) + ' error');
+        }
+      }
+    }
+    // 2. 为每个时间点发布一个闹铃
+    const newIds: number[] = [];
+    for (const time of times) {
+      const h: number = this.parseHour(time);
+      const m: number = this.parseMinute(time);
+      const id: number = await this.publishAlarm(h, m, 1003, '💊 用药提醒', '该服用 ' + name + ' 了！');
+      if (id > 0) {
+        newIds.push(id);
+      }
+    }
+    return newIds;
   }
 
   private parseHour(time: string): number {
@@ -160,6 +185,19 @@ export class ReminderScheduler {
         console.error('cancelSedentaryReminder error');
       }
       this.sedentaryReminderId = -1;
+    }
+  }
+
+  // 取消一批提醒（用药提醒删除时用）
+  async cancelMedicationReminders(ids: number[]): Promise<void> {
+    for (const id of ids) {
+      if (id > 0) {
+        try {
+          await reminderAgentManager.cancelReminder(id);
+        } catch (err) {
+          console.error('cancelMedicationReminders id=' + String(id) + ' error');
+        }
+      }
     }
   }
 
