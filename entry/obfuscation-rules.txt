@@ -22,3 +22,4 @@
 -enable-filename-obfuscation
 -enable-export-obfuscation
 -remove-log
+-remove-log

@@ -11,6 +11,11 @@ import { RingProgress } from '../components/RingProgress';
 import { HealthCard } from '../components/HealthCard';
 import { FoodRecognitionTab } from '../components/FoodRecognitionTab';
 import { NestedRings } from '../components/NestedRings';
+import { HealthTab } from '../components/HealthTab';
+import { DiaryTab } from '../components/DiaryTab';
+import { AccountTab } from '../components/AccountTab';
+import { WeightOverlay, MoodOverlay } from '../components/OverlayDialogs';
+import { SharePanel } from '../components/SharePanel';
 
 // 健康卡片类型定义
 interface HealthCardItem {
@@ -101,7 +106,7 @@ struct Index {
   // 卡片配置数据
   private healthCardConfigs: HealthCardItem[] = [
     { id: 'steps', title: '步数', iconSymbol: 'ic_steps', iconColor: Constants.COLOR_STEP },
-    { id: 'calorie', title: '热量', iconSymbol: 'ic_calories', iconColor: Constants.COLOR_DIET },
+    { id: 'calorie', title: '热量', iconSymbol: 'ic_calorie', iconColor: Constants.COLOR_DIET },
     { id: 'sleep', title: '睡眠', iconSymbol: 'ic_sleep', iconColor: Constants.COLOR_SLEEP },
     { id: 'water', title: '喝水', iconSymbol: 'ic_water', iconColor: Constants.COLOR_WATER }
   ];
@@ -186,64 +191,6 @@ struct Index {
   }
 
   // 渲染健康卡片
-  @Builder
-  healthCardBuilder(cardId: string) {
-    if (cardId === 'steps') {
-      HealthCard({
-        title: '步数',
-        value: this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--',
-        unit: '/ ' + String(this.stepGoal),
-        iconColor: Constants.COLOR_STEP,
-        iconName: 'ic_steps',
-        subText: this.getDisplaySteps() > 0 ? '完成 ' + String(Math.round(this.getDisplaySteps() / this.stepGoal * 100)) + '%' : '暂无数据',
-        onCardClick: () => { this.navigateTo(Constants.PAGE_SPORT); }
-      })
-    } else if (cardId === 'calorie') {
-      HealthCard({
-        title: '热量',
-        value: this.todayCalorieIntake > 0 ? String(this.todayCalorieIntake) : '--',
-        unit: 'kcal',
-        iconColor: Constants.COLOR_DIET,
-        iconName: 'ic_calories',
-        subText: '今日摄入',
-        onCardClick: () => { this.navigateTo(Constants.PAGE_DIET); }
-      })
-    } else if (cardId === 'sleep') {
-      HealthCard({
-        title: '睡眠',
-        value: this.sleepHours !== '0.0' && this.sleepHours !== '0' ? this.sleepHours : '--',
-        unit: '小时',
-        iconColor: Constants.COLOR_SLEEP,
-        iconName: 'ic_sleep',
-        subText: this.sleepScore > 0 ? '评分 ' + String(this.sleepScore) : '暂无数据',
-        onCardClick: () => { this.navigateTo(Constants.PAGE_SLEEP); }
-      })
-    } else if (cardId === 'water') {
-      HealthCard({
-        title: '喝水',
-        value: this.waterMl > 0 ? String(this.waterMl) : '--',
-        unit: 'ml',
-        iconColor: Constants.COLOR_WATER,
-        iconName: 'ic_water',
-        subText: '目标 ' + String(this.waterGoal) + 'ml',
-        onCardClick: () => { this.navigateTo(Constants.PAGE_WATER); }
-      })
-    }
-  }
-
-  // 拖拽时显示的卡片
-  @Builder
-  dragCardBuilder(cardId: string) {
-    Column() {
-      this.healthCardBuilder(cardId)
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor(this.cardColor)
-    .borderRadius(16)
-    .opacity(0.8)
-  }
-
   async checkWeightPrompt(): Promise<void> {
     try {
       const skip = await GlobalData.prefs.getWeightSkipPrompt();
@@ -730,16 +677,77 @@ struct Index {
     Stack() {
       Column() {
         Tabs({ barPosition: BarPosition.End, index: this.currentTabIndex }) {
-          TabContent() { this.healthTab() }
+          TabContent() {
+            HealthTab({
+              textColor: this.textColor,
+              subTextColor: this.subTextColor,
+              cardColor: this.cardColor,
+              accentColor: this.accentColor,
+              themeMode: this.themeMode,
+              theme: this.theme,
+              greeting: this.greeting,
+              streakCurrent: this.streakCurrent,
+              ringDisplayMode: this.ringDisplayMode,
+              stepCount: this.stepCount,
+              stepGoal: this.stepGoal,
+              sleepHours: this.sleepHours,
+              moodValue: this.moodValue,
+              moodProgress: this.moodProgress,
+              sleepScore: this.sleepScore,
+              waterMl: this.waterMl,
+              waterGoal: this.waterGoal,
+              todayCalorieIntake: this.todayCalorieIntake,
+              exerciseMin: this.exerciseMin,
+              liveSteps: this.liveSteps,
+              healthCardOrder: this.healthCardOrder,
+              quickFunctionOrder: this.quickFunctionOrder,
+              onToggleTheme: () => { this.toggleTheme(); },
+              onToggleRingMode: () => { this.ringDisplayMode = !this.ringDisplayMode; },
+              onCardDrag: (from: number, to: number) => {
+                const movedItem = this.healthCardOrder.splice(from, 1)[0];
+                this.healthCardOrder.splice(to, 0, movedItem);
+                this.saveHealthCardOrder();
+              },
+              onFuncDrag: (from: number, to: number) => {
+                const movedItem = this.quickFunctionOrder.splice(from, 1)[0];
+                this.quickFunctionOrder.splice(to, 0, movedItem);
+                this.saveQuickFunctionOrder();
+              },
+              onNavigate: (page: string) => { this.navigateTo(page); }
+            })
+          }
           .tabBar(this.tabBuilder('ic_health', '健康', 0))
 
-          TabContent() { this.diaryTab() }
+          TabContent() {
+            DiaryTab({
+              textColor: this.textColor,
+              subTextColor: this.subTextColor,
+              cardColor: this.cardColor,
+              accentColor: this.accentColor,
+              diaryDate: this.diaryDate,
+              diaryDietRecords: this.diaryDietRecords,
+              diarySportRecords: this.diarySportRecords,
+              diarySleepRecords: this.diarySleepRecords,
+              diaryMoodRecords: this.diaryMoodRecords,
+              onDateChange: (offset: number) => { this.changeDiaryDate(offset); },
+              onShare: () => { this.showSharePanel = true; }
+            })
+          }
           .tabBar(this.tabBuilder('ic_diary', '记录', 1))
 
           TabContent() { this.recognitionTab() }
           .tabBar(this.tabBuilder('ic_camera', '识图', 2))
 
-          TabContent() { this.accountTab() }
+          TabContent() {
+            AccountTab({
+              textColor: this.textColor,
+              subTextColor: this.subTextColor,
+              cardColor: this.cardColor,
+              isLoggedIn: this.isLoggedIn,
+              userName: this.userName,
+              onNavigate: (page: string) => { this.navigateTo(page); }
+            })
+          }
           .tabBar(this.tabBuilder('ic_account', '账号', 3))
         }
         .animationDuration(200)
@@ -757,221 +765,73 @@ struct Index {
       .backgroundColor(this.bgColor)
 
       if (this.showSharePanel) {
-        this.sharePanel()
+        SharePanel({
+          textColor: this.textColor,
+          subTextColor: this.subTextColor,
+          cardColor: this.cardColor,
+          bgColor: this.bgColor,
+          accentColor: this.accentColor,
+          diaryDietRecords: this.diaryDietRecords,
+          diarySportRecords: this.diarySportRecords,
+          diarySleepRecords: this.diarySleepRecords,
+          diaryMoodRecords: this.diaryMoodRecords,
+          shareDiet: this.shareDiet,
+          shareSport: this.shareSport,
+          shareSleep: this.shareSleep,
+          shareMood: this.shareMood,
+          shareOverview: this.shareOverview,
+          isGeneratingShare: this.isGeneratingShare,
+          onDietChange: (on: boolean) => { this.shareDiet = on; },
+          onSportChange: (on: boolean) => { this.shareSport = on; },
+          onSleepChange: (on: boolean) => { this.shareSleep = on; },
+          onMoodChange: (on: boolean) => { this.shareMood = on; },
+          onOverviewChange: (on: boolean) => { this.shareOverview = on; },
+          onClose: () => { this.showSharePanel = false; },
+          onGenerate: () => { this.generateShareCard(); }
+        })
       }
 
       if (this.showWeightOverlay) {
-        this.weightOverlay()
+        WeightOverlay({
+          textColor: this.textColor,
+          subTextColor: this.subTextColor,
+          cardColor: this.cardColor,
+          overlayGenders: this.overlayGenders,
+          overlayGender: this.overlayGender,
+          overlayHeightInput: this.overlayHeightInput,
+          overlayWeightInput: this.overlayWeightInput,
+          overlaySkipNext: this.overlaySkipNext,
+          onGenderChange: (v: string) => { this.overlayGender = v; },
+          onHeightChange: (v: string) => { this.overlayHeightInput = v; },
+          onWeightChange: (v: string) => { this.overlayWeightInput = v; },
+          onSkipChange: (on: boolean) => { this.overlaySkipNext = on; },
+          onSkip: () => {
+            GlobalData.prefs.setWeightSkipPrompt(this.overlaySkipNext);
+            GlobalData.prefs.markWeightConfigured();
+            this.showWeightOverlay = false;
+            this.checkPendingMoodPrompt();
+          },
+          onSave: () => { this.saveWeightOverlay(); }
+        })
       }
 
       if (this.showMoodOverlay) {
-        this.moodOverlay()
+        MoodOverlay({
+          textColor: this.textColor,
+          subTextColor: this.subTextColor,
+          cardColor: this.cardColor,
+          overlayMoodDate: this.overlayMoodDate,
+          overlayMood: this.overlayMood,
+          overlayMoodNote: this.overlayMoodNote,
+          onMoodChange: (mood: number) => { this.overlayMood = mood; },
+          onNoteChange: (v: string) => { this.overlayMoodNote = v; },
+          onCancel: () => { this.showMoodOverlay = false; },
+          onSave: () => { this.saveMoodOverlay(); }
+        })
       }
     }
     .width('100%')
     .height('100%')
-  }
-
-  @Builder weightOverlay() {
-    Column() {
-      Blank()
-      Column() {
-        Text('完善你的个人信息').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-          .width('100%').margin({ bottom: 8 })
-
-        Text('身高、体重、性别用于计算 BMI 和运动热量').fontSize(12).fontColor(this.subTextColor)
-          .width('100%').margin({ bottom: 20 })
-
-        Text('性别').fontSize(14).fontColor(this.textColor).width('100%').margin({ bottom: 8 })
-        Row() {
-          ForEach(this.overlayGenders, (item: string) => {
-            Text(item)
-              .fontSize(15)
-              .fontColor(this.overlayGender === item ? Color.White : this.subTextColor)
-              .backgroundColor(this.overlayGender === item ? '#FF6B35' : this.cardColor)
-              .borderRadius(20).padding({ left: 28, right: 28, top: 10, bottom: 10 })
-              .margin({ right: 12 })
-              .onClick(() => { this.overlayGender = item; })
-          })
-        }
-        .width('100%')
-        .margin({ bottom: 18 })
-
-        Text('身高').fontSize(14).fontColor(this.textColor).width('100%').margin({ bottom: 8 })
-        Row() {
-          TextInput({ placeholder: '170', text: this.overlayHeightInput })
-            .type(InputType.Number).layoutWeight(1).height(46)
-            .backgroundColor(this.cardColor).fontColor(this.textColor).placeholderColor(this.subTextColor)
-            .borderRadius(10)
-            .onChange((v: string) => { this.overlayHeightInput = v; })
-          Text('cm').fontSize(14).fontColor(this.subTextColor).margin({ left: 10 })
-        }
-        .width('100%')
-        .margin({ bottom: 18 })
-
-        Text('体重').fontSize(14).fontColor(this.textColor).width('100%').margin({ bottom: 8 })
-        Row() {
-          TextInput({ placeholder: '70', text: this.overlayWeightInput })
-            .type(InputType.Number).layoutWeight(1).height(46)
-            .backgroundColor(this.cardColor).fontColor(this.textColor).placeholderColor(this.subTextColor)
-            .borderRadius(10)
-            .onChange((v: string) => { this.overlayWeightInput = v; })
-          Text('kg').fontSize(14).fontColor(this.subTextColor).margin({ left: 10 })
-        }
-        .width('100%')
-
-        Row() {
-          Text('设置后不再弹出').fontSize(13).fontColor(this.subTextColor)
-          Blank()
-          Toggle({ type: ToggleType.Switch, isOn: this.overlaySkipNext })
-            .selectedColor('#FF6B35')
-            .onChange((on: boolean) => { this.overlaySkipNext = on; })
-        }
-        .width('100%').margin({ top: 20 })
-
-        Row() {
-          Button('暂不设置').layoutWeight(1).height(46)
-            .backgroundColor('#555555').borderRadius(23)
-            .fontColor(Color.White).fontSize(15)
-            .onClick(() => {
-              GlobalData.prefs.setWeightSkipPrompt(this.overlaySkipNext);
-              GlobalData.prefs.markWeightConfigured();
-              this.showWeightOverlay = false;
-              this.checkPendingMoodPrompt();
-            })
-          Button('保存').layoutWeight(1).height(46)
-            .backgroundColor('#FF6B35').borderRadius(23)
-            .fontColor(Color.White).fontSize(15)
-            .margin({ left: 12 })
-            .onClick(() => { this.saveWeightOverlay(); })
-        }
-        .width('100%').margin({ top: 24 })
-      }
-      .width('88%')
-      .padding(24)
-      .backgroundColor(this.cardColor)
-      .borderRadius(18)
-      Blank()
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('rgba(0,0,0,0.7)')
-  }
-
-  @Builder moodOverlay() {
-    Column() {
-      Blank()
-      Column() {
-        Text('记录心情').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-          .width('100%').margin({ bottom: 4 })
-
-        Text(this.overlayMoodDate.length > 0 ? this.overlayMoodDate : '--').fontSize(14).fontColor(this.subTextColor)
-          .width('100%').margin({ bottom: 16 })
-
-        Text('今天心情怎么样？').fontSize(14).fontColor(this.textColor)
-          .width('100%').margin({ bottom: 14 })
-
-        Row() {
-          ForEach([1, 2, 3, 4, 5], (mood: number) => {
-            Column() {
-              Text(this.getMoodEmoji(mood)).fontSize(32).lineHeight(40)
-              Text(this.getMoodLabel(mood)).fontSize(11).fontColor(this.subTextColor).margin({ top: 2 })
-            }
-            .width(54).height(78)
-            .justifyContent(FlexAlign.Center)
-            .alignItems(HorizontalAlign.Center)
-            .borderRadius(10)
-            .backgroundColor(this.overlayMood === mood ? '#FFC107' : this.cardColor)
-            .border({ width: 2, color: this.overlayMood === mood ? '#FFC107' : this.cardColor, style: BorderStyle.Solid })
-            .onClick(() => { this.overlayMood = mood; })
-          }, (mood: number): string => mood.toString())
-        }
-        .width('100%').justifyContent(FlexAlign.SpaceEvenly)
-
-        TextArea({ placeholder: '说点什么吧', text: this.overlayMoodNote })
-          .width('100%').height(80)
-          .backgroundColor(this.cardColor)
-          .placeholderColor('#888888')
-          .fontColor(Color.White).borderRadius(10).padding(10)
-          .onChange((value: string) => { this.overlayMoodNote = value; })
-          .margin({ top: 16 })
-
-        Row() {
-          Button('稍后').layoutWeight(1).height(46)
-            .backgroundColor(this.cardColor).borderRadius(23)
-            .fontColor(this.textColor).fontSize(15)
-            .onClick(() => { this.showMoodOverlay = false; })
-          Button('保存').layoutWeight(1).height(46)
-            .backgroundColor('#FFC107').fontColor('#0D0D1A')
-            .fontWeight(FontWeight.Bold).borderRadius(23)
-            .fontSize(15).margin({ left: 12 })
-            .onClick(() => { this.saveMoodOverlay(); })
-        }
-        .width('100%').margin({ top: 20 })
-      }
-      .width('88%')
-      .padding(24)
-      .backgroundColor(this.cardColor)
-      .borderRadius(18)
-      Blank()
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('rgba(0,0,0,0.7)')
-  }
-
-  @Builder sharePanel() {
-    Column() {
-      Blank()
-      Column() {
-        Row() {
-          Text('分享我的健康日记').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-          Blank()
-          Text('✕').fontSize(20).fontColor(this.subTextColor).onClick(() => { this.showSharePanel = false; })
-        }
-        .width('100%').padding({ left: 20, right: 20, top: 16 })
-
-        Text('选择要分享的内容').fontSize(12).fontColor(this.subTextColor).width('100%')
-          .padding({ left: 20, top: 8, bottom: 8 })
-
-        this.shareCheckItem('🍎', '饮食记录', this.diaryDietRecords.length > 0, this.shareDiet, (on: boolean) => { this.shareDiet = on; })
-        this.shareCheckItem('🏃', '运动记录', this.diarySportRecords.length > 0, this.shareSport, (on: boolean) => { this.shareSport = on; })
-        this.shareCheckItem('😴', '睡眠记录', this.diarySleepRecords.length > 0, this.shareSleep, (on: boolean) => { this.shareSleep = on; })
-        this.shareCheckItem('😊', '情绪记录', this.diaryMoodRecords.length > 0, this.shareMood, (on: boolean) => { this.shareMood = on; })
-        this.shareCheckItem('📊', '今日健康概览', true, this.shareOverview, (on: boolean) => { this.shareOverview = on; })
-
-        Button(this.isGeneratingShare ? '生成中...' : '生成分享卡片')
-          .width('90%').height(44).margin({ top: 16, bottom: 16 })
-          .backgroundColor(this.accentColor)
-          .fontColor(Color.White)
-          .enabled(!this.isGeneratingShare)
-          .onClick(() => { this.generateShareCard(); })
-      }
-      .width('100%')
-      .backgroundColor(this.bgColor)
-      .borderRadius({ topLeft: 20, topRight: 20 })
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('#66000000')
-  }
-
-  @Builder shareCheckItem(icon: string, label: string, hasData: boolean, checked: boolean, onChange: (on: boolean) => void) {
-    Row() {
-      Text(icon).fontSize(18)
-      Text(label).fontSize(14).fontColor(this.textColor).margin({ left: 8 })
-      if (!hasData) {
-        Text('（无记录）').fontSize(11).fontColor(this.subTextColor).margin({ left: 4 })
-      }
-      Blank()
-      if (hasData) {
-        Toggle({ type: ToggleType.Checkbox, isOn: checked })
-          .selectedColor(this.accentColor)
-          .onChange((isOn: boolean) => { onChange(isOn); })
-      }
-    }
-    .width('90%').padding(12).backgroundColor(this.cardColor).borderRadius(10).margin({ bottom: 8 })
-    .opacity(hasData ? 1 : 0.4)
   }
 
   @Builder shareCard() {
@@ -1086,341 +946,6 @@ struct Index {
     .alignItems(HorizontalAlign.Center)
   }
 
-  @Builder healthTab() {
-    Scroll() {
-      Column() {
-        Row() {
-          Column() {
-            Text(this.greeting).fontSize(26).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-            Text('今天也要元气满满哦！').fontSize(14).fontColor(this.subTextColor).margin({ top: 4 })
-          }
-          .alignItems(HorizontalAlign.Start)
-          Blank()
-          if (this.streakCurrent > 0) {
-            Column() {
-              Text('🔥').fontSize(20)
-              Text(String(this.streakCurrent) + '天').fontSize(11).fontColor('#FFD700')
-            }
-            .margin({ right: 12 })
-          }
-          Text(this.themeMode === 'dark' ? '🌙' : (this.themeMode === 'light' ? '☀️' : '🔄')).fontSize(22).margin({ right: 12 })
-            .onClick(() => { this.toggleTheme(); })
-        }
-        .width('100%').padding({ left: 20, right: 20, top: 12 + this.statusBarHeight })
-
-        // 圆环切换区域
-        Column() {
-          // 切换按钮 - 右上角
-          Row() {
-            Button('切换样式')
-              .fontSize(12)
-              .fontColor(this.theme === 'dark' ? '#FFFFFF' : '#000000')
-              .backgroundColor(this.theme === 'dark' ? '#333333' : '#E0E0E0')
-              .borderRadius(8)
-              .height(28)
-              .padding({ left: 12, right: 12 })
-              .onClick(() => {
-                this.ringDisplayMode = !this.ringDisplayMode;
-              })
-          }
-          .width('100%')
-          .justifyContent(FlexAlign.End)
-          .padding({ left: 16, right: 16, top: 12 })
-
-          // 圆环显示区域
-          if (this.ringDisplayMode) {
-            // 嵌套圆环模式
-            Column() {
-              NestedRings({
-                stepProgress: (this.stepCount / this.stepGoal) * 100,
-                sleepProgress: (parseFloat(this.sleepHours) / Constants.DEFAULT_SLEEP_GOAL_HOURS) * 100,
-                moodProgress: this.moodProgress,
-                stepColor: Constants.COLOR_STEP,
-                sleepColor: Constants.COLOR_SLEEP,
-                moodColor: Constants.COLOR_MOOD,
-                stepValue: this.stepCount > 0 ? String(this.stepCount) : '--',
-                sleepValue: this.sleepHours !== '0' ? this.sleepHours : '--',
-                moodValue: this.moodValue > 0 ? this.getMoodEmoji(this.moodValue) + ' 心情 ' + String(this.moodValue) : '暂无记录'
-              })
-            }
-            .width('100%')
-            .padding({ left: 16, right: 16, top: 8, bottom: 16 })
-          } else {
-            // 三个独立圆环模式
-            Row() {
-              RingProgress({ progress: (this.stepCount / this.stepGoal) * 100, strokeColor: Constants.COLOR_STEP, ringSize: 90, strokeWidth: 10, label: '步数', valueText: this.stepCount > 0 ? String(this.stepCount) : '--', unit: '步' })
-              RingProgress({ progress: (parseFloat(this.sleepHours) / Constants.DEFAULT_SLEEP_GOAL_HOURS) * 100, strokeColor: Constants.COLOR_SLEEP, ringSize: 90, strokeWidth: 10, label: '睡眠', valueText: this.sleepHours !== '0' ? this.sleepHours : '--', unit: '小时' })
-              RingProgress({ progress: this.moodProgress, strokeColor: Constants.COLOR_MOOD, ringSize: 90, strokeWidth: 10, label: '心情', valueText: this.moodValue > 0 ? this.getMoodEmoji(this.moodValue) : '--', unit: this.moodValue > 0 ? '心情 ' + String(this.moodValue) : '暂无记录' })
-            }
-            .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding({ left: 16, right: 16, top: 8, bottom: 16 })
-          }
-        }
-        .width('100%')
-        .backgroundColor(this.cardColor).borderRadius(16)
-        .margin({ left: 16, right: 16, top: 16 })
-
-        Row() {
-          Column() {
-            Text('今日健康评分')
-              .fontSize(14)
-              .fontColor(this.subTextColor)
-            Row() {
-              Column() {
-                Text(String(this.getHealthScore()))
-                  .fontSize(36)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor(this.getScoreColor(this.getHealthScore()))
-                  .margin({ top: 4 })
-                
-                if (this.getScoreDetails()) {
-                  Text(this.getScoreDetails())
-                    .fontSize(10)
-                    .fontColor(this.subTextColor)
-                    .margin({ top: 2 })
-                }
-              }
-              .layoutWeight(2)
-              .alignItems(HorizontalAlign.Start)
-              
-              Blank().layoutWeight(2)
-              
-              Progress({ value: this.getHealthScore(), total: 100, type: ProgressType.Linear })
-                .layoutWeight(6)
-                .height(8)
-                .color(this.getScoreColor(this.getHealthScore()))
-                .backgroundColor('#404040')
-                .margin({ top: 12 })
-            }
-            .width('100%')
-            .alignItems(VerticalAlign.Center)
-          }
-          .onClick(() => { this.navigateTo(Constants.PAGE_REPORT); })
-          .alignItems(HorizontalAlign.Start)
-          .layoutWeight(1)
-        }
-        .width('100%')
-        .padding(16)
-        .backgroundColor(this.cardColor)
-        .borderRadius(16)
-        .margin({ left: 16, right: 16, top: 16 })
-
-        Text('今日概览').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-          .width('100%').padding({ left: 20, top: 20, bottom: 8 })
-
-        Grid() {
-          ForEach(this.healthCardOrder, (cardId: string, index: number) => {
-            GridItem() {
-              this.healthCardBuilder(cardId)
-            }
-          }, (cardId: string) => cardId)
-        }
-        .columnsTemplate('1fr 1fr').columnsGap(12).rowsGap(12).padding({ left: 16, right: 16 })
-        .editMode(true)
-        .supportAnimation(true)
-        .onItemDragStart((event: ItemDragInfo, itemIndex: number) => {
-          return this.dragCardBuilder(this.healthCardOrder[itemIndex]);
-        })
-        .onItemDrop((event: ItemDragInfo, itemIndex: number, insertIndex: number, isSuccess: boolean) => {
-          if (!isSuccess || insertIndex >= this.healthCardOrder.length || itemIndex === insertIndex) {
-            return;
-          }
-          // 插队式移动：先移除原位置元素，再插入到目标位置
-          const movedItem = this.healthCardOrder.splice(itemIndex, 1)[0];
-          this.healthCardOrder.splice(insertIndex, 0, movedItem);
-          // 保存新的顺序
-          this.saveHealthCardOrder();
-        })
-
-        Text('快捷功能').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-          .width('100%').padding({ left: 20, top: 20, bottom: 8 })
-
-        Grid() {
-          ForEach(this.quickFunctionOrder, (funcId: string, index: number) => {
-            GridItem() {
-              this.quickFunctionBuilder(funcId)
-            }
-          }, (funcId: string) => funcId)
-        }
-        .columnsTemplate('1fr 1fr 1fr 1fr')
-        .rowsGap(12)
-        .columnsGap(12)
-        .padding({ left: 16, right: 16 })
-        .editMode(true)
-        .supportAnimation(true)
-        .onItemDragStart((event: ItemDragInfo, itemIndex: number) => {
-          return this.dragQuickFunctionBuilder(this.quickFunctionOrder[itemIndex]);
-        })
-        .onItemDrop((event: ItemDragInfo, itemIndex: number, insertIndex: number, isSuccess: boolean) => {
-          if (!isSuccess || insertIndex >= this.quickFunctionOrder.length || itemIndex === insertIndex) {
-            return;
-          }
-          // 插队式移动：先移除原位置元素，再插入到目标位置
-          const movedItem = this.quickFunctionOrder.splice(itemIndex, 1)[0];
-          this.quickFunctionOrder.splice(insertIndex, 0, movedItem);
-          // 保存新的顺序
-          this.saveQuickFunctionOrder();
-        })
-
-        Divider().opacity(0).height(24)
-      }
-      .width('100%')
-    }
-  }
-
-  @Builder diaryTab() {
-    Scroll() {
-      Column() {
-        Row() {
-          Text('每日日记').fontSize(22).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-          Blank()
-          Text('◀').fontSize(18).fontColor(this.accentColor)
-            .onClick(() => { this.changeDiaryDate(-1); })
-          Text(this.diaryDate.length > 0 ? this.diaryDate : '--')
-            .fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.textColor)
-            .margin({ left: 8, right: 8 })
-          Text('▶').fontSize(18).fontColor(this.accentColor)
-            .onClick(() => { this.changeDiaryDate(1); })
-        }
-        .width('100%').padding({ left: 20, right: 20, top: 16 + this.statusBarHeight, bottom: 12 })
-
-        Row() {
-          Text('📤 分享当天日记').fontSize(13).fontColor(this.accentColor)
-            .onClick(() => { this.showSharePanel = true; })
-          Blank()
-        }
-        .width('100%').padding({ left: 20, right: 20, bottom: 4 })
-
-        if (this.diaryDietRecords.length === 0 && this.diarySportRecords.length === 0 &&
-          this.diarySleepRecords.length === 0 && this.diaryMoodRecords.length === 0) {
-          Column() {
-            Text('📝').fontSize(48).margin({ top: 40 })
-            Text('暂无记录').fontSize(16).fontColor(this.subTextColor).margin({ top: 12 })
-            Text('开始记录你的健康生活吧').fontSize(13).fontColor(this.subTextColor)
-          }
-          .width('100%').alignItems(HorizontalAlign.Center).margin({ top: 60 })
-        } else {
-          if (this.diaryDietRecords.length > 0) {
-            Text('🍎 饮食').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-              .width('100%').padding({ left: 20, top: 12, bottom: 6 })
-            ForEach(this.diaryDietRecords.slice(0, 5), (item: DbRow) => {
-              Row() {
-                Text(String(item.food_name)).fontSize(14).fontColor(this.textColor)
-                Blank()
-                Text(Number(item.calories) + ' kcal').fontSize(12).fontColor(this.subTextColor)
-              }
-              .width('100%').padding(12).backgroundColor(this.cardColor).borderRadius(8).margin({ bottom: 4, left: 16, right: 16 })
-            }, (item: DbRow): string => String(item.id))
-          }
-
-          if (this.diarySportRecords.length > 0) {
-            Text('🏃 运动').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-              .width('100%').padding({ left: 20, top: 12, bottom: 6 })
-            ForEach(this.diarySportRecords.slice(0, 5), (item: DbRow) => {
-              Row() {
-                Text(String(item.sport_type)).fontSize(14).fontColor(this.textColor)
-                Blank()
-                Text(Number(item.duration_min) + 'min ' + Number(item.calories) + 'kcal').fontSize(12).fontColor(this.subTextColor)
-              }
-              .width('100%').padding(12).backgroundColor(this.cardColor).borderRadius(8).margin({ bottom: 4, left: 16, right: 16 })
-            }, (item: DbRow): string => String(item.id))
-          }
-
-          if (this.diarySleepRecords.length > 0) {
-            Text('😴 睡眠').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-              .width('100%').padding({ left: 20, top: 12, bottom: 6 })
-            ForEach(this.diarySleepRecords.slice(0, 5), (item: DbRow) => {
-              Row() {
-                Column() {
-                  Text(String(item.date)).fontSize(14).fontColor(this.textColor)
-                  Text(Number(item.total_minutes)/60 + '时').fontSize(12).fontColor(this.subTextColor)
-                }
-                .alignItems(HorizontalAlign.Start)
-                Blank()
-                Text('评分 ' + Number(item.score)).fontSize(14).fontWeight(FontWeight.Bold).fontColor(Constants.COLOR_SLEEP)
-              }
-              .width('100%').padding(12).backgroundColor(this.cardColor).borderRadius(8).margin({ bottom: 4, left: 16, right: 16 })
-            }, (item: DbRow): string => String(item.id))
-          }
-
-          if (this.diaryMoodRecords.length > 0) {
-            Text('😊 情绪').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-              .width('100%').padding({ left: 20, top: 12, bottom: 6 })
-            ForEach(this.diaryMoodRecords.slice(0, 5), (item: DbRow) => {
-              Row() {
-                Text(String(item.date)).fontSize(14).fontColor(this.textColor)
-                Blank()
-                Text(this.getMoodEmoji(Number(item.mood))).fontSize(20)
-              }
-              .width('100%').padding(12).backgroundColor(this.cardColor).borderRadius(8).margin({ bottom: 4, left: 16, right: 16 })
-            }, (item: DbRow): string => String(item.id))
-          }
-        }
-        Divider().opacity(0).height(24)
-      }
-      .width('100%')
-    }
-  }
-
-  @Builder recognitionTab() {
-    FoodRecognitionTab({ activeTheme: this.theme })
-  }
-
-  @Builder accountTab() {
-    Scroll() {
-      Column() {
-        Row() {
-          Text('账号').fontSize(22).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-          Blank()
-        }
-        .width('100%').padding({ left: 20, right: 20, top: 16 + this.statusBarHeight, bottom: 16 })
-
-        Row() {
-          Stack() {
-            Circle().width(56).height(56).fill(this.isLoggedIn ? '#CF0A2C' : '#555555')
-            if (this.isLoggedIn && this.userName.length > 0) {
-              Text(this.userName.charAt(0)).fontSize(26).fontColor(Color.White)
-            } else {
-              Text('👤').fontSize(24)
-            }
-          }
-          Column() {
-            Text(this.isLoggedIn && this.userName.length > 0 ? this.userName : '未登录')
-              .fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-            Text(this.isLoggedIn ? 'HUAWEI 账号已绑定' : '登录后同步数据到云端')
-              .fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-          }
-          .alignItems(HorizontalAlign.Start).margin({ left: 12 })
-          Blank()
-        }
-        .width('100%').padding(16).backgroundColor(this.cardColor).borderRadius(12)
-        .margin({ left: 16, right: 16, bottom: 10 })
-        .onClick(() => { this.navigateTo(Constants.PAGE_LOGIN); })
-
-        this.accountMenuItem('👤', '个人信息', '身高、体重、性别设置', () => { this.navigateTo(Constants.PAGE_PROFILE); })
-        this.accountMenuItem('⚙️', '设置', '通知、目标、主题、关于', () => { this.navigateTo(Constants.PAGE_SETTINGS); })
-        this.accountMenuItem('📊', '健康报告', '查看周报月报', () => { this.navigateTo(Constants.PAGE_REPORT); })
-
-        Divider().opacity(0).height(24)
-      }
-      .width('100%')
-    }
-  }
-
-  @Builder accountMenuItem(icon: string, title: string, desc: string, action: () => void) {
-    Row() {
-      Text(icon).fontSize(22)
-      Column() {
-        Text(title).fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.textColor)
-        Text(desc).fontSize(11).fontColor(this.subTextColor).margin({ top: 2 })
-      }
-      .alignItems(HorizontalAlign.Start).margin({ left: 12 }).layoutWeight(1)
-      Text('›').fontSize(20).fontColor(this.subTextColor)
-    }
-    .width('100%').padding(14).backgroundColor(this.cardColor).borderRadius(12)
-    .margin({ left: 16, right: 16, bottom: 8 })
-    .onClick(() => { action(); })
-  }
-
   @Builder quickButton(icon: string, label: string, page: string) {
     Column() {
       Text(icon).fontSize(28)
@@ -1432,212 +957,12 @@ struct Index {
     .onClick(() => { this.navigateTo(page); })
   }
 
-  // 渲染快捷功能
-  @Builder
-  quickFunctionBuilder(funcId: string) {
-    if (funcId === 'sport') {
-      Column() {
-        Image($r('app.media.ic_sport'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('运动').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .onClick(() => { this.navigateTo(Constants.PAGE_SPORT); })
-    } else if (funcId === 'weight') {
-      Column() {
-        Image($r('app.media.ic_weight'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('体重').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .onClick(() => { this.navigateTo(Constants.PAGE_WEIGHT); })
-    } else if (funcId === 'report') {
-      Column() {
-        Image($r('app.media.ic_report'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('周报').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .onClick(() => { this.navigateTo(Constants.PAGE_REPORT); })
-    } else if (funcId === 'goal') {
-      Column() {
-        Image($r('app.media.ic_goal'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('目标').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .onClick(() => { this.navigateTo(Constants.PAGE_GOAL); })
-    } else if (funcId === 'diet') {
-      Column() {
-        Image($r('app.media.ic_diet'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('饮食').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .onClick(() => { this.navigateTo(Constants.PAGE_DIET); })
-    } else if (funcId === 'women') {
-      Column() {
-        Image($r('app.media.ic_women'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('健康').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .onClick(() => { this.navigateTo(Constants.PAGE_WOMEN); })
-    } else if (funcId === 'medication') {
-      Column() {
-        Image($r('app.media.ic_medication'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('用药').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .onClick(() => { this.navigateTo(Constants.PAGE_MEDICATION); })
-    } else if (funcId === 'mood') {
-      Column() {
-        Image($r('app.media.ic_mood'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('情绪').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .onClick(() => { this.navigateTo(Constants.PAGE_MOOD); })
-    }
-  }
-
-  // 拖拽时显示的快捷功能
-  @Builder
-  dragQuickFunctionBuilder(funcId: string) {
-    if (funcId === 'sport') {
-      Column() {
-        Image($r('app.media.ic_sport'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('运动').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .opacity(0.8)
-    } else if (funcId === 'weight') {
-      Column() {
-        Image($r('app.media.ic_weight'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('体重').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .opacity(0.8)
-    } else if (funcId === 'report') {
-      Column() {
-        Image($r('app.media.ic_report'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('周报').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .opacity(0.8)
-    } else if (funcId === 'goal') {
-      Column() {
-        Image($r('app.media.ic_goal'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('目标').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .opacity(0.8)
-    } else if (funcId === 'diet') {
-      Column() {
-        Image($r('app.media.ic_diet'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('饮食').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .opacity(0.8)
-    } else if (funcId === 'women') {
-      Column() {
-        Image($r('app.media.ic_women'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('健康').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .opacity(0.8)
-    } else if (funcId === 'medication') {
-      Column() {
-        Image($r('app.media.ic_medication'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('用药').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .opacity(0.8)
-    } else if (funcId === 'mood') {
-      Column() {
-        Image($r('app.media.ic_mood'))
-          .width(28)
-          .height(28)
-          .fillColor(this.accentColor)
-        Text('情绪').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
-      }
-      .width(70).height(70)
-      .backgroundColor(this.cardColor).borderRadius(35)
-      .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-      .opacity(0.8)
-    }
+  @Builder recognitionTab() {
+    FoodRecognitionTab({ activeTheme: this.theme })
   }
 
   pageTransition() {
     PageTransitionEnter({ duration: 300, curve: Curve.Friction }).slide(SlideEffect.Right)
     PageTransitionExit({ duration: 200, curve: Curve.FastOutLinearIn }).slide(SlideEffect.Left)
   }
-}
+}
