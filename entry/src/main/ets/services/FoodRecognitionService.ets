@@ -1,4 +1,4 @@
-import { image } from '@kit.ImageKit';
+﻿import { image } from '@kit.ImageKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { http } from '@kit.NetworkKit';
@@ -51,7 +51,7 @@ interface GlmRequestBody {
  */
 export class FoodRecognitionService {
   private static instance: FoodRecognitionService;
-  private static readonly GLM_API_KEY: string = '114f70a49f924bf895668890a1ced59a.Gi4Yz9MNpRbHnCru';
+  private glmApiKey: string = '';
   private static readonly GLM_URL: string = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
   private static readonly GLM_MODEL: string = 'glm-4v-flash';
   // 每100克热量缓存：同一食物首次云端计算后固定，避免多次识别数值漂移
@@ -64,8 +64,26 @@ export class FoodRecognitionService {
     return FoodRecognitionService.instance;
   }
 
+  // 从 rawfile/ai_config.json 异步加载 API 密钥（避免硬编码在源码）
+  async init(context: Context): Promise<void> {
+    try {
+      const resourceMgr = context.resourceManager;
+      const data: Uint8Array = await resourceMgr.getRawFileContent('ai_config.json');
+      const decoder: util.TextDecoder = util.TextDecoder.create('utf-8');
+      const text: string = decoder.decodeToString(data);
+      const parsed: Record<string, Object> = JSON.parse(text) as Record<string, Object>;
+      const key = parsed['glm_api_key'];
+      if (typeof key === 'string') {
+        this.glmApiKey = key;
+      }
+      console.info('FoodRecognitionService config loaded, keyLen=' + String(this.glmApiKey.length));
+    } catch (err) {
+      console.error('FoodRecognitionService init config error:', JSON.stringify(err));
+    }
+  }
+
   isCloudConfigured(): boolean {
-    return FoodRecognitionService.GLM_API_KEY.length > 0;
+    return this.glmApiKey.length > 0;
   }
 
   /**
@@ -131,7 +149,7 @@ export class FoodRecognitionService {
         method: http.RequestMethod.POST,
         header: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + FoodRecognitionService.GLM_API_KEY
+          'Authorization': 'Bearer ' + this.glmApiKey
         },
         extraData: JSON.stringify(requestBody),
         connectTimeout: 15000,
@@ -210,7 +228,7 @@ export class FoodRecognitionService {
         method: http.RequestMethod.POST,
         header: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + FoodRecognitionService.GLM_API_KEY
+          'Authorization': 'Bearer ' + this.glmApiKey
         },
         extraData: JSON.stringify(requestBody),
         connectTimeout: 15000,
@@ -329,7 +347,7 @@ export class FoodRecognitionService {
         method: http.RequestMethod.POST,
         header: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + FoodRecognitionService.GLM_API_KEY
+          'Authorization': 'Bearer ' + this.glmApiKey
         },
         extraData: JSON.stringify(requestBody),
         connectTimeout: 15000,
@@ -402,7 +420,7 @@ export class FoodRecognitionService {
         method: http.RequestMethod.POST,
         header: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + FoodRecognitionService.GLM_API_KEY
+          'Authorization': 'Bearer ' + this.glmApiKey
         },
         extraData: JSON.stringify(requestBody),
         connectTimeout: 15000,
