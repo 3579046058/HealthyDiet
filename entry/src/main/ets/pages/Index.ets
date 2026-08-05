@@ -630,6 +630,44 @@ struct Index {
     return Math.round(score);
   }
 
+  getScoreDetails(): string {
+    let details: string[] = [];
+    
+    // 步数得分
+    if (this.stepCount > 0) {
+      let stepScore = Math.min(30, Math.round(this.stepCount / (this.stepGoal || 8000) * 30));
+      if (stepScore > 0) {
+        details.push(`步数+${stepScore}`);
+      }
+    }
+    
+    // 睡眠得分
+    if (this.sleepScore > 0) {
+      let sleepScoreValue = Math.min(25, Math.round(this.sleepScore * 0.3));
+      if (sleepScoreValue > 0) {
+        details.push(`睡眠+${sleepScoreValue}`);
+      }
+    }
+    
+    // 饮水得分
+    if (this.waterMl > 0) {
+      let waterScore = Math.min(25, Math.round(this.waterMl / (this.waterGoal || 2000) * 25));
+      if (waterScore > 0) {
+        details.push(`饮水+${waterScore}`);
+      }
+    }
+    
+    // 运动得分
+    if (this.exerciseMin > 0) {
+      let exerciseScore = Math.min(20, Math.round(this.exerciseMin / 60 * 20));
+      if (exerciseScore > 0) {
+        details.push(`运动+${exerciseScore}`);
+      }
+    }
+    
+    return details.join(' ');
+  }
+
   getScoreColor(score: number): string {
     if (score >= 80) {
       return '#4CAF50';
@@ -1127,12 +1165,22 @@ struct Index {
               .fontSize(14)
               .fontColor(this.subTextColor)
             Row() {
-              Text(String(this.getHealthScore()))
-                .fontSize(36)
-                .fontWeight(FontWeight.Bold)
-                .fontColor(this.getScoreColor(this.getHealthScore()))
-                .margin({ top: 4 })
-                .layoutWeight(2)
+              Column() {
+                Text(String(this.getHealthScore()))
+                  .fontSize(36)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor(this.getScoreColor(this.getHealthScore()))
+                  .margin({ top: 4 })
+                
+                if (this.getScoreDetails()) {
+                  Text(this.getScoreDetails())
+                    .fontSize(10)
+                    .fontColor(this.subTextColor)
+                    .margin({ top: 2 })
+                }
+              }
+              .layoutWeight(2)
+              .alignItems(HorizontalAlign.Start)
               
               Blank().layoutWeight(2)
               
