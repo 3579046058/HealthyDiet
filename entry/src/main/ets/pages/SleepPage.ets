@@ -279,11 +279,23 @@ struct SleepPage {
       total_minutes: sleepDuration,
       score: score,
     };
-    await GlobalData.db.addSleepRecord(record);
+    const ok: boolean = await GlobalData.db.addSleepRecord(record);
+    if (!ok) {
+      promptAction.showToast({ message: '与已有睡眠记录时间重叠，无法添加' });
+      return;
+    }
     await GlobalData.db.updateDailySummaryField(this.endDate, 'sleep_score', score);
     await GlobalData.db.updateDailySummaryField(this.endDate, 'sleep_hours', Math.round(sleepDuration / 60 * 10) / 10);
     this.showInput = false;
-    
+
+    // 手动保存成功后，清理未完成的入睡记录，避免同一睡眠被重复保存
+    const sleepStartRecord = await GlobalData.db.getLatestSleepStartRecord();
+    if (sleepStartRecord && sleepStartRecord.id) {
+      await GlobalData.db.deleteSleepStartRecord(Number(sleepStartRecord.id));
+    }
+    this.isSleeping = false;
+    this.sleepStartTime = '';
+
     // 重置日期为默认值
     await this.initDates();
     await this.loadData();
@@ -335,7 +347,11 @@ struct SleepPage {
       total_minutes: sleepDuration,
       score: score,
     };
-    await GlobalData.db.addSleepRecord(record);
+    const ok: boolean = await GlobalData.db.addSleepRecord(record);
+    if (!ok) {
+      promptAction.showToast({ message: '与已有睡眠记录时间重叠，无法保存' });
+      return;
+    }
     await GlobalData.db.updateDailySummaryField(today, 'sleep_score', score);
     await GlobalData.db.updateDailySummaryField(today, 'sleep_hours', Math.round(sleepDuration / 60 * 10) / 10);
     
