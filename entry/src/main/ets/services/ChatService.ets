@@ -32,6 +32,18 @@ interface GlmSseChunk {
   choices?: Array<GlmChoice>;
 }
 
+interface GlmChatMessageResult {
+  content?: string;
+}
+
+interface GlmChatChoiceResult {
+  message?: GlmChatMessageResult;
+}
+
+interface GlmChatResult {
+  choices?: Array<GlmChatChoiceResult>;
+}
+
 export class ChatService {
   private static instance: ChatService;
   private static readonly GLM_URL: string = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
@@ -200,6 +212,61 @@ export class ChatService {
     if (this.request) {
       this.request.destroy();
       this.request = null;
+    }
+  }
+
+  async generateTitle(firstMessage: string): Promise<string> {
+    if (this.glmApiKey.length === 0 || firstMessage.length === 0) {
+      return '';
+    }
+    const titleMessages: Array<GlmRequestMessage> = [
+      { role: 'system', content: '你是标题生成器。用不超过12个中文字符概括这段对话的主题，只输出标题本身，不要引号、标点或任何解释。' },
+      { role: 'user', content: firstMessage }
+    ];
+    const titleBody: GlmRequestBody = {
+      model: ChatService.GLM_MODEL,
+      messages: titleMessages,
+      stream: false,
+      temperature: 0.3
+    };
+    const titleRequest: http.HttpRequest = http.createHttp();
+    try {
+      const response = await titleRequest.request(ChatService.GLM_URL, {
+        method: http.RequestMethod.POST,
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + this.glmApiKey
+        },
+        extraData: JSON.stringify(titleBody),
+        expectDataType: http.HttpDataType.STRING,
+        connectTimeout: 15000,
+        readTimeout: 30000
+      });
+      if (response.responseCode !== 200) {
+        return '';
+      }
+      const raw: Object = response.result;
+      if (typeof raw !== 'string') {
+        return '';
+      }
+      const result = JSON.parse(raw) as GlmChatResult;
+      if (result.choices !== undefined && result.choices.length > 0) {
+        const choice: GlmChatChoiceResult = result.choices[0];
+        const message: GlmChatMessageResult | undefined = choice.message;
+        if (message !== undefined) {
+          const content: string | undefined = message.content;
+          if (content !== undefined) {
+            const title: string = content.trim();
+            return title.length > 12 ? title.slice(0, 12) : title;
+          }
+        }
+      }
+      return '';
+    } catch (err) {
+      console.error('ChatService generateTitle error:', JSON.stringify(err));
+      return '';
+    } finally {
+      titleRequest.destroy();
     }
   }
 }

@@ -9,8 +9,9 @@ export class ChatMessage {
   id: number = 0;
   role: string = ChatRole.ASSISTANT;
   @Trace content: string = '';
-  isError: boolean = false;
-  isThinking: boolean = false;
+  @Trace isError: boolean = false;
+  @Trace isThinking: boolean = false;
+  @Trace isSearching: boolean = false;
 }
 
 export class ChatHistoryItem {
