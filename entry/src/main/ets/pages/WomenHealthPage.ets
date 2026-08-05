@@ -40,6 +40,14 @@ struct WomenHealthPage {
     try {
       const raw = await GlobalData.db.getPeriodRecords();
       this.records = raw as DbRowExt[];
+
+      // ====关键修复：强制按照经期开始日期升序排序，最新记录放在数组末尾====
+      this.records.sort((itemA:DbRowExt,itemB:DbRowExt)=>{
+        const timeA = this.parseDate(String(itemA.start_date)).getTime()
+        const timeB = this.parseDate(String(itemB.start_date)).getTime()
+        return timeA - timeB
+      })
+
       this.calcAverageData();
       this.calculatePredictions();
     } catch (err) {
@@ -72,6 +80,7 @@ struct WomenHealthPage {
       this.predictedOvulation = "--";
       return;
     }
+    // 排序之后数组最后一项一定为最新的经期记录
     const lastRecord: DbRowExt = this.records[this.records.length - 1];
     const dateStr = String(lastRecord.start_date);
     const lastStartDate = this.parseDate(dateStr);
@@ -108,7 +117,7 @@ struct WomenHealthPage {
       return;
     }
 
-    // 新增：校验开始日期 ≤ 结束日期
+    // 校验开始日期 ≤ 结束日期
     const startDay = this.parseDate(this.startDate).getTime();
     const endDay = this.parseDate(this.endDate).getTime();
     if (startDay > endDay) {
