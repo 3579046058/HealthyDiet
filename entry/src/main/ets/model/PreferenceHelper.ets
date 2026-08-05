@@ -1,5 +1,5 @@
 import { preferences } from '@kit.ArkData';
-import { GoalConfig, StreakData } from '../common/Constants';
+import { GoalConfig, StreakData, AiConfig } from '../common/Constants';
 
 // 基础存储key
 const KEY_STEP_GOAL = 'goal_steps';
@@ -20,6 +20,9 @@ const KEY_LAST_MOOD_PROMPT = 'last_mood_prompt_date';
 const KEY_HEALTH_CARD_ORDER = 'health_card_order';
 const KEY_QUICK_FUNCTION_ORDER = 'quick_function_order';
 const KEY_DAILY_CALORIE = "dailyCalorie";
+const KEY_AI_API_URL = 'ai_api_url';
+const KEY_AI_API_KEY = 'ai_api_key';
+const KEY_AI_CHAT_MODEL = 'ai_chat_model';
 // 远程新增三大营养素key
 const KEY_DAILY_PROTEIN = "daily_protein";
 const KEY_DAILY_FAT = "daily_fat";
@@ -333,6 +336,29 @@ export class PreferenceHelper {
       await this.pref.flush();
     } catch (err) {
       console.error('setLastAchievementCheckDate error:', JSON.stringify(err));
+    }
+  }
+
+  async getAiConfig(): Promise<AiConfig> {
+    const cfg: AiConfig = new AiConfig();
+    try {
+      cfg.apiUrl = await this.pref.get(KEY_AI_API_URL, '') as string;
+      cfg.apiKey = await this.pref.get(KEY_AI_API_KEY, '') as string;
+      cfg.chatModel = await this.pref.get(KEY_AI_CHAT_MODEL, '') as string;
+    } catch (err) {
+      console.error('getAiConfig error:', JSON.stringify(err));
+    }
+    return cfg;
+  }
+
+  async setAiConfig(cfg: AiConfig): Promise<void> {
+    try {
+      await this.pref.put(KEY_AI_API_URL, cfg.apiUrl);
+      await this.pref.put(KEY_AI_API_KEY, cfg.apiKey);
+      await this.pref.put(KEY_AI_CHAT_MODEL, cfg.chatModel);
+      await this.pref.flush();
+    } catch (err) {
+      console.error('setAiConfig error:', JSON.stringify(err));
     }
   }
 }
