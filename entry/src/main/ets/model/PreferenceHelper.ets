@@ -26,6 +26,7 @@ const KEY_DAILY_FAT = "daily_fat";
 const KEY_DAILY_CARBS = "daily_carbs";
 // 本地新增成就系统key
 const KEY_ACHIEVEMENT_DAYS = 'achievement_days'; // 已解锁的成就天数列表
+const KEY_ACHIEVEMENT_DATES = 'achievement_dates'; // 成就解锁日期映射（天数:日期）
 const KEY_LAST_ACHIEVEMENT_CHECK_DATE = 'last_achievement_check_date'; // 上次检查成就的日期
 
 export class PreferenceHelper {
@@ -273,6 +274,47 @@ export class PreferenceHelper {
       await this.pref.flush();
     } catch (err) {
       console.error('setAchievementDays error:', JSON.stringify(err));
+    }
+  }
+
+  // 获取成就解锁日期映射（天数 -> 解锁日期）
+  async getAchievementDates(): Promise<Map<number, string>> {
+    try {
+      const datesStr = await this.pref.get(KEY_ACHIEVEMENT_DATES, '') as string;
+      if (datesStr === '') {
+        return new Map();
+      }
+      const map = new Map<number, string>();
+      datesStr.split(',').forEach(pair => {
+        const parts = pair.split(':');
+        if (parts.length >= 2) {
+          const days = parts[0];
+          const date = parts[1];
+          if (days && date) {
+            map.set(parseInt(days), date);
+          }
+        }
+      });
+      return map;
+    } catch (err) {
+      console.error('getAchievementDates error:', JSON.stringify(err));
+      return new Map();
+    }
+  }
+
+  // 设置成就解锁日期
+  async setAchievementDate(days: number, date: string): Promise<void> {
+    try {
+      const map = await this.getAchievementDates();
+      map.set(days, date);
+      const pairs: string[] = [];
+      map.forEach((date, days) => {
+        pairs.push(`${days}:${date}`);
+      });
+      await this.pref.put(KEY_ACHIEVEMENT_DATES, pairs.join(','));
+      await this.pref.flush();
+    } catch (err) {
+      console.error('setAchievementDate error:', JSON.stringify(err));
     }
   }
 

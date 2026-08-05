@@ -62,6 +62,10 @@ export class AchievementHelper {
         // 解锁该成就
         unlockedDays.push(level.days);
         const today = new Date().toISOString().split('T')[0];
+        
+        // 保存解锁日期
+        await this.prefHelper.setAchievementDate(level.days, today);
+        
         newAchievements.push(new AchievementInfo(
           level.days,
           level.name,
@@ -84,16 +88,20 @@ export class AchievementHelper {
   // 获取所有成就信息（包含解锁状态）
   async getAllAchievements(): Promise<AchievementInfo[]> {
     const unlockedDays = await this.prefHelper.getAchievementDays();
+    const achievementDates = await this.prefHelper.getAchievementDates();
     const achievements: AchievementInfo[] = [];
     
     for (let i = 0; i < ACHIEVEMENT_LEVELS.length; i++) {
       const level = ACHIEVEMENT_LEVELS[i];
+      const unlocked = unlockedDays.includes(level.days);
+      const unlockDate = unlocked ? (achievementDates.get(level.days) || '') : '';
       achievements.push(new AchievementInfo(
         level.days,
         level.name,
         level.description,
         level.icon,
-        unlockedDays.includes(level.days)
+        unlocked,
+        unlockDate
       ));
     }
     
