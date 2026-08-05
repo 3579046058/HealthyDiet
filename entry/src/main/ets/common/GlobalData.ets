@@ -5,9 +5,11 @@ export class GlobalData {
   static db: DatabaseHelper;
   static prefs: PreferenceHelper;
   static initialized: boolean = false;
+  static appContext: Context | null = null;
 
   static async init(context: Context): Promise<void> {
     if (GlobalData.initialized) return;
+    GlobalData.appContext = context;
     GlobalData.db = new DatabaseHelper(context);
     GlobalData.prefs = new PreferenceHelper();
     await GlobalData.db.init();

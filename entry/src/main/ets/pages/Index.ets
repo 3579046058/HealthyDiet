@@ -14,6 +14,7 @@ import { NestedRings } from '../components/NestedRings';
 import { HealthTab } from '../components/HealthTab';
 import { DiaryTab } from '../components/DiaryTab';
 import { AccountTab } from '../components/AccountTab';
+import { ChatTab } from '../components/ChatTab';
 import { WeightOverlay, MoodOverlay } from '../components/OverlayDialogs';
 import { SharePanel } from '../components/SharePanel';
 
@@ -754,6 +755,11 @@ struct Index {
           .tabBar(this.tabBuilder('ic_camera', '识图', 2))
 
           TabContent() {
+            ChatTab({ activeTheme: this.theme })
+          }
+          .tabBar(this.tabBuilder('ic_ai', 'AI问答', 3))
+
+          TabContent() {
             AccountTab({
               textColor: this.textColor,
               subTextColor: this.subTextColor,
@@ -763,7 +769,7 @@ struct Index {
               onNavigate: (page: string) => { this.navigateTo(page); }
             })
           }
-          .tabBar(this.tabBuilder('ic_account', '账号', 3))
+          .tabBar(this.tabBuilder('ic_account', '账号', 4))
         }
         .animationDuration(200)
         .barHeight(56)

@@ -12,5 +12,9 @@
 /.appanalyzer
 /.cache
 /build_log.txt
+/.deveco/
+/spec/
 
 /sign
+
+AGENTS.md
