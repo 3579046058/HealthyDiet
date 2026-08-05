@@ -1,5 +1,6 @@
 ﻿import { relationalStore } from '@kit.ArkData';
 import { Constants, DbRow } from '../common/Constants';
+import { SleepOverlap } from '../common/SleepOverlap';
 
 const TABLE_DAILY = 'daily_summary';
 const TABLE_WEIGHT = 'weight_records';
@@ -369,8 +370,13 @@ export class DatabaseHelper {
     return this.readAllRows(result);
   }
 
-  async addSleepRecord(record: DbRow): Promise<void> {
-    if (!this.rdbStore) return;
+  async addSleepRecord(record: DbRow): Promise<boolean> {
+    if (!this.rdbStore) return false;
+    const overlap: boolean = await this.hasSleepOverlap(record, -1);
+    if (overlap) {
+      console.warn('addSleepRecord rejected: overlaps an existing sleep record');
+      return false;
+    }
     const values: relationalStore.ValuesBucket = {
       date: String(record.date),
       start_time: String(record.start_time),
@@ -383,6 +389,24 @@ export class DatabaseHelper {
       timestamp: Date.now()
     };
     await this.rdbStore.insert(TABLE_SLEEP, values);
+    return true;
+  }
+
+  async hasSleepOverlap(record: DbRow, excludeId: number): Promise<boolean> {
+    if (!this.rdbStore) return false;
+    const all: DbRow[] = await this.getSleepRecords('1970-01-01', '2099-12-31');
+    const target = SleepOverlap.toInterval(String(record.date), String(record.end_time), Number(record.total_minutes));
+    for (let i = 0; i < all.length; i++) {
+      const r: DbRow = all[i];
+      if (excludeId >= 0 && Number(r.id) === excludeId) {
+        continue;
+      }
+      const other = SleepOverlap.toInterval(String(r.date), String(r.end_time), Number(r.total_minutes));
+      if (SleepOverlap.intervalsOverlap(target, other)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   async getSleepRecords(startDate: string, endDate: string): Promise<DbRow[]> {

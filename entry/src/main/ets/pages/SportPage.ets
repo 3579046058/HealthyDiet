@@ -84,6 +84,8 @@ struct SportPage {
       await GlobalData.db.updateDailySummaryField(today, 'exercise_minutes', totalMin);
       await GlobalData.db.updateDailySummaryField(today, 'calories_burned', totalCal);
       await CardDataHelper.refreshWidget(getContext(this));
+      // 通知 Index 页面数据已更新
+      AppStorage.setOrCreate('dataUpdateTrigger', `sport_${Date.now()}`);
     } catch (err) {
       console.error('SportPage recalcDailySportSummary error:', JSON.stringify(err));
     }
@@ -353,7 +355,10 @@ struct SportPage {
   build() {
     Column() {
       Row() {
-        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { router.back(); })
+        Text('←').fontSize(22).fontColor(this.txt())
+          .accessibilityText('返回上一页')
+          .accessibilityLevel('important')
+          .onClick(() => { router.back(); })
         Text('运动记录').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
         Text('＋ 手动添加').fontSize(14).fontColor('#FF6B35')

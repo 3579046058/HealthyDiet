@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
-import { DbRow, ThemeColors, FoodCalories, GoalConfig, Constants } from '../common/Constants';
+import { DbRow, ThemeColors, FoodCalories, GoalConfig, Constants, NutritionInfo, FoodLevel } from '../common/Constants';
 import { FoodRecognitionService } from '../services/FoodRecognitionService';
 
 @Entry
@@ -65,8 +65,10 @@ struct DietPage {
     if (isNaN(grams) || grams <= 0) {
       return;
     }
-    // 云端计算卡路里（优先），失败则用本地食物库
-    let calories: number = FoodCalories.calcCalories(name, grams);
+    // 本地计算完整营养素（热量+三大宏量）
+    const nutrition = FoodCalories.getNutrition(name, grams);
+    // 云端计算卡路里（优先），失败则用本地食物库热量（逻辑与原版本完全一致）
+    let calories: number = nutrition.cal;
     const cloud = await FoodRecognitionService.getInstance().calculateCalories(name, grams);
     if (cloud >= 0) {
       calories = cloud;
@@ -77,9 +79,9 @@ struct DietPage {
       food_name: name,
       amount_g: grams,
       calories: calories,
-      protein: 0,
-      fat: 0,
-      carbs: 0,
+      protein: nutrition.pro,
+      fat: nutrition.fat,
+      carbs: nutrition.carb,
       timestamp: Date.now()
     };
     try {
@@ -88,6 +90,9 @@ struct DietPage {
       this.amountG = '';
       this.showInput = false;
       await this.loadData();
+      
+      // 通知 Index 页面数据已更新
+      AppStorage.setOrCreate('dataUpdateTrigger', `diet_${Date.now()}`);
     } catch (err) {
       console.error('DietPage saveRecord error:', JSON.stringify(err));
     }
@@ -185,6 +190,71 @@ struct DietPage {
     }
   }
 
+  // ========== 新增：三大营养素统计方法 ==========
+  getProteinByMeal(meal: string): number {
+    let total: number = 0;
+    for (const r of this.records) {
+      if (String(r.meal_type) === meal) {
+        total += Number(r.protein ?? 0);
+      }
+    }
+    return Number(total.toFixed(2));
+  }
+
+  getFatByMeal(meal: string): number {
+    let total: number = 0;
+    for (const r of this.records) {
+      if (String(r.meal_type) === meal) {
+        total += Number(r.fat ?? 0);
+      }
+    }
+    return Number(total.toFixed(2));
+  }
+
+  getCarbsByMeal(meal: string): number {
+    let total: number = 0;
+    for (const r of this.records) {
+      if (String(r.meal_type) === meal) {
+        total += Number(r.carbs ?? 0);
+      }
+    }
+    return Number(total.toFixed(2));
+  }
+
+  getTotalProtein(): number {
+    let total: number = 0;
+    for (const r of this.records) {
+      total += Number(r.protein ?? 0);
+    }
+    return Number(total.toFixed(2));
+  }
+
+  getTotalFat(): number {
+    let total: number = 0;
+    for (const r of this.records) {
+      total += Number(r.fat ?? 0);
+    }
+    return Number(total.toFixed(2));
+  }
+
+  getTotalCarbs(): number {
+    let total: number = 0;
+    for (const r of this.records) {
+      total += Number(r.carbs ?? 0);
+    }
+    return Number(total.toFixed(2));
+  }
+
+  // 添加食物时实时预览完整营养素
+  previewAllNutrition(): NutritionInfo {
+    const grams: number = parseFloat(this.amountG);
+    if (isNaN(grams) || grams <= 0) {
+      const empty: NutritionInfo = { cal: 0, pro: 0, fat: 0, carb: 0 };
+      return empty;
+    }
+    return FoodCalories.getNutrition(this.foodName.trim(), grams);
+  }
+
   @Builder
   mealButton(emoji: string, type: string): void {
     Button(emoji)
@@ -217,10 +287,23 @@ struct DietPage {
         ForEach(this.getFilteredRecords(type), (item: DbRow) => {
           Row() {
             Column() {
-              Text(String(item.food_name))
-                .fontSize(14)
+              Row() {
+                Text(String(item.food_name))
+                  .fontSize(14)
+                Text(FoodCalories.getFoodLevel(String(item.food_name)))
+                  .fontSize(10)
+                  .fontColor('#FFFFFF')
+                  .backgroundColor(FoodCalories.getLevelColor(FoodCalories.getFoodLevel(String(item.food_name))))
+                  .padding({ left: 5, right: 5, top: 1, bottom: 1 })
+                  .borderRadius(3)
+                  .margin({ left: 6 })
+              }
               Text(this.getAmountText(item) + 'g' + ' · ' + this.getAddTime(item))
                 .fontSize(11)
+                .fontColor(this.sub())
+                .margin({ top: 2 })
+              Text(`蛋白 ${item.protein ?? 0}g · 脂肪 ${item.fat ?? 0}g · 碳水 ${item.carbs ?? 0}g`)
+                .fontSize(10)
                 .fontColor(this.sub())
                 .margin({ top: 2 })
             }
@@ -345,6 +428,13 @@ struct DietPage {
                             .fontSize(14)
                             .fontColor(this.txt())
                           Blank()
+                          Text(FoodCalories.getFoodLevel(food))
+                            .fontSize(10)
+                            .fontColor('#FFFFFF')
+                            .backgroundColor(FoodCalories.getLevelColor(FoodCalories.getFoodLevel(food)))
+                            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                            .borderRadius(4)
+                            .margin({ right: 8 })
                           Text(String(FoodCalories.getCaloriesFor(food)) + ' kcal')
                             .fontSize(12)
                             .fontColor(this.txt())
@@ -380,9 +470,9 @@ struct DietPage {
                 })
 
               if (this.foodName.trim().length > 0 && this.amountG.trim().length > 0) {
-                Text('预计 ' + String(this.previewCalories()) + ' kcal')
-                  .fontSize(13)
-                  .fontColor(this.txt())
+                Text(`预计 ${this.previewAllNutrition().cal} kcal · 蛋白质 ${this.previewAllNutrition().pro}g · 脂肪 ${this.previewAllNutrition().fat}g · 碳水 ${this.previewAllNutrition().carb}g`)
+                  .fontSize(12)
+                  .fontColor(this.sub())
                   .width('100%')
                   .margin({ bottom: 8 })
               }
@@ -472,6 +562,11 @@ struct DietPage {
               .fontColor(this.sub())
               .width('100%')
               .margin({ top: 8 })
+            Text(`蛋白质 ${this.getTotalProtein()}g · 脂肪 ${this.getTotalFat()}g · 碳水 ${this.getTotalCarbs()}g`)
+              .fontSize(12)
+              .fontColor(this.sub())
+              .width('100%')
+              .margin({ top: 4 })
           }
           .width('100%')
           .padding(14)

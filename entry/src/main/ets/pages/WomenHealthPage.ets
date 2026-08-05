@@ -167,6 +167,8 @@ struct WomenHealthPage {
     Column() {
       Row() {
         Text('←').fontSize(22).fontColor(this.txt())
+          .accessibilityText('返回上一页')
+          .accessibilityLevel('important')
           .onClick(() => {
             router.back();
           })

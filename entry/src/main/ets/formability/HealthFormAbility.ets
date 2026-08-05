@@ -166,8 +166,12 @@ export default class HealthFormAbility extends FormExtensionAbility {
             total_minutes: totalMin,
             score: score,
           };
-          await GlobalData.db.addSleepRecord(record);
-          await GlobalData.db.updateDailySummaryField(today, 'sleep_score', score);
+          const ok: boolean = await GlobalData.db.addSleepRecord(record);
+          if (!ok) {
+            console.warn('HealthFormAbility sleep_toggle rejected: overlapping sleep record');
+          } else {
+            await GlobalData.db.updateDailySummaryField(today, 'sleep_score', score);
+          }
           if (latestSleep.id) {
             await GlobalData.db.deleteSleepStartRecord(Number(latestSleep.id));
           }
@@ -213,7 +217,7 @@ export default class HealthFormAbility extends FormExtensionAbility {
   }
 
   private async getFormData(): Promise<formBindingData.FormBindingData> {
-    // 复用 CardDataHelper 组装完整卡片数据（与页面一致）
+    // 复用 CardDataHelper 组装完整卡片数据（并行查询，与页面一致）
     return await CardDataHelper.buildFormData(this.context);
   }
 }

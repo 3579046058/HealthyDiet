@@ -107,6 +107,9 @@ export interface GoalConfig {
   heightCm: number;
   dailyCalorie: number;
   targetWeightKg?: number;
+  dailyProtein?: number;
+  dailyFat?: number;
+  dailyCarbs?: number;
 }
 
 export interface DietRecord {
@@ -221,33 +224,119 @@ export class ThemeManager {
   static divider(theme: string): string { return ThemeColors.divider(theme); }
 }
 
+// ========== 新增：食物分级类型 ==========
+export type FoodLevel = '较推荐' | '适量吃' | '限量吃';
+
+export interface NutritionInfo {
+  cal: number;
+  pro: number;
+  fat: number;
+  carb: number;
+}
+
+interface FoodNutritionItem {
+  name: string;
+  cal: number;
+  pro: number;
+  fat: number;
+  carb: number;
+}
+
 export class FoodCalories {
-  static readonly CAL_PER_100G: Map<string, number> = new Map<string, number>([
-    ['米饭', 116], ['面条', 110], ['馒头', 223], ['包子', 227], ['饺子', 240],
-    ['面包', 313], ['鸡蛋', 144], ['牛奶', 54], ['酸奶', 72], ['豆浆', 31],
-    ['猪肉', 395], ['牛肉', 125], ['羊肉', 203], ['鸡肉', 167], ['鸭肉', 240],
-    ['鱼肉', 113], ['虾', 93], ['蟹', 95], ['苹果', 52], ['香蕉', 89],
-    ['橙子', 47], ['葡萄', 43], ['西瓜', 26], ['梨', 44], ['桃子', 48],
-    ['白菜', 17], ['菠菜', 23], ['西兰花', 34], ['胡萝卜', 41], ['土豆', 81],
-    ['番茄', 15], ['黄瓜', 16], ['豆腐', 82], ['花生', 574], ['核桃', 654],
-    ['蛋糕', 348], ['巧克力', 589], ['饼干', 435], ['薯片', 548], ['可乐', 43],
-    ['布丁', 130], ['果冻', 60], ['冰淇淋', 207], ['奶茶', 55], ['咖啡', 2],
-    ['蛋挞', 375], ['月饼', 400], ['汤圆', 310], ['粽子', 195], ['油条', 388]
+  // 完整食物营养数据表（每100g）
+  private static readonly FOOD_TABLE: FoodNutritionItem[] = [
+    {name:"米饭",cal:116,pro:2.6,fat:0.3,carb:25.9},
+    {name:"面条",cal:110,pro:3.5,fat:1.1,carb:22.8},
+    {name:"馒头",cal:223,pro:7.0,fat:1.1,carb:47.0},
+    {name:"包子",cal:227,pro:7.3,fat:10.0,carb:28.0},
+    {name:"饺子",cal:240,pro:8.0,fat:10.0,carb:30.0},
+    {name:"面包",cal:313,pro:8.3,fat:5.1,carb:58.6},
+    {name:"鸡蛋",cal:144,pro:13.3,fat:8.8,carb:2.8},
+    {name:"牛奶",cal:54,pro:3.2,fat:3.8,carb:4.8},
+    {name:"酸奶",cal:72,pro:2.5,fat:2.7,carb:9.3},
+    {name:"豆浆",cal:31,pro:2.0,fat:1.2,carb:3.0},
+    {name:"猪肉",cal:395,pro:13.0,fat:37.0,carb:0.0},
+    {name:"牛肉",cal:125,pro:20.2,fat:4.2,carb:0.0},
+    {name:"羊肉",cal:203,pro:19.0,fat:14.1,carb:0.0},
+    {name:"鸡肉",cal:167,pro:19.3,fat:9.4,carb:1.3},
+    {name:"鸭肉",cal:240,pro:15.0,fat:19.7,carb:0.2},
+    {name:"鱼肉",cal:113,pro:18.0,fat:3.4,carb:0.0},
+    {name:"虾",cal:93,pro:18.6,fat:0.8,carb:2.8},
+    {name:"蟹",cal:95,pro:18.9,fat:2.3,carb:0.0},
+    {name:"苹果",cal:52,pro:0.3,fat:0.2,carb:14.0},
+    {name:"香蕉",cal:89,pro:1.1,fat:0.3,carb:22.8},
+    {name:"橙子",cal:47,pro:0.8,fat:0.2,carb:11.1},
+    {name:"葡萄",cal:43,pro:0.5,fat:0.2,carb:10.3},
+    {name:"西瓜",cal:26,pro:0.6,fat:0.1,carb:5.8},
+    {name:"梨",cal:44,pro:0.4,fat:0.2,carb:13.0},
+    {name:"桃子",cal:48,pro:0.9,fat:0.1,carb:11.0},
+    {name:"白菜",cal:17,pro:1.5,fat:0.2,carb:3.0},
+    {name:"菠菜",cal:23,pro:2.6,fat:0.3,carb:4.5},
+    {name:"西兰花",cal:34,pro:4.1,fat:0.6,carb:4.3},
+    {name:"胡萝卜",cal:41,pro:1.0,fat:0.2,carb:8.8},
+    {name:"土豆",cal:81,pro:2.0,fat:0.1,carb:17.2},
+    {name:"番茄",cal:15,pro:0.9,fat:0.2,carb:3.5},
+    {name:"黄瓜",cal:16,pro:0.8,fat:0.2,carb:2.9},
+    {name:"豆腐",cal:82,pro:8.1,fat:3.7,carb:3.8},
+    {name:"花生",cal:574,pro:26.0,fat:49.0,carb:16.0},
+    {name:"核桃",cal:654,pro:15.0,fat:65.0,carb:14.0},
+    {name:"蛋糕",cal:348,pro:6.0,fat:15.0,carb:50.0},
+    {name:"巧克力",cal:589,pro:4.3,fat:51.0,carb:54.0},
+    {name:"饼干",cal:435,pro:9.0,fat:13.0,carb:70.0},
+    {name:"薯片",cal:548,pro:7.5,fat:30.0,carb:50.0},
+    {name:"可乐",cal:43,pro:0.0,fat:0.0,carb:11.0},
+    {name:"布丁",cal:130,pro:2.5,fat:5.0,carb:20.0},
+    {name:"果冻",cal:60,pro:0.0,fat:0.0,carb:15.0},
+    {name:"冰淇淋",cal:207,pro:2.7,fat:10.0,carb:25.0},
+    {name:"奶茶",cal:55,pro:1.0,fat:1.2,carb:12.0},
+    {name:"咖啡",cal:2,pro:0.1,fat:0.0,carb:0.3},
+    {name:"蛋挞",cal:375,pro:4.0,fat:22.0,carb:40.0},
+    {name:"月饼",cal:400,pro:5.0,fat:18.0,carb:55.0},
+    {name:"汤圆",cal:310,pro:4.0,fat:8.0,carb:55.0},
+    {name:"粽子",cal:195,pro:5.0,fat:1.0,carb:40.0},
+    {name:"油条",cal:388,pro:6.9,fat:17.0,carb:50.0}
+  ];
+
+  // ========== 新增：食物分级映射表 ==========
+  private static readonly FOOD_LEVEL_MAP: Map<string, FoodLevel> = new Map<string, FoodLevel>([
+    // 较推荐：低卡高营养
+    ['鸡蛋', '较推荐'], ['牛奶', '较推荐'], ['酸奶', '较推荐'], ['豆浆', '较推荐'],
+    ['牛肉', '较推荐'], ['鸡肉', '较推荐'], ['鱼肉', '较推荐'], ['虾', '较推荐'], ['蟹', '较推荐'],
+    ['苹果', '较推荐'], ['橙子', '较推荐'], ['葡萄', '较推荐'], ['西瓜', '较推荐'],
+    ['梨', '较推荐'], ['桃子', '较推荐'], ['白菜', '较推荐'], ['菠菜', '较推荐'],
+    ['西兰花', '较推荐'], ['胡萝卜', '较推荐'], ['番茄', '较推荐'], ['黄瓜', '较推荐'],
+    ['豆腐', '较推荐'], ['咖啡', '较推荐'],
+    // 适量吃：日常必需但需控量
+    ['米饭', '适量吃'], ['面条', '适量吃'], ['馒头', '适量吃'], ['包子', '适量吃'],
+    ['饺子', '适量吃'], ['面包', '适量吃'], ['香蕉', '适量吃'], ['土豆', '适量吃'],
+    ['花生', '适量吃'], ['核桃', '适量吃'], ['羊肉', '适量吃'], ['鸭肉', '适量吃'], ['猪肉', '适量吃'],
+    // 限量吃：高糖高油高热量
+    ['蛋糕', '限量吃'], ['巧克力', '限量吃'], ['饼干', '限量吃'], ['薯片', '限量吃'],
+    ['可乐', '限量吃'], ['布丁', '限量吃'], ['果冻', '限量吃'], ['冰淇淋', '限量吃'],
+    ['奶茶', '限量吃'], ['蛋挞', '限量吃'], ['月饼', '限量吃'], ['汤圆', '限量吃'],
+    ['粽子', '限量吃'], ['油条', '限量吃']
   ]);
 
-  static lookupCaloriesPer100g(foodName: string): number {
-    const lowerName: string = foodName.toLowerCase();
-    const matched: Map<string, number> = new Map<string, number>();
-    FoodCalories.CAL_PER_100G.forEach((value: number, key: string) => {
-      if (lowerName.indexOf(key.toLowerCase()) >= 0) {
-        matched.set(key, value);
+  // 保留原有CAL_PER_100G，100%兼容旧代码
+  static readonly CAL_PER_100G: Map<string, number> = (() => {
+    const map = new Map<string, number>();
+    FoodCalories.FOOD_TABLE.forEach(item => map.set(item.name, item.cal));
+    return map;
+  })();
+
+  private static searchFood(rawName: string): FoodNutritionItem | null {
+    const lowerName: string = rawName.toLowerCase();
+    for (const item of FoodCalories.FOOD_TABLE) {
+      if (lowerName.indexOf(item.name.toLowerCase()) >= 0) {
+        return item;
       }
-    });
-    if (matched.size > 0) {
-      const firstKey: string | undefined = matched.keys().next().value;
-      return matched.get(String(firstKey)) ?? 0;
     }
-    return 0;
+    return null;
+  }
+
+  static lookupCaloriesPer100g(foodName: string): number {
+    const item = FoodCalories.searchFood(foodName);
+    return item?.cal ?? 0;
   }
 
   static calcCalories(foodName: string, grams: number): number {
@@ -259,14 +348,45 @@ export class FoodCalories {
   }
 
   static getFoodNames(): string[] {
-    const names: string[] = [];
-    FoodCalories.CAL_PER_100G.forEach((value: number, key: string) => {
-      names.push(key);
-    });
-    return names;
+    return FoodCalories.FOOD_TABLE.map(item => item.name);
   }
 
   static getCaloriesFor(foodName: string): number {
     return FoodCalories.CAL_PER_100G.get(foodName) ?? 0;
+  }
+
+  static getNutrition(foodName: string, grams: number): NutritionInfo {
+    const empty: NutritionInfo = { cal: 0, pro: 0, fat: 0, carb: 0 };
+    const food = FoodCalories.searchFood(foodName);
+    if (!food) return empty;
+    const rate = grams / 100;
+    const result: NutritionInfo = {
+      cal: Number((food.cal * rate).toFixed(2)),
+      pro: Number((food.pro * rate).toFixed(2)),
+      fat: Number((food.fat * rate).toFixed(2)),
+      carb: Number((food.carb * rate).toFixed(2))
+    };
+    return result;
+  }
+
+  // ========== 新增：获取食物分级 ==========
+  static getFoodLevel(foodName: string): FoodLevel {
+    const food = FoodCalories.searchFood(foodName);
+    if (!food) return '适量吃';
+    return FoodCalories.FOOD_LEVEL_MAP.get(food.name) ?? '适量吃';
+  }
+
+  // ========== 新增：分级对应主题色，UI直接调用 ==========
+  static getLevelColor(level: FoodLevel): string {
+    switch (level) {
+      case '较推荐':
+        return '#4CAF50';
+      case '适量吃':
+        return '#FF9800';
+      case '限量吃':
+        return '#F44336';
+      default:
+        return '#FF9800';
+    }
   }
 }

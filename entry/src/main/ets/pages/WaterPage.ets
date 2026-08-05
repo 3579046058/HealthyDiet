@@ -43,6 +43,9 @@ struct WaterPage {
       }
       this.currentMl = total;
       await GlobalData.db.updateDailySummaryField(today, 'water_ml', total);
+      
+      // 通知 Index 页面数据已更新
+      AppStorage.setOrCreate('dataUpdateTrigger', `water_${Date.now()}`);
     } catch (err) {
       console.error('WaterPage loadData error:', JSON.stringify(err));
     }
@@ -80,6 +83,9 @@ struct WaterPage {
       }
       this.currentMl = total;
       await GlobalData.db.updateDailySummaryField(date, 'water_ml', total);
+      
+      // 通知 Index 页面数据已更新
+      AppStorage.setOrCreate('dataUpdateTrigger', `water_${Date.now()}`);
     } catch (err) {
       console.error('WaterPage syncWaterSummary error:', JSON.stringify(err));
     }
@@ -105,7 +111,10 @@ struct WaterPage {
     Stack() {
       Column() {
       Row() {
-        Text('←').fontSize(22).fontColor(this.txt()).onClick(() => { router.back(); })
+        Text('←').fontSize(22).fontColor(this.txt())
+          .accessibilityText('返回上一页')
+          .accessibilityLevel('important')
+          .onClick(() => { router.back(); })
         Text('喝水提醒').fontSize(20).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 12 })
         Blank()
         Text('设置目标').fontSize(14).fontColor('#03A9F4')

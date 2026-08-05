@@ -7,6 +7,7 @@ import { PermissionService } from '../services/PermissionService';
 import { ReminderScheduler } from '../services/ReminderScheduler';
 import { FoodRecognitionService } from '../services/FoodRecognitionService';
 import { CardDataHelper } from '../services/CardDataHelper';
+import { ChatService } from '../services/ChatService';
 
 const DOMAIN = 0x0000;
 const TAG = 'HarmonyHealth';
@@ -43,6 +44,13 @@ export default class EntryAbility extends UIAbility {
       hilog.info(DOMAIN, TAG, 'FoodRecognitionService initialized');
     } catch (err) {
       hilog.error(DOMAIN, TAG, 'Failed to init FoodRecognitionService: %{public}s', JSON.stringify(err));
+    }
+
+    try {
+      await ChatService.getInstance().init(this.context);
+      hilog.info(DOMAIN, TAG, 'ChatService initialized');
+    } catch (err) {
+      hilog.error(DOMAIN, TAG, 'Failed to init ChatService: %{public}s', JSON.stringify(err));
     }
 
     const win = windowStage.getMainWindowSync();

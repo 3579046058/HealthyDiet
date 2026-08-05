@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 紫金牌 - 500天成就 -->
+  <defs>
+    <linearGradient id="purple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9370DB;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#8A2BE2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4B0082;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow3">
+      <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- 奖牌主体 -->
+  <circle cx="50" cy="55" r="35" fill="url(#purple)" stroke="#4B0082" stroke-width="2"/>
+  <!-- 奖牌内圈 -->
+  <circle cx="50" cy="55" r="28" fill="none" stroke="#FFD700" stroke-width="2" opacity="0.8"/>
+  <!-- 数字500 -->
+  <text x="50" y="62" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#FFD700" text-anchor="middle">500</text>
+  <!-- 奖牌顶部装饰 -->
+  <path d="M30 20 Q50 10 70 20 L65 25 Q50 18 35 25 Z" fill="#9370DB" stroke="#4B0082" stroke-width="1"/>
+  <!-- 星星装饰 -->
+  <polygon points="50,30 52,36 58,36 53,40 55,46 50,42 45,46 47,40 42,36 48,36" fill="#FFD700" filter="url(#glow3)" opacity="0.9"/>
+</svg>

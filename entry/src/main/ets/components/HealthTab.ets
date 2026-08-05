@@ -52,6 +52,12 @@ export struct HealthTab {
     return '很差';
   }
 
+  getThemeAccessibilityText(): string {
+    if (this.themeMode === 'dark') { return '切换到浅色模式'; }
+    if (this.themeMode === 'light') { return '切换到跟随系统模式'; }
+    return '切换到深色模式';
+  }
+
   getDisplaySteps(): number {
     if (this.liveSteps > 0) {
       return this.liveSteps;
@@ -234,7 +240,14 @@ export struct HealthTab {
             }
             .margin({ right: 12 })
           }
+          // 成就入口图标
+          Text('🏆').fontSize(22).margin({ right: 12 })
+            .accessibilityText('查看成就')
+            .accessibilityLevel('important')
+            .onClick(() => { this.onNavigate('achievement'); })
           Text(this.themeMode === 'dark' ? '🌙' : (this.themeMode === 'light' ? '☀️' : '🔄')).fontSize(22).margin({ right: 12 })
+            .accessibilityText(this.getThemeAccessibilityText())
+            .accessibilityLevel('important')
             .onClick(() => { this.onToggleTheme(); })
         }
         .width('100%').padding({ left: 20, right: 20, top: 12 + this.statusBarHeight })

@@ -32,7 +32,10 @@ export struct SharePanel {
         Row() {
           Text('分享我的健康日记').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           Blank()
-          Text('✕').fontSize(20).fontColor(this.subTextColor).onClick(() => { this.onClose(); })
+          Text('✕').fontSize(20).fontColor(this.subTextColor)
+            .accessibilityText('关闭分享面板')
+            .accessibilityLevel('important')
+            .onClick(() => { this.onClose(); })
         }
         .width('100%').padding({ left: 20, right: 20, top: 16 })
 

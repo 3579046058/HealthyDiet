@@ -15,8 +15,11 @@ import { NestedRings } from '../components/NestedRings';
 import { HealthTab } from '../components/HealthTab';
 import { DiaryTab } from '../components/DiaryTab';
 import { AccountTab } from '../components/AccountTab';
+import { ChatTab } from '../components/ChatTab';
 import { WeightOverlay, MoodOverlay } from '../components/OverlayDialogs';
 import { SharePanel } from '../components/SharePanel';
+import { AchievementHelper, AchievementInfo } from '../model/AchievementHelper';
+import { AchievementDialog, AchievementListDialog } from '../components/AchievementDialog';
 
 // 健康卡片类型定义
 interface HealthCardItem {
@@ -41,6 +44,7 @@ struct Index {
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
   @StorageLink('cardTarget') @Watch('onCardTarget') cardTarget: string = '';
   @StorageLink('appForegroundDate') @Watch('onForegroundDateChange') appForegroundDate: string = '';
+  @StorageLink('dataUpdateTrigger') @Watch('onDataUpdate') dataUpdateTrigger: string = ''; // 数据更新通知
   @State showSharePanel: boolean = false;
   @State shareDiet: boolean = true;
   @State shareSport: boolean = true;
@@ -99,6 +103,13 @@ struct Index {
   @State overlayMood: number = 3;
   @State overlayMoodNote: string = '';
   @State overlayMoodDate: string = '';
+
+  // 成就系统相关
+  @State showAchievementDialog: boolean = false;
+  @State showAchievementListDialog: boolean = false;
+  @State currentAchievement: AchievementInfo | null = null;
+  @State allAchievements: AchievementInfo[] = [];
+  private achievementHelper: AchievementHelper = new AchievementHelper(GlobalData.prefs);
 
   // 今日概览卡片拖拽排序相关
   @State healthCardOrder: string[] = ['steps', 'calorie', 'sleep', 'water']; // 卡片顺序
@@ -409,6 +420,9 @@ struct Index {
       // 计算今日摄入热量
       const todayDietRecords = await GlobalData.db.getDietRecordsRange(today, today);
       this.todayCalorieIntake = todayDietRecords.reduce((sum: number, record: DbRow) => sum + (Number(record.calories) || 0), 0);
+
+      // 数据加载完成后，检查成就（评分更新时自动检查）
+      await this.checkAchievements();
     } catch (err) {
       console.error('loadData error:', JSON.stringify(err));
     }
@@ -476,6 +490,10 @@ struct Index {
   }
 
   navigateTo(page: string): void {
+    if (page === 'achievement') {
+      this.openAchievementList();
+      return;
+    }
     try {
       router.pushUrl({ url: page }).then(() => {
         console.info('Navigate to ' + page + ' succeeded');
@@ -640,6 +658,64 @@ struct Index {
     this.checkMoodPrompt();
   }
 
+  // 检查成就
+  async checkAchievements(): Promise<void> {
+    try {
+      const score = this.getHealthScore();
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      
+      // 获取之前的连续天数
+      const prevStreak = await GlobalData.prefs.getStreakData();
+      const prevStreakCurrent = prevStreak.current;
+      
+      // 如果健康评分达到60分，更新连续天数
+      if (score >= 60) {
+        const streak: StreakData = await GlobalData.prefs.updateStreak(true);
+        this.streakCurrent = streak.current;
+        this.streakBest = streak.best;
+
+        // 只有当连续天数增加时才检查成就
+        if (streak.current > prevStreakCurrent) {
+          // 检查是否达到新的成就
+          const newAchievements = await this.achievementHelper.checkAchievements(streak.current);
+          
+          // 如果有新成就，显示弹窗
+          if (newAchievements.length > 0) {
+            this.currentAchievement = newAchievements[0]; // 显示第一个新成就
+            this.showAchievementDialog = true;
+          }
+        }
+      } else {
+        // 如果没有达到60分，重置连续天数
+        const streak: StreakData = await GlobalData.prefs.updateStreak(false);
+        this.streakCurrent = streak.current;
+        this.streakBest = streak.best;
+      }
+    } catch (err) {
+      console.error('checkAchievements error:', JSON.stringify(err));
+    }
+  }
+
+  // 打开成就列表
+  async openAchievementList(): Promise<void> {
+    try {
+      this.allAchievements = await this.achievementHelper.getAllAchievements();
+      this.showAchievementListDialog = true;
+    } catch (err) {
+      console.error('openAchievementList error:', JSON.stringify(err));
+    }
+  }
+
+  // 数据更新通知处理
+  onDataUpdate(propName: string): void {
+    if (this.dataUpdateTrigger.length > 0) {
+      console.info('DATA_UPDATE trigger:', this.dataUpdateTrigger);
+      // 重新加载数据（会自动检查成就）
+      this.loadAllData();
+    }
+  }
+
   onForegroundDateChange(propName: string): void {
     // 每次从后台回到前台触发，检测是否跨天需要弹情绪弹窗
     this.checkMoodPrompt();
@@ -697,7 +773,7 @@ struct Index {
               sleepHours: this.sleepHours,
               moodValue: this.moodValue,
               moodProgress: this.moodProgress,
-                            sleepScore: this.sleepScore,
+              sleepScore: this.sleepScore,
               waterMl: this.waterMl,
               waterGoal: this.waterGoal,
               todayCalorieIntake: this.todayCalorieIntake,
@@ -743,6 +819,11 @@ struct Index {
           .tabBar(this.tabBuilder('ic_camera', '识图', 2))
 
           TabContent() {
+            ChatTab({ activeTheme: this.theme })
+          }
+          .tabBar(this.tabBuilder('ic_ai', 'AI问答', 3))
+
+          TabContent() {
             AccountTab({
               textColor: this.textColor,
               subTextColor: this.subTextColor,
@@ -752,7 +833,7 @@ struct Index {
               onNavigate: (page: string) => { this.navigateTo(page); }
             })
           }
-          .tabBar(this.tabBuilder('ic_account', '账号', 3))
+          .tabBar(this.tabBuilder('ic_account', '账号', 4))
         }
         .animationDuration(200)
         .barHeight(56)
@@ -831,6 +912,36 @@ struct Index {
           onNoteChange: (v: string) => { this.overlayMoodNote = v; },
           onCancel: () => { this.showMoodOverlay = false; },
           onSave: () => { this.saveMoodOverlay(); }
+        })
+      }
+
+      // 成就弹窗
+      if (this.showAchievementDialog && this.currentAchievement) {
+        AchievementDialog({
+          achievement: this.currentAchievement,
+          textColor: this.textColor,
+          subTextColor: this.subTextColor,
+          cardColor: this.cardColor,
+          accentColor: this.accentColor,
+          onClose: () => {
+            this.showAchievementDialog = false;
+            this.currentAchievement = null;
+          }
+        })
+      }
+
+      // 成就列表弹窗
+      if (this.showAchievementListDialog) {
+        AchievementListDialog({
+          achievements: this.allAchievements,
+          textColor: this.textColor,
+          subTextColor: this.subTextColor,
+          cardColor: this.cardColor,
+          accentColor: this.accentColor,
+          currentStreak: this.streakCurrent,
+          onClose: () => {
+            this.showAchievementListDialog = false;
+          }
         })
       }
     }
