@@ -38,6 +38,7 @@ interface QuickFunctionItem {
 @Component
 struct Index {
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  @StorageLink('cardTarget') @Watch('onCardTarget') cardTarget: string = '';
   @StorageLink('appForegroundDate') @Watch('onForegroundDateChange') appForegroundDate: string = '';
   @State showSharePanel: boolean = false;
   @State shareDiet: boolean = true;
@@ -652,6 +653,19 @@ struct Index {
   onForegroundDateChange(propName: string): void {
     // 每次从后台回到前台触发，检测是否跨天需要弹情绪弹窗
     this.checkMoodPrompt();
+  }
+
+  onCardTarget(propName: string): void {
+    // 服务卡片 router 事件：跳转到指定页面（保留首页在栈底，返回可回到 app）
+    const target = this.cardTarget;
+    if (target.length > 0) {
+      AppStorage.setOrCreate('cardTarget', '');
+      let page: string = 'pages/WaterPage';
+      if (target === 'SleepPage') { page = 'pages/SleepPage'; }
+      else if (target === 'DietPage') { page = 'pages/DietPage'; }
+      else if (target === 'SportPage') { page = 'pages/SportPage'; }
+      this.navigateTo(page);
+    }
   }
 
   onInAppAlarm(propName: string): void {

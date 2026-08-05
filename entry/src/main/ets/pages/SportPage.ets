@@ -3,6 +3,7 @@ import { GlobalData } from '../common/GlobalData';
 import { Constants, DbRow, SportTypeDef, ThemeColors } from '../common/Constants';
 import { FoodRecognitionService } from '../services/FoodRecognitionService';
 import { LocationTrackerService } from '../services/LocationTrackerService';
+import { CardDataHelper } from '../services/CardDataHelper';
 
 @Entry
 @Component
@@ -82,6 +83,7 @@ struct SportPage {
       }
       await GlobalData.db.updateDailySummaryField(today, 'exercise_minutes', totalMin);
       await GlobalData.db.updateDailySummaryField(today, 'calories_burned', totalCal);
+      await CardDataHelper.refreshWidget(getContext(this));
     } catch (err) {
       console.error('SportPage recalcDailySportSummary error:', JSON.stringify(err));
     }
@@ -322,6 +324,7 @@ struct SportPage {
       const prevCal: number = summary ? Number(summary.calories_burned) || 0 : 0;
       await GlobalData.db.updateDailySummaryField(date, 'exercise_minutes', prevMin + minutes);
       await GlobalData.db.updateDailySummaryField(date, 'calories_burned', prevCal + calories);
+      await CardDataHelper.refreshWidget(getContext(this));
     } catch (err) {
       console.error('SportPage saveDailySummary error:', JSON.stringify(err));
     }

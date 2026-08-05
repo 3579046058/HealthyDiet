@@ -2,6 +2,7 @@ import { router, promptAction } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { Constants, DbRow, ThemeColors } from '../common/Constants';
 import { TrendChart } from '../components/TrendChart';
+import { CardDataHelper } from '../services/CardDataHelper';
 
 @Entry
 @Component
@@ -282,8 +283,9 @@ struct SleepPage {
     await GlobalData.db.addSleepRecord(record);
     await GlobalData.db.updateDailySummaryField(this.endDate, 'sleep_score', score);
     await GlobalData.db.updateDailySummaryField(this.endDate, 'sleep_hours', Math.round(sleepDuration / 60 * 10) / 10);
+    await CardDataHelper.refreshWidget(getContext(this));
     this.showInput = false;
-    
+
     // 重置日期为默认值
     await this.initDates();
     await this.loadData();
@@ -338,7 +340,8 @@ struct SleepPage {
     await GlobalData.db.addSleepRecord(record);
     await GlobalData.db.updateDailySummaryField(today, 'sleep_score', score);
     await GlobalData.db.updateDailySummaryField(today, 'sleep_hours', Math.round(sleepDuration / 60 * 10) / 10);
-    
+    await CardDataHelper.refreshWidget(getContext(this));
+
     // 删除入睡记录
     const sleepStartRecord = await GlobalData.db.getLatestSleepStartRecord();
     if (sleepStartRecord && sleepStartRecord.id) {
@@ -359,6 +362,7 @@ struct SleepPage {
     const today = await GlobalData.getTodayDate();
     await GlobalData.db.updateDailySummaryField(today, 'sleep_score', 0);
     await GlobalData.db.updateDailySummaryField(today, 'sleep_hours', 0);
+    await CardDataHelper.refreshWidget(getContext(this));
   }
 
   bg(): string { return ThemeColors.pageBg(this.theme); }

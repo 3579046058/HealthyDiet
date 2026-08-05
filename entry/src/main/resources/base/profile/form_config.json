@@ -1,22 +1,23 @@
 {
   "forms": [
     {
-      "name": "HealthWidget",
-      "displayName": "健康卡片",
-      "description": "查看今日步数、心率和饮水进度",
-      "src": "./ets/pages/FormCard.ets",
+      "name": "QuickActionsWidget",
+      "displayName": "快捷健康",
+      "description": "快速记录喝水、入睡和醒来，查看今日健康",
+      "src": "./ets/pages/QuickActionsCard.ets",
       "uiSyntax": "arkts",
       "window": {
         "designWidth": 360,
         "autoDesignWidth": true
       },
       "colorMode": "auto",
+      "isDynamic": true,
       "isDefault": true,
       "updateEnabled": true,
       "scheduledUpdateTime": "08:00",
       "updateDuration": 30,
-      "defaultDimension": "2*2",
-      "supportDimensions": ["2*2", "2*4"]
+      "defaultDimension": "2*4",
+      "supportDimensions": ["2*4"]
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { router, promptAction } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { DbRow, ThemeColors } from '../common/Constants';
+import { CardDataHelper } from '../services/CardDataHelper';
 
 @Entry
 @Component
@@ -53,6 +54,7 @@ struct MoodPage {
         note: this.note,
       };
       await GlobalData.db.addMoodRecord(record);
+      await CardDataHelper.refreshWidget(getContext(this));
       await this.loadData();
       this.note = '';
       this.selectedMood = 3;
@@ -92,6 +94,7 @@ struct MoodPage {
       return;
     }
     await GlobalData.db.deleteMoodRecord(id);
+    await CardDataHelper.refreshWidget(getContext(this));
     promptAction.showToast({ message: '已删除' });
     await this.loadData();
   }
