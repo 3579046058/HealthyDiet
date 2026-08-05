@@ -146,8 +146,12 @@ export default class HealthFormAbility extends FormExtensionAbility {
             total_minutes: totalMin,
             score: score,
           };
-          await GlobalData.db.addSleepRecord(record);
-          await GlobalData.db.updateDailySummaryField(today, 'sleep_score', score);
+          const ok: boolean = await GlobalData.db.addSleepRecord(record);
+          if (!ok) {
+            console.warn('HealthFormAbility sleep_toggle rejected: overlapping sleep record');
+          } else {
+            await GlobalData.db.updateDailySummaryField(today, 'sleep_score', score);
+          }
           if (latestSleep.id) {
             await GlobalData.db.deleteSleepStartRecord(Number(latestSleep.id));
           }
