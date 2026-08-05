@@ -4,6 +4,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { http } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { FoodCalories } from '../common/Constants';
+import { GlobalData } from '../common/GlobalData';
 
 export interface RecognitionOutcome {
   foodName: string;
@@ -64,8 +65,28 @@ export class FoodRecognitionService {
     return FoodRecognitionService.instance;
   }
 
-  // 从 rawfile/ai_config.json 异步加载 API 密钥（避免硬编码在源码）
+  // 从用户设置或 rawfile/ai_config.json 异步加载 API 密钥（用户设置优先，避免硬编码在源码）
   async init(context: Context): Promise<void> {
+    await this.loadApiKey(context);
+  }
+
+  async reloadApiKey(context: Context): Promise<void> {
+    await this.loadApiKey(context);
+  }
+
+  private async loadApiKey(context: Context): Promise<void> {
+    try {
+      if (GlobalData.initialized) {
+        const custom: string = await GlobalData.prefs.getAiApiKey();
+        if (custom.length > 0) {
+          this.glmApiKey = custom;
+          console.info('FoodRecognitionService key loaded from user settings, keyLen=' + String(custom.length));
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('FoodRecognitionService prefs key error:', JSON.stringify(err));
+    }
     try {
       const resourceMgr = context.resourceManager;
       const data: Uint8Array = await resourceMgr.getRawFileContent('ai_config.json');

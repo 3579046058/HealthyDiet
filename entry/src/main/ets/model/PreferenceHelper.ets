@@ -20,6 +20,7 @@ const KEY_LAST_MOOD_PROMPT = 'last_mood_prompt_date';
 const KEY_HEALTH_CARD_ORDER = 'health_card_order';
 const KEY_QUICK_FUNCTION_ORDER = 'quick_function_order';
 const KEY_DAILY_CALORIE = "dailyCalorie";
+const KEY_AI_API_KEY = 'ai_api_key';
 // 远程新增三大营养素key
 const KEY_DAILY_PROTEIN = "daily_protein";
 const KEY_DAILY_FAT = "daily_fat";
@@ -333,6 +334,24 @@ export class PreferenceHelper {
       await this.pref.flush();
     } catch (err) {
       console.error('setLastAchievementCheckDate error:', JSON.stringify(err));
+    }
+  }
+
+  async getAiApiKey(): Promise<string> {
+    try {
+      return await this.pref.get(KEY_AI_API_KEY, '') as string;
+    } catch (err) {
+      console.error('getAiApiKey error:', JSON.stringify(err));
+      return '';
+    }
+  }
+
+  async setAiApiKey(key: string): Promise<void> {
+    try {
+      await this.pref.put(KEY_AI_API_KEY, key);
+      await this.pref.flush();
+    } catch (err) {
+      console.error('setAiApiKey error:', JSON.stringify(err));
     }
   }
 }

@@ -1,6 +1,7 @@
 import { http } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { ChatHistoryItem } from '../model/ChatModels';
+import { GlobalData } from '../common/GlobalData';
 
 export interface ChatCallbacks {
   onChunk: (chunk: string) => void;
@@ -61,8 +62,28 @@ export class ChatService {
   }
 
   async init(context: Context): Promise<void> {
-    if (this.glmApiKey.length > 0) {
-      return;
+    await this.loadApiKey(context);
+  }
+
+  async reloadApiKey(context: Context): Promise<void> {
+    this.glmApiKey = '';
+    this.initError = '';
+    await this.loadApiKey(context);
+  }
+
+  private async loadApiKey(context: Context): Promise<void> {
+    try {
+      if (GlobalData.initialized) {
+        const custom: string = await GlobalData.prefs.getAiApiKey();
+        if (custom.length > 0) {
+          this.glmApiKey = custom;
+          this.initError = '';
+          console.info('ChatService key loaded from user settings, keyLen=' + String(custom.length));
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('ChatService prefs key error:', JSON.stringify(err));
     }
     let rawText: string = '';
     try {
@@ -86,7 +107,7 @@ export class ChatService {
     if (typeof key === 'string' && key.length > 0) {
       this.glmApiKey = key;
       this.initError = '';
-      console.info('ChatService key loaded, keyLen=' + String(this.glmApiKey.length));
+      console.info('ChatService key loaded from ai_config.json, keyLen=' + String(this.glmApiKey.length));
     } else {
       this.initError = 'ai_config.json 中缺少 glm_api_key 字段';
       console.error('ChatService config missing key');

@@ -1,6 +1,8 @@
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
 import { ThemeColors } from '../common/Constants';
 import { GlobalData } from '../common/GlobalData';
+import { ChatService } from '../services/ChatService';
+import { FoodRecognitionService } from '../services/FoodRecognitionService';
 
 @Entry
 @Component
@@ -9,6 +11,12 @@ struct SettingsPage {
   @StorageLink('systemDark') systemDark: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  @State apiKeyInput: string = '';
+  @State keyStatus: string = '';
+
+  aboutToAppear(): void {
+    this.refreshKeyStatus();
+  }
 
   bg(): string { return ThemeColors.pageBg(this.theme); }
   card(): string { return ThemeColors.cardBg(this.theme); }
@@ -55,6 +63,64 @@ struct SettingsPage {
           this.settingItem('🎨', '主题切换', '当前：' + this.themeLabel(), () => { this.toggleTheme(); })
           this.settingItem('🔐', '权限管理', '管理运动、位置、蓝牙、健康数据等权限', () => { this.navigate('pages/PermissionPage'); })
 
+          Text('AI 服务').fontSize(14).fontColor(this.sub()).width('100%')
+            .padding({ left: 20, top: 20, bottom: 8 })
+
+          Column() {
+            Row() {
+              Text('🤖').fontSize(20)
+              Column() {
+                Text('AI 问答密钥').fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.txt())
+                Text(this.keyStatus).fontSize(11).fontColor(this.sub()).margin({ top: 2 })
+              }
+              .alignItems(HorizontalAlign.Start).margin({ left: 12 }).layoutWeight(1)
+            }
+            .width('100%')
+
+            TextInput({ placeholder: '粘贴新的 API Key（留空保存则恢复内置）', text: this.apiKeyInput })
+              .width('100%')
+              .height(42)
+              .fontSize(14)
+              .fontColor(this.txt())
+              .placeholderColor(this.sub())
+              .type(InputType.Password)
+              .backgroundColor(this.bg())
+              .borderRadius(10)
+              .padding({ left: 12, right: 12 })
+              .margin({ top: 12 })
+              .onChange((value: string) => { this.apiKeyInput = value; })
+
+            Row() {
+              Button('保存密钥')
+                .fontSize(14)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(Color.White)
+                .backgroundColor('#9C27B0')
+                .layoutWeight(1)
+                .height(38)
+                .borderRadius(10)
+                .onClick(() => { this.saveApiKey(); })
+
+              Button('恢复内置')
+                .fontSize(14)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(this.txt())
+                .backgroundColor(this.bg())
+                .layoutWeight(1)
+                .height(38)
+                .borderRadius(10)
+                .margin({ left: 10 })
+                .onClick(() => { this.clearApiKey(); })
+            }
+            .width('100%')
+            .margin({ top: 10 })
+          }
+          .width('100%')
+          .padding(14)
+          .backgroundColor(this.card())
+          .borderRadius(12)
+          .margin({ left: 16, right: 16, bottom: 8 })
+
           Text('关于').fontSize(14).fontColor(this.sub()).width('100%')
             .padding({ left: 20, top: 20, bottom: 8 })
 
@@ -75,6 +141,41 @@ struct SettingsPage {
 
   navigate(page: string): void {
     router.pushUrl({ url: page }).catch(() => {});
+  }
+
+  async refreshKeyStatus(): Promise<void> {
+    const custom: string = await GlobalData.prefs.getAiApiKey();
+    if (custom.length > 0) {
+      const head: string = custom.length > 6 ? custom.slice(0, 6) : custom;
+      const tail: string = custom.length > 4 ? custom.slice(-4) : '';
+      this.keyStatus = '自定义密钥已配置（' + head + '…' + tail + '）';
+    } else {
+      this.keyStatus = '使用内置密钥（ai_config.json）';
+    }
+  }
+
+  async saveApiKey(): Promise<void> {
+    const key: string = this.apiKeyInput.trim();
+    if (key.length === 0) {
+      promptAction.showToast({ message: '请输入 API Key' });
+      return;
+    }
+    await GlobalData.prefs.setAiApiKey(key);
+    const ctx: Context = getContext(this);
+    await ChatService.getInstance().reloadApiKey(ctx);
+    await FoodRecognitionService.getInstance().reloadApiKey(ctx);
+    this.apiKeyInput = '';
+    await this.refreshKeyStatus();
+    promptAction.showToast({ message: 'API Key 已保存并生效' });
+  }
+
+  async clearApiKey(): Promise<void> {
+    await GlobalData.prefs.setAiApiKey('');
+    const ctx: Context = getContext(this);
+    await ChatService.getInstance().reloadApiKey(ctx);
+    await FoodRecognitionService.getInstance().reloadApiKey(ctx);
+    await this.refreshKeyStatus();
+    promptAction.showToast({ message: '已恢复内置密钥' });
   }
 
   showAbout(): void {
