@@ -1,0 +1,75 @@
+<html>
+<head>
+<title>napi_init.cpp</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #bbb529;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #a9b7c6;}
+.s4 { color: #6897bb;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+napi_init.cpp</font>
+</center></td></tr></table>
+<pre><span class="s0">#include </span><span class="s1">&quot;napi/native_api.h&quot;</span>
+
+<span class="s2">static </span><span class="s3">napi_value Add</span><span class="s1">(</span><span class="s3">napi_env env</span><span class="s2">, </span><span class="s3">napi_callback_info info</span><span class="s1">)</span>
+<span class="s1">{</span>
+    <span class="s3">size_t argc </span><span class="s1">= </span><span class="s4">2</span><span class="s2">;</span>
+    <span class="s3">napi_value args</span><span class="s1">[</span><span class="s4">2</span><span class="s1">] = {</span><span class="s2">nullptr</span><span class="s1">}</span><span class="s2">;</span>
+
+    <span class="s3">napi_get_cb_info</span><span class="s1">(</span><span class="s3">env</span><span class="s2">, </span><span class="s3">info</span><span class="s2">, </span><span class="s1">&amp;</span><span class="s3">argc</span><span class="s2">, </span><span class="s3">args</span><span class="s2">, nullptr, nullptr</span><span class="s1">)</span><span class="s2">;</span>
+
+    <span class="s3">napi_valuetype valuetype0</span><span class="s2">;</span>
+    <span class="s3">napi_typeof</span><span class="s1">(</span><span class="s3">env</span><span class="s2">, </span><span class="s3">args</span><span class="s1">[</span><span class="s4">0</span><span class="s1">]</span><span class="s2">, </span><span class="s1">&amp;</span><span class="s3">valuetype0</span><span class="s1">)</span><span class="s2">;</span>
+
+    <span class="s3">napi_valuetype valuetype1</span><span class="s2">;</span>
+    <span class="s3">napi_typeof</span><span class="s1">(</span><span class="s3">env</span><span class="s2">, </span><span class="s3">args</span><span class="s1">[</span><span class="s4">1</span><span class="s1">]</span><span class="s2">, </span><span class="s1">&amp;</span><span class="s3">valuetype1</span><span class="s1">)</span><span class="s2">;</span>
+
+    <span class="s2">double </span><span class="s3">value0</span><span class="s2">;</span>
+    <span class="s3">napi_get_value_double</span><span class="s1">(</span><span class="s3">env</span><span class="s2">, </span><span class="s3">args</span><span class="s1">[</span><span class="s4">0</span><span class="s1">]</span><span class="s2">, </span><span class="s1">&amp;</span><span class="s3">value0</span><span class="s1">)</span><span class="s2">;</span>
+
+    <span class="s2">double </span><span class="s3">value1</span><span class="s2">;</span>
+    <span class="s3">napi_get_value_double</span><span class="s1">(</span><span class="s3">env</span><span class="s2">, </span><span class="s3">args</span><span class="s1">[</span><span class="s4">1</span><span class="s1">]</span><span class="s2">, </span><span class="s1">&amp;</span><span class="s3">value1</span><span class="s1">)</span><span class="s2">;</span>
+
+    <span class="s3">napi_value sum</span><span class="s2">;</span>
+    <span class="s3">napi_create_double</span><span class="s1">(</span><span class="s3">env</span><span class="s2">, </span><span class="s3">value0 </span><span class="s1">+ </span><span class="s3">value1</span><span class="s2">, </span><span class="s1">&amp;</span><span class="s3">sum</span><span class="s1">)</span><span class="s2">;</span>
+
+    <span class="s2">return </span><span class="s3">sum</span><span class="s2">;</span>
+
+<span class="s1">}</span>
+
+<span class="s3">EXTERN_C_START</span>
+<span class="s2">static </span><span class="s3">napi_value Init</span><span class="s1">(</span><span class="s3">napi_env env</span><span class="s2">, </span><span class="s3">napi_value exports</span><span class="s1">)</span>
+<span class="s1">{</span>
+    <span class="s3">napi_property_descriptor desc</span><span class="s1">[] = {</span>
+        <span class="s1">{ </span><span class="s5">&quot;add&quot;</span><span class="s2">, nullptr, </span><span class="s3">Add</span><span class="s2">, nullptr, nullptr, nullptr, </span><span class="s3">napi_default</span><span class="s2">, nullptr </span><span class="s1">}</span>
+    <span class="s1">}</span><span class="s2">;</span>
+    <span class="s3">napi_define_properties</span><span class="s1">(</span><span class="s3">env</span><span class="s2">, </span><span class="s3">exports</span><span class="s2">, </span><span class="s1">sizeof(</span><span class="s3">desc</span><span class="s1">) / sizeof(</span><span class="s3">desc</span><span class="s1">[</span><span class="s4">0</span><span class="s1">])</span><span class="s2">, </span><span class="s3">desc</span><span class="s1">)</span><span class="s2">;</span>
+    <span class="s2">return </span><span class="s3">exports</span><span class="s2">;</span>
+<span class="s1">}</span>
+<span class="s3">EXTERN_C_END</span>
+
+<span class="s2">static </span><span class="s3">napi_module demoModule </span><span class="s1">= {</span>
+    <span class="s1">.</span><span class="s3">nm_version </span><span class="s1">= </span><span class="s4">1</span><span class="s2">,</span>
+    <span class="s1">.</span><span class="s3">nm_flags </span><span class="s1">= </span><span class="s4">0</span><span class="s2">,</span>
+    <span class="s1">.</span><span class="s3">nm_filename </span><span class="s1">= </span><span class="s2">nullptr,</span>
+    <span class="s1">.</span><span class="s3">nm_register_func </span><span class="s1">= </span><span class="s3">Init</span><span class="s2">,</span>
+    <span class="s1">.</span><span class="s3">nm_modname </span><span class="s1">= </span><span class="s5">&quot;entry&quot;</span><span class="s2">,</span>
+    <span class="s1">.</span><span class="s3">nm_priv </span><span class="s1">= ((</span><span class="s2">void</span><span class="s1">*)</span><span class="s4">0</span><span class="s1">)</span><span class="s2">,</span>
+    <span class="s1">.</span><span class="s3">reserved </span><span class="s1">= { </span><span class="s4">0 </span><span class="s1">}</span><span class="s2">,</span>
+<span class="s1">}</span><span class="s2">;</span>
+
+<span class="s2">extern </span><span class="s5">&quot;C&quot; </span><span class="s1">__attribute__((</span><span class="s3">constructor</span><span class="s1">)) </span><span class="s2">void </span><span class="s3">RegisterEntryModule</span><span class="s1">(</span><span class="s2">void</span><span class="s1">)</span>
+<span class="s1">{</span>
+    <span class="s3">napi_module_register</span><span class="s1">(&amp;</span><span class="s3">demoModule</span><span class="s1">)</span><span class="s2">;</span>
+<span class="s1">}</span>
+</pre>
+</body>
+</html>

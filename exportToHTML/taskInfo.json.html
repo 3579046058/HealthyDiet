@@ -1,0 +1,612 @@
+<html>
+<head>
+<title>taskInfo.json</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #a9b7c6;}
+.s1 { color: #6a8759;}
+.s2 { color: #cc7832;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+taskInfo.json</font>
+</center></td></tr></table>
+<pre><span class="s0">{</span>
+  <span class="s1">&quot;ohos-module-entry&quot;</span><span class="s2">: </span><span class="s0">[</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;assembleHap&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Assemble the task for the packaged HAP file.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;buildPreviewerResource&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build the preview resources.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;HotReloadBuild&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build in hot reload mode.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;GenerateBuildProfile&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Create build profile hook task.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;assembleDevHqf&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Assemble the task for the packaged HQF file.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;compileNative&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile the hook task for native resources.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;PreviewBuild&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build preview in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;UnitTestBuild&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build a unit test.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;test&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build a unit test without DevEco Studio&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;buildHotReloadResource&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build the hot reload resources.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;clean&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Other&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Clear the cache information.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;onDeviceTest&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build a device test without DevEco Studio&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;buildInfo&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Help&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Displays the build information of the Project or Module.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@SyscapTransform&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Transform SysCap in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@CreateModuleInfo&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Create the ModuleInfo.ts file for the hap/hsp package.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@MakePackInfo&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate module pack.info in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@GenerateMetadata&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate metadata in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@PackageHqf&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Package&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Preform quickfix hqf packaging.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@SignHqf&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Sign&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Signing for quickfix hqf package.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@PackingCheck&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Verification&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Check package product&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@PackageHap&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Package&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build the HAP package in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@SignHap&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Sign&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Sign the HAP package.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@CompileArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;ArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS or JS components for large-system devices in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@CompileJS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;ArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS or JS components for large-system devices in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@BuildArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;ArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS or JS components using Node.js for large-system devices in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@BuildJS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;ArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS or JS components using Node.js for large-system devices in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@HotReloadArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;ArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS components during hot loading in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ColdReloadArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;ArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS components during cold loading in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@PreviewArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS components on preview in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@OhosTestCompileArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;ArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS or JS components using Node.js for large-system devices in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@OhosTestCompileJS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;ArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS or JS components using Node.js for large-system devices in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@OhosTestBuildArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;ArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS or JS components using Node.js for large-system devices in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@OhosTestBuildJS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;ArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS or JS components using Node.js for large-system devices in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@UnitTestArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;ArkTS&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile ArkTS components at unit test time in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ProcessResource&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Resources&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Process resources in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@CompileResource&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Resources&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile project resources in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@PreviewProcessResource&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Resources&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Process preview resources incrementally in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@BuildNativeWithNinja&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Native&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile CPP source with Ninja in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@BuildNativeWithCmake&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Native&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Compile CPP source with CMake in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ProcessLibs&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Resources&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Process .so files in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@DoNativeBinxo&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Resources&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Binxo .so files to check file.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@PrepareQuickfix&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Prepare changed assets for quickfix.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@DoNativeStrip&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Native&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Strip .so files to decrease size.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@CacheNativeLibs&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Native&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;cache native strip .so fileInfo&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ConfigureCmake&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Native&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;cache native strip .so fileInfo&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@PreBuild&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Verification&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Pre-build in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@GenerateLoaderJson&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate loader.json in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ProcessProfile&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Config&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Process app config manifest files in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@MergeProfile&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Config&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Merge app config manifest files in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@PreviewHookCompileResource&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Add a hook task for compiling preview resources.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@CreateBuildProfile&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Create the BuildProfile.ets file for the HAP/HSP package.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@PreviewUpdateAssets&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Config&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Update main_pages.json and module.json before PreviewBuild.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@BuildUnitTestHook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build a unit test hook.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ReplaceSourceMapInCoverageMode&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Replace sourcemap in coverage mode.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ReplaceUnitTestIndexFile&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Other&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Replace the index file in unit tests.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@UnitTestProcessProfile&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Config&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Add the entry TestAbility to the profile file during unit test building.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ReplacePreviewerPage&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Other&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Accept previewer arguments, then use them to replace the ones in the page file.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@CopyPreviewProfile&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Other&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Copy preview profile.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@PreviewCompileResource&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Resources&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Use Preview to compile project resources in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@OhosTestCopyMockConfigJson&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Other&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Ohos test copy mock config json to hap resources.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@UnitTestCopyMockConfigJson&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Other&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Unit test copy mock config json to hap resources.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@SignProjectRemoteHsp&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Sign&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Sign the project-level remote HSP package.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@SignModuleRemoteHsp&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Sign&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Sign the module-level remote HSP package.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@PreCheckSyscap&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Verification&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Pre-check SysCap.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@GenerateUnitTestTemplate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Building a unit test template without DevEco Studio&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@GenerateOhosTestTemplate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Building a ohosTest template without DevEco Studio&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@GenerateUnitTestResult&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Building a unit test result without DevEco Studio&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ProcessRouterMap&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Process router map configuration.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ProcessShareConfig&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Process share config configuration.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ProcessStartupConfig&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Process startup configuration.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@GenerateDeviceCoverage&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate ohos test coverage report.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@BeforeGenerateDeviceCoverage&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate ohos test coverage report prerequisites.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@GeneratePkgContextInfo&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate pkgContextInfo.json to ets-loader.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@GeneratePkgSdkInfo&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate pkgSdkInfo.json.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ProcessIntegratedHsp&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Sign&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Use package tool process integrated hsp.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@GeneratePkgModuleJson&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Package&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate the module.json in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ProcessCompiledResources&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Resources&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Process compiled resources in stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@CollectDebugSymbol&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Collect debug symbols to output dir.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;default@ProcessModulePrivacyProfile&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Process module pac.json5 in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;tasks&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Help&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Displays the tasks of the HvigorCoreNode.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;taskTree&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Help&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Displays the task dag tree of the HvigorCoreNode.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;init&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Sync&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Sync and refresh project&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span>
+  <span class="s0">]</span><span class="s2">,</span>
+  <span class="s1">&quot;ohos-project&quot;</span><span class="s2">: </span><span class="s0">[</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;tasks&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Help&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Displays the tasks of the HvigorCoreNode.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;taskTree&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Help&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Displays the task dag tree of the HvigorCoreNode.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;prune&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Other&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Clean up old hvigor cache files and remove unreferenced packages from store.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;assembleApp&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Hook&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Assemble the task for the packaged app.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;clean&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Other&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Clear the cache information.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;collectCoverage&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Other&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate coverage statistics reports based on instrumentation dotting data.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;init&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Sync&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Sync and refresh project&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;SignApp&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Sign&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Sign the app package.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;PackageApp&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Package&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build the app package in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;SignPackagesFromApp&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Package&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build all unsigned app package in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;ProcessProjectPrivacyProfile&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Process project pac.json5 in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;GeneratePackRes&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Build the pack.res file in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;PreBuildApp&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Verification&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Prepare before building the app.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;DuplicateDependencyCheck&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Verification&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Check duplicated dependencies when building app.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;MakeProjectPackInfo&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Generate project pack.info in the stage model.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span><span class="s2">,</span>
+    <span class="s0">{</span>
+      <span class="s1">&quot;TASK_NAME&quot;</span><span class="s2">: </span><span class="s1">&quot;buildInfo&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;GROUP&quot;</span><span class="s2">: </span><span class="s1">&quot;Help&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;DESCRIPTION&quot;</span><span class="s2">: </span><span class="s1">&quot;Displays the build information of the Project or Module.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;SOURCE_PLUGIN_ID&quot;</span><span class="s2">: </span><span class="s1">&quot;hvigor-ohos-plugin&quot;</span>
+    <span class="s0">}</span>
+  <span class="s0">]</span>
+<span class="s0">}</span></pre>
+</body>
+</html>

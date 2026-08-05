@@ -1,0 +1,44 @@
+<html>
+<head>
+<title>mock-config-json5-schema.json</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #a9b7c6;}
+.s1 { color: #6a8759;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+mock-config-json5-schema.json</font>
+</center></td></tr></table>
+<pre><span class="s0">{</span>
+  <span class="s1">&quot;$schema&quot;</span><span class="s2">: </span><span class="s1">&quot;http://json-schema.org/draft-04/schema#&quot;</span><span class="s2">,</span>
+  <span class="s1">&quot;title&quot;</span><span class="s2">: </span><span class="s1">&quot;JSON schema for mock-config.json5 file&quot;</span><span class="s2">,</span>
+  <span class="s1">&quot;definitions&quot;</span><span class="s2">: </span><span class="s0">{</span>
+    <span class="s1">&quot;sourceRedirection&quot;</span><span class="s2">: </span><span class="s0">{</span>
+      <span class="s1">&quot;description&quot;</span><span class="s2">: </span><span class="s1">&quot;A source redirection for mocked module.&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;type&quot;</span><span class="s2">: </span><span class="s1">&quot;object&quot;</span><span class="s2">,</span>
+      <span class="s1">&quot;required&quot;</span><span class="s2">: </span><span class="s0">[</span>
+        <span class="s1">&quot;source&quot;</span>
+      <span class="s0">]</span><span class="s2">,</span>
+      <span class="s1">&quot;properties&quot;</span><span class="s2">: </span><span class="s0">{</span>
+        <span class="s1">&quot;source&quot;</span><span class="s2">: </span><span class="s0">{</span>
+          <span class="s1">&quot;type&quot;</span><span class="s2">: </span><span class="s1">&quot;string&quot;</span><span class="s2">,</span>
+          <span class="s1">&quot;maxLength&quot;</span><span class="s2">: </span><span class="s3">128</span><span class="s2">,</span>
+          <span class="s1">&quot;minLength&quot;</span><span class="s2">: </span><span class="s3">1</span>
+        <span class="s0">}</span>
+      <span class="s0">}</span>
+    <span class="s0">}</span>
+  <span class="s0">}</span><span class="s2">,</span>
+  <span class="s1">&quot;patternProperties&quot;</span><span class="s2">: </span><span class="s0">{</span>
+    <span class="s1">&quot;.+&quot;</span><span class="s2">: </span><span class="s0">{</span>
+      <span class="s1">&quot;$ref&quot;</span><span class="s2">: </span><span class="s1">&quot;#/definitions/sourceRedirection&quot;</span>
+    <span class="s0">}</span>
+  <span class="s0">}</span>
+<span class="s0">}</span></pre>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<html>
+<head>
+<title>SysTestKit.js</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #faa23d;}
+.s3 { color: #aa7dfc;}
+.s4 { color: #e2da90;}
+.s5 { color: #db7e9b;}
+.s6 { color: #b3e54c;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+SysTestKit.js</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+ * Copyright (c) 2022-2023 Huawei Device Co., Ltd. 
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;); 
+ * you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at 
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0 
+ * 
+ * Unless required by applicable law or agreed to in writing, software 
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS, 
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing permissions and 
+ * limitations under the License. 
+ */</span>
+
+<span class="s1">import </span><span class="s2">{</span><span class="s1">TAG</span><span class="s2">} </span><span class="s1">from </span><span class="s3">'../../Constant'</span><span class="s4">;</span>
+<span class="s1">import Core from </span><span class="s3">'../../core.js'</span><span class="s4">;</span>
+
+<span class="s1">export default class SysTestKit </span><span class="s2">{</span>
+
+  <span class="s1">static delegator </span><span class="s4">= </span><span class="s1">null</span><span class="s4">;</span>
+  <span class="s1">static systemTime </span><span class="s4">= </span><span class="s1">null</span><span class="s4">;</span>
+  <span class="s1">static workerPort </span><span class="s4">= </span><span class="s1">null</span><span class="s4">;</span>
+
+  <span class="s1">constructor</span><span class="s5">() </span><span class="s2">{</span>
+    <span class="s1">this</span><span class="s4">.</span><span class="s1">id </span><span class="s4">= </span><span class="s3">'sysTestKit'</span><span class="s4">;</span>
+    <span class="s1">this</span><span class="s4">.</span><span class="s1">index </span><span class="s4">= </span><span class="s6">0</span><span class="s4">;</span>
+  <span class="s2">}</span>
+
+  <span class="s1">static getDescribeName</span><span class="s5">() </span><span class="s2">{</span>
+    <span class="s1">return Core</span><span class="s4">.</span><span class="s1">getInstance</span><span class="s5">()</span><span class="s4">.</span><span class="s1">getDefaultService</span><span class="s5">(</span><span class="s3">'suite'</span><span class="s5">)</span><span class="s4">.</span><span class="s1">getCurrentRunningSuite</span><span class="s5">()</span><span class="s4">.</span><span class="s1">description</span><span class="s4">;</span>
+  <span class="s2">}</span>
+
+  <span class="s1">static getItName</span><span class="s5">() </span><span class="s2">{</span>
+    <span class="s1">return Core</span><span class="s4">.</span><span class="s1">getInstance</span><span class="s5">()</span><span class="s4">.</span><span class="s1">getDefaultService</span><span class="s5">(</span><span class="s3">'spec'</span><span class="s5">)</span><span class="s4">.</span><span class="s1">getCurrentRunningSpec</span><span class="s5">()</span><span class="s4">.</span><span class="s1">description</span><span class="s4">;</span>
+  <span class="s2">}</span>
+
+  <span class="s1">static getItAttribute</span><span class="s5">() </span><span class="s2">{</span>
+    <span class="s1">return Core</span><span class="s4">.</span><span class="s1">getInstance</span><span class="s5">()</span><span class="s4">.</span><span class="s1">getDefaultService</span><span class="s5">(</span><span class="s3">'spec'</span><span class="s5">)</span><span class="s4">.</span><span class="s1">getCurrentRunningSpec</span><span class="s5">()</span><span class="s4">.</span><span class="s1">fi</span><span class="s4">;</span>
+  <span class="s2">}</span>
+
+  <span class="s1">static actionStart</span><span class="s5">(</span><span class="s1">tag</span><span class="s5">) </span><span class="s2">{</span>
+    <span class="s1">console</span><span class="s4">.</span><span class="s1">info</span><span class="s5">(</span><span class="s3">`</span><span class="s2">${</span><span class="s1">TAG</span><span class="s2">}${</span><span class="s1">JSON</span><span class="s4">.</span><span class="s1">stringify</span><span class="s5">(</span><span class="s1">tag</span><span class="s5">)</span><span class="s2">}</span><span class="s3">`</span><span class="s5">)</span><span class="s4">;</span>
+    <span class="s1">var message </span><span class="s4">= </span><span class="s3">'\n' </span><span class="s4">+ </span><span class="s3">'OHOS_REPORT_ACTIONSTART: ' </span><span class="s4">+ </span><span class="s1">JSON</span><span class="s4">.</span><span class="s1">stringify</span><span class="s5">(</span><span class="s1">tag</span><span class="s5">) </span><span class="s4">+ </span><span class="s3">'\n'</span><span class="s4">;</span>
+    <span class="s1">SysTestKit</span><span class="s4">.</span><span class="s1">print</span><span class="s5">(</span><span class="s1">message</span><span class="s5">)</span><span class="s4">;</span>
+    <span class="s1">console</span><span class="s4">.</span><span class="s1">info</span><span class="s5">(</span><span class="s3">`</span><span class="s2">${</span><span class="s1">TAG</span><span class="s2">}${</span><span class="s1">JSON</span><span class="s4">.</span><span class="s1">stringify</span><span class="s5">(</span><span class="s1">tag</span><span class="s5">)</span><span class="s2">} </span><span class="s3">actionStart print success`</span><span class="s5">)</span><span class="s4">;</span>
+  <span class="s2">}</span>
+
+  <span class="s1">static actionEnd</span><span class="s5">(</span><span class="s1">tag</span><span class="s5">) </span><span class="s2">{</span>
+    <span class="s1">console</span><span class="s4">.</span><span class="s1">info</span><span class="s5">(</span><span class="s3">`</span><span class="s2">${</span><span class="s1">TAG</span><span class="s2">}${</span><span class="s1">JSON</span><span class="s4">.</span><span class="s1">stringify</span><span class="s5">(</span><span class="s1">tag</span><span class="s5">)</span><span class="s2">}</span><span class="s3">`</span><span class="s5">)</span><span class="s4">;</span>
+    <span class="s1">var message </span><span class="s4">= </span><span class="s3">'\n' </span><span class="s4">+ </span><span class="s3">'OHOS_REPORT_ACTIONEND: ' </span><span class="s4">+ </span><span class="s1">JSON</span><span class="s4">.</span><span class="s1">stringify</span><span class="s5">(</span><span class="s1">tag</span><span class="s5">) </span><span class="s4">+ </span><span class="s3">'\n'</span><span class="s4">;</span>
+    <span class="s1">SysTestKit</span><span class="s4">.</span><span class="s1">print</span><span class="s5">(</span><span class="s1">message</span><span class="s5">)</span><span class="s4">;</span>
+    <span class="s1">console</span><span class="s4">.</span><span class="s1">info</span><span class="s5">(</span><span class="s3">`</span><span class="s2">${</span><span class="s1">TAG</span><span class="s2">}${</span><span class="s1">JSON</span><span class="s4">.</span><span class="s1">stringify</span><span class="s5">(</span><span class="s1">tag</span><span class="s5">)</span><span class="s2">}  </span><span class="s3">actionEnd print success`</span><span class="s5">)</span><span class="s4">;</span>
+  <span class="s2">}</span>
+
+  <span class="s1">static async existKeyword</span><span class="s5">(</span><span class="s1">keyword</span><span class="s4">, </span><span class="s1">timeout</span><span class="s5">) </span><span class="s2">{</span>
+    <span class="s1">timeout </span><span class="s4">= </span><span class="s1">timeout </span><span class="s4">|| </span><span class="s6">4</span><span class="s4">;</span>
+
+    <span class="s1">let searchResult </span><span class="s4">= </span><span class="s1">false</span><span class="s4">;</span>
+    <span class="s1">let cmd </span><span class="s4">= </span><span class="s3">'hilog -x | grep -i \'' </span><span class="s4">+ </span><span class="s1">keyword </span><span class="s4">+ </span><span class="s3">'\''</span><span class="s4">;</span>
+    <span class="s1">await executePromise</span><span class="s5">(</span><span class="s1">cmd</span><span class="s4">, </span><span class="s1">timeout</span><span class="s5">)</span><span class="s4">.</span><span class="s1">then</span><span class="s5">((</span><span class="s1">data</span><span class="s5">) </span><span class="s4">=&gt; </span><span class="s2">{</span>
+      <span class="s1">searchResult </span><span class="s4">= </span><span class="s1">data</span><span class="s4">;</span>
+    <span class="s2">}</span><span class="s5">)</span><span class="s4">;</span>
+    <span class="s1">return searchResult</span><span class="s4">;</span>
+  <span class="s2">}</span>
+
+  <span class="s1">static async clearLog</span><span class="s5">() </span><span class="s2">{</span>
+    <span class="s1">let cmd </span><span class="s4">= </span><span class="s3">'hilog -r | hilog -G 16M'</span><span class="s4">;</span>
+    <span class="s1">try </span><span class="s2">{</span>
+      <span class="s1">await SysTestKit</span><span class="s4">.</span><span class="s1">delegator</span><span class="s4">.</span><span class="s1">executeShellCommand</span><span class="s5">(</span><span class="s1">cmd</span><span class="s5">)</span><span class="s4">;</span>
+      <span class="s1">return true</span><span class="s4">;</span>
+    <span class="s2">} </span><span class="s1">catch </span><span class="s5">(</span><span class="s1">error</span><span class="s5">) </span><span class="s2">{</span>
+      <span class="s1">throw error</span><span class="s4">;</span>
+    <span class="s2">}</span>
+  <span class="s2">}</span>
+  <span class="s1">static async print</span><span class="s5">(</span><span class="s1">message</span><span class="s5">) </span><span class="s2">{</span>
+    <span class="s1">if </span><span class="s5">(</span><span class="s1">Object</span><span class="s4">.</span><span class="s1">hasOwn</span><span class="s5">(</span><span class="s1">SysTestKit</span><span class="s4">.</span><span class="s1">delegator</span><span class="s4">, </span><span class="s3">'printSync'</span><span class="s5">)) </span><span class="s2">{</span>
+      <span class="s1">console</span><span class="s4">.</span><span class="s1">info</span><span class="s5">(</span><span class="s3">`</span><span class="s2">${</span><span class="s1">TAG</span><span class="s2">}</span><span class="s3">printSync called ...`</span><span class="s5">)</span><span class="s4">;</span>
+      <span class="s1">SysTestKit</span><span class="s4">.</span><span class="s1">delegator</span><span class="s4">.</span><span class="s1">printSync</span><span class="s5">(</span><span class="s1">message</span><span class="s5">)</span><span class="s4">;</span>
+    <span class="s2">} </span><span class="s1">else </span><span class="s2">{</span>
+      <span class="s1">await SysTestKit</span><span class="s4">.</span><span class="s1">delegator</span><span class="s4">.</span><span class="s1">print</span><span class="s5">(</span><span class="s1">message</span><span class="s5">)</span><span class="s4">;</span>
+    <span class="s2">}</span>
+  <span class="s2">}</span>
+
+  <span class="s1">static async getRealTime</span><span class="s5">() </span><span class="s2">{</span>
+    <span class="s1">let currentTime </span><span class="s4">= </span><span class="s1">new Date</span><span class="s5">()</span><span class="s4">.</span><span class="s1">getTime</span><span class="s5">()</span><span class="s4">;</span>
+    <span class="s1">if </span><span class="s5">(</span><span class="s1">SysTestKit</span><span class="s4">.</span><span class="s1">systemTime </span><span class="s4">!== </span><span class="s1">null </span><span class="s4">&amp;&amp; </span><span class="s1">SysTestKit</span><span class="s4">.</span><span class="s1">systemTime </span><span class="s4">!== </span><span class="s1">undefined</span><span class="s5">) </span><span class="s2">{</span>
+      <span class="s1">await SysTestKit</span><span class="s4">.</span><span class="s1">systemTime</span><span class="s4">.</span><span class="s1">getRealTime</span><span class="s5">()</span><span class="s4">.</span><span class="s1">then</span><span class="s5">((</span><span class="s1">time</span><span class="s5">) </span><span class="s4">=&gt; </span><span class="s2">{</span>
+        <span class="s1">console</span><span class="s4">.</span><span class="s1">info</span><span class="s5">(</span><span class="s3">`</span><span class="s2">${</span><span class="s1">TAG</span><span class="s2">}</span><span class="s3">systemTime.getRealTime success data: </span><span class="s2">${</span><span class="s1">JSON</span><span class="s4">.</span><span class="s1">stringify</span><span class="s5">(</span><span class="s1">time</span><span class="s5">)</span><span class="s2">}</span><span class="s3">`</span><span class="s5">)</span><span class="s4">;</span>
+        <span class="s1">currentTime </span><span class="s4">= </span><span class="s1">time</span><span class="s4">;</span>
+      <span class="s2">}</span><span class="s5">)</span><span class="s4">.</span><span class="s1">catch</span><span class="s5">((</span><span class="s1">error</span><span class="s5">) </span><span class="s4">=&gt; </span><span class="s2">{</span>
+        <span class="s1">console</span><span class="s4">.</span><span class="s1">error</span><span class="s5">(</span><span class="s3">`</span><span class="s2">${</span><span class="s1">TAG</span><span class="s2">}</span><span class="s3">failed to systemTime.getRealTime because </span><span class="s2">${</span><span class="s1">JSON</span><span class="s4">.</span><span class="s1">stringify</span><span class="s5">(</span><span class="s1">error</span><span class="s5">)</span><span class="s2">}</span><span class="s3">`</span><span class="s5">)</span><span class="s4">;</span>
+      <span class="s2">}</span><span class="s5">)</span><span class="s4">;</span>
+    <span class="s2">}</span>
+    <span class="s1">return currentTime</span><span class="s4">;</span>
+  <span class="s2">}</span>
+<span class="s2">}</span>
+
+<span class="s1">function executePromise</span><span class="s5">(</span><span class="s1">cmd</span><span class="s4">, </span><span class="s1">timeout</span><span class="s5">) </span><span class="s2">{</span>
+  <span class="s1">return new Promise</span><span class="s5">((</span><span class="s1">resolve</span><span class="s4">, </span><span class="s1">reject</span><span class="s5">) </span><span class="s4">=&gt; </span><span class="s2">{</span>
+    <span class="s1">SysTestKit</span><span class="s4">.</span><span class="s1">delegator</span><span class="s4">.</span><span class="s1">executeShellCommand</span><span class="s5">(</span><span class="s1">cmd</span><span class="s4">, </span><span class="s1">timeout</span><span class="s4">,</span>
+      <span class="s5">(</span><span class="s1">error</span><span class="s4">, </span><span class="s1">data</span><span class="s5">) </span><span class="s4">=&gt; </span><span class="s2">{</span>
+        <span class="s1">console</span><span class="s4">.</span><span class="s1">info</span><span class="s5">(</span><span class="s3">`</span><span class="s2">${</span><span class="s1">TAG</span><span class="s2">}</span><span class="s3">existKeyword CallBack: err : </span><span class="s2">${</span><span class="s1">JSON</span><span class="s4">.</span><span class="s1">stringify</span><span class="s5">(</span><span class="s1">error</span><span class="s5">)</span><span class="s2">}</span><span class="s3">`</span><span class="s5">)</span><span class="s4">;</span>
+        <span class="s1">console</span><span class="s4">.</span><span class="s1">info</span><span class="s5">(</span><span class="s3">`</span><span class="s2">${</span><span class="s1">TAG</span><span class="s2">}</span><span class="s3">existKeyword CallBack: data : </span><span class="s2">${</span><span class="s1">JSON</span><span class="s4">.</span><span class="s1">stringify</span><span class="s5">(</span><span class="s1">data</span><span class="s5">)</span><span class="s2">}</span><span class="s3">`</span><span class="s5">)</span><span class="s4">;</span>
+        <span class="s1">let lines </span><span class="s4">= </span><span class="s1">data</span><span class="s4">.</span><span class="s1">stdResult</span><span class="s4">.</span><span class="s1">split</span><span class="s5">(</span><span class="s3">&quot;\n&quot;</span><span class="s5">)</span><span class="s4">;</span>
+        <span class="s1">let num </span><span class="s4">= </span><span class="s1">lines</span><span class="s4">.</span><span class="s1">length</span><span class="s4">;</span>
+        <span class="s1">for </span><span class="s5">(</span><span class="s1">let line of lines</span><span class="s5">) </span><span class="s2">{</span>
+          <span class="s1">if </span><span class="s5">(</span><span class="s1">line</span><span class="s4">.</span><span class="s1">includes</span><span class="s5">(</span><span class="s3">&quot;C01330&quot;</span><span class="s5">) </span><span class="s4">|| </span><span class="s1">line</span><span class="s4">.</span><span class="s1">includes</span><span class="s5">(</span><span class="s3">&quot;C01303&quot;</span><span class="s5">) </span><span class="s4">|| </span><span class="s1">line </span><span class="s4">===</span><span class="s3">&quot;&quot;</span><span class="s5">) </span><span class="s2">{</span>
+            <span class="s1">num</span><span class="s4">--;</span>
+          <span class="s2">}</span>
+        <span class="s2">}</span>
+        <span class="s1">resolve</span><span class="s5">(</span><span class="s1">num </span><span class="s4">&gt; </span><span class="s6">0 </span><span class="s4">? </span><span class="s1">true </span><span class="s4">: </span><span class="s1">false</span><span class="s5">)</span><span class="s4">;</span>
+      <span class="s2">}</span><span class="s5">)</span><span class="s4">;</span>
+  <span class="s2">}</span><span class="s5">)</span><span class="s4">;</span>
+<span class="s2">}</span></pre>
+</body>
+</html>

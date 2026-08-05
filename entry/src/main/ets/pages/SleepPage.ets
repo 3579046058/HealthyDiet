@@ -296,8 +296,8 @@ struct SleepPage {
       promptAction.showToast({ message: '入睡和醒来时间不能相同' });
       return;
     }
-    if (sleepDuration < 120) {
-      promptAction.showToast({ message: '睡眠时长太短，至少2小时' });
+    if (sleepDuration < 30) {
+      promptAction.showToast({ message: '睡眠时长太短，至少半小时' });
       return;
     }
     if (sleepDuration > 18 * 60) {
