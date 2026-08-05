@@ -13,6 +13,11 @@
         "name": "ohos.permission.INTERNET"
       },
       {
+        "name": "ohos.permission.MICROPHONE",
+        "reason": "$string:reason_mic",
+        "usedScene": {"abilities": ["EntryAbility"], "when": "inuse"}
+      },
+      {
         "name": "ohos.permission.PUBLISH_AGENT_REMINDER",
         "reason": "$string:reason_notification",
         "usedScene": {"abilities": ["EntryAbility"], "when": "always"}

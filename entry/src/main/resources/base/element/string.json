@@ -166,6 +166,7 @@
     {"name": "reason_bluetooth", "value": "用于连接鸿蒙手环获取心率和血氧数据"},
     {"name": "reason_health", "value": "用于读取和记录健康数据"},
     {"name": "reason_motion", "value": "用于记录每日步数和运动状态"},
-    {"name": "reason_location", "value": "用于在运动时记录实际路程，计算走路、跑步、骑行距离"}
+    {"name": "reason_location", "value": "用于在运动时记录实际路程，计算走路、跑步、骑行距离"},
+    {"name": "reason_mic", "value": "用于AI问答语音输入，将语音转换为文字"}
   ]
 }

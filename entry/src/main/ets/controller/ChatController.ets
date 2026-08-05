@@ -15,6 +15,7 @@ export class ChatViewModel {
   @Trace isWide: boolean = false;
   @Trace isExpanded: boolean = false;
   @Trace drawerOpen: boolean = false;
+  @Trace isRecording: boolean = false;
 
   @Computed
   get sessionList(): Array<ChatSession> {
