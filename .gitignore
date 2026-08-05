@@ -16,5 +16,12 @@
 /spec/
 
 /sign
+*.p12
+*.csr
+*.cer
+*.dmp
+/exportToHTML
+.harmony-mcp
+.mcp.json
 
 AGENTS.md
