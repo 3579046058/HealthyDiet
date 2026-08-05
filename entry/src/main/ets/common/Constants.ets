@@ -113,6 +113,18 @@ export interface GoalConfig {
   dailyCarbs?: number;
 }
 
+export class AiConfig {
+  apiUrl: string = '';
+  apiKey: string = '';
+  chatModel: string = '';
+}
+
+export class AiDefaults {
+  static readonly API_URL: string = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+  static readonly CHAT_MODEL: string = 'glm-4-flash';
+  static readonly VISION_MODEL: string = 'glm-4v-flash';
+}
+
 export interface DietRecord {
   id?: number;
   date: string;
