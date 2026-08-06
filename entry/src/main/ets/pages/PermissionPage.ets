@@ -25,11 +25,6 @@ struct PermissionPage {
       desc: '读取计步传感器，记录每日步数和运动状态'
     },
     {
-      name: 'ohos.permission.ACCESS_BLUETOOTH',
-      label: '蓝牙',
-      desc: '连接手环获取心率和血氧数据'
-    },
-    {
       name: 'ohos.permission.LOCATION',
       label: '位置信息',
       desc: '运动时记录 GPS 实际路程（走路/跑步/骑行）'

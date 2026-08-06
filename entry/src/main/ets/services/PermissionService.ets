@@ -40,12 +40,11 @@ export class PermissionService {
       console.info('PermissionService: location already granted');
     }
 
-    // 2. 请求运动/蓝牙权限（一次性）
+    // 2. 请求运动权限（一次性）
     if (!this.permRequested) {
       this.permRequested = true;
       const otherPerms: Permissions[] = [
         'ohos.permission.ACTIVITY_MOTION',
-        'ohos.permission.ACCESS_BLUETOOTH',
       ];
       try {
         const result2 = await atManager.requestPermissionsFromUser(context, otherPerms);
