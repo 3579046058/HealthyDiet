@@ -2,6 +2,7 @@
  * 健康概览卡片组件
  */
 import { ThemeColors } from '../common/Constants';
+import { AnimatedNumber } from './AnimatedNumber';
 
 @Component
 export struct HealthCard {
@@ -12,6 +13,8 @@ export struct HealthCard {
   @Prop iconColor: string = '#FF9800';
   @Prop iconSymbol: string = '';
   @Prop iconName: string = ''; // 新增：SVG图标名称
+  @Prop animValue: number = -1; // 动画数值：>=0 时用数字动画显示，-1 用字符串
+  @Prop animKey: number = 0; // 刷新触发标记：变化时强制从 0 重新动画
   onCardClick?: () => void;
   @StorageLink('currentTheme') theme: string = 'dark';
 
@@ -42,12 +45,21 @@ export struct HealthCard {
             .fontSize(13)
             .fontColor(ThemeColors.textSecondary(this.theme))
           Row() {
-            Text(this.value)
-              .fontSize(22)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(ThemeColors.textPrimary(this.theme))
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            if (this.animValue >= 0) {
+              AnimatedNumber({
+                targetValue: this.animValue,
+                fontSize: 22,
+                color: ThemeColors.textPrimary(this.theme),
+                animKey: this.animKey
+              })
+            } else {
+              Text(this.value)
+                .fontSize(22)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(ThemeColors.textPrimary(this.theme))
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
             if (this.unit) {
               Text(this.unit)
                 .fontSize(11)

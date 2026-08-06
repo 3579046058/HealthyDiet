@@ -19,6 +19,7 @@ struct SportPage {
   @State calorieBurn: number = 0;
   @State heartRateAvg: number = 0;
   @State records: DbRow[] = [];
+  @State isRefreshing: boolean = false; // 下拉刷新状态
   @State bodyWeight: number = 70;
   @State intensity: string = '中强度';
   @State showManualAdd: boolean = false;
@@ -458,14 +459,19 @@ struct SportPage {
       tracker.onDistanceChanged((distanceM: number) => {
         this.distanceKm = parseFloat((distanceM / 1000).toFixed(2));
       });
-      tracker.start();
+      const success = tracker.start();
       this.useGps = true;
-      this.gpsStatus = '正在定位...';
-      setTimeout(() => {
-        if (this.isTracking && this.useGps) {
-          this.gpsStatus = tracker.getPointCount() > 0 ? 'GPS 定位中' : '未获取到定位，正在重试';
-        }
-      }, 5000);
+      if (success) {
+        this.gpsStatus = '正在定位...';
+        setTimeout(() => {
+          if (this.isTracking && this.useGps) {
+            this.gpsStatus = tracker.getPointCount() > 0 ? 'GPS 定位中' : '未获取到定位，正在重试';
+          }
+        }, 5000);
+      } else {
+        this.gpsStatus = '定位启动失败';
+        this.getUIContext().getPromptAction().showToast({ message: 'GPS定位启动失败，请检查权限', duration: 2000 });
+      }
     } else {
       this.useGps = false;
       this.gpsStatus = '';
@@ -485,20 +491,40 @@ struct SportPage {
     }
     const tracker = LocationTrackerService.getInstance();
     this.gpsStatus = '正在重新定位...';
+    console.info('[SportPage] 开始重定位...');
+    
     // 重置并重启定位
     tracker.stop();
     await new Promise<void>((resolve) => {
-      setTimeout(() => { resolve(); }, 300);
+      setTimeout(() => { resolve(); }, 500); // 增加等待时间到500ms
     });
     tracker.reset();
     tracker.onDistanceChanged((distanceM: number) => {
       this.distanceKm = parseFloat((distanceM / 1000).toFixed(2));
     });
-    tracker.start();
+    
+    // ✅ 检查定位是否成功启动
+    const success = tracker.start();
+    if (!success) {
+      console.error('[SportPage] 重定位失败：启动定位失败');
+      this.gpsStatus = '定位启动失败，请检查权限';
+      this.getUIContext().getPromptAction().showToast({ message: '定位启动失败，请检查权限设置', duration: 2000 });
+      return;
+    }
+    
+    console.info('[SportPage] 定位已重新启动，等待定位结果...');
     // 5秒后检查定位结果
     setTimeout(() => {
       if (this.isTracking && this.useGps) {
-        this.gpsStatus = tracker.getPointCount() > 0 ? 'GPS 定位中' : '未获取到定位，点击重试';
+        const pointCount = tracker.getPointCount();
+        console.info('[SportPage] 定位点数量:', pointCount);
+        if (pointCount > 0) {
+          this.gpsStatus = 'GPS 定位中';
+          this.getUIContext().getPromptAction().showToast({ message: '重定位成功', duration: 1500 });
+        } else {
+          this.gpsStatus = '未获取到定位，点击重试';
+          this.getUIContext().getPromptAction().showToast({ message: '未获取到GPS信号，请到开阔地带', duration: 2000 });
+        }
       }
     }, 5000);
     this.getUIContext().getPromptAction().showToast({ message: '正在重新定位...', duration: 1500 });
@@ -836,6 +862,7 @@ struct SportPage {
       }
       .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
+      Refresh({ refreshing: $$this.isRefreshing }) {
       Scroll() {
         Column() {
           // 手动添加记录面板
@@ -1096,8 +1123,16 @@ struct SportPage {
         }
         .width('100%')
       }
+      }
+      .width('100%').height('100%').backgroundColor(this.bg())
+      .onRefreshing(() => {
+        // 下拉刷新：重新加载运动数据
+        this.loadHistory().then(() => {
+          this.loadWeight();
+          setTimeout(() => { this.isRefreshing = false; }, 600);
+        }).catch(() => { this.isRefreshing = false; });
+      })
     }
-    .width('100%').height('100%').backgroundColor(this.bg())
   }
 
   pageTransition() {

@@ -14,6 +14,7 @@ struct MoodPage {
   @State recordDate: string = '';
   @State tempDate: Date = new Date();
   @State showInput: boolean = false;
+  @State isRefreshing: boolean = false; // 下拉刷新状态
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
@@ -32,7 +33,10 @@ struct MoodPage {
       const startDate: string = this.formatDate(past);
       const endDate: string = this.formatDate(now);
       const rows: DbRow[] = await GlobalData.db.getMoodRecords(startDate, endDate);
-      this.records = rows;
+      // animateTo 包裹数据更新，触发列表项 transition 进入动画
+      animateTo({ duration: 350, curve: Curve.EaseOut }, () => {
+        this.records = rows;
+      });
       console.info('MoodPage loadData rows=' + String(rows.length));
       this.weekAvg = this.getWeekAverage();
     } catch (err) {
@@ -181,6 +185,7 @@ struct MoodPage {
       }
       .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 8 })
 
+      Refresh({ refreshing: $$this.isRefreshing }) {
       Scroll() {
         Column() {
           // 日期选择
@@ -373,6 +378,14 @@ struct MoodPage {
             .width('100%').padding(12)
             .backgroundColor(this.card()).borderRadius(8)
             .margin({ bottom: 8 })
+            .transition(
+              TransitionEffect.OPACITY
+                .combine(TransitionEffect.translate({ y: 30 }))
+                .animation({
+                  duration: 350,
+                  curve: Curve.EaseOut
+                })
+            )
             .onClick(() => {
               if (String(item.note).length > 0) {
                 this.toggleExpanded(Number(item.id));
@@ -383,8 +396,15 @@ struct MoodPage {
         .width('100%').padding(16)
       }
       .layoutWeight(1)
+      }
+      .width('100%').height('100%')    .backgroundColor(this.bg())
+      .onRefreshing(() => {
+        // 下拉刷新：重新加载情绪记录
+        this.loadData().then(() => {
+          setTimeout(() => { this.isRefreshing = false; }, 600);
+        }).catch(() => { this.isRefreshing = false; });
+      })
     }
-    .width('100%').height('100%')    .backgroundColor(this.bg())
   }
 
   pageTransition() {

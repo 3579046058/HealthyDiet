@@ -5,6 +5,7 @@ import { HealthScoreUtil } from '../services/HealthScoreUtil';
 import { TrendChart } from '../components/TrendChart';
 import { BarChart } from '../components/BarChart';
 import { ScoreTrendChart } from '../components/ScoreTrendChart';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 
 @Entry
 @Component
@@ -28,6 +29,8 @@ struct ReportPage {
   @State weekSleepData: number[] = [];
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
+  @State isRefreshing: boolean = false; // 下拉刷新状态
+  @State refreshAnimKey: number = 0; // 刷新触发标记：数字从 0 重新动画
 
   aboutToAppear(): void {
     this.loadWeekData();
@@ -166,6 +169,7 @@ struct ReportPage {
       }
       .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
+      Refresh({ refreshing: $$this.isRefreshing }) {
       Scroll() {
         Column() {
           Row() {
@@ -188,12 +192,22 @@ struct ReportPage {
 
             Row() {
               Column() {
-                Text(String(this.weekAvgSteps)).fontSize(28).fontWeight(FontWeight.Bold).fontColor('#FF9800')
+                AnimatedNumber({
+                  targetValue: this.weekAvgSteps,
+                  fontSize: 28,
+                  color: '#FF9800',
+                  animKey: this.refreshAnimKey
+                })
                 Text('日均步数').fontSize(12).fontColor(this.sub())
               }
               .width('45%').padding(16).backgroundColor(this.card()).borderRadius(12)
               Column() {
-                Text(String(this.weekAvgWater)).fontSize(28).fontWeight(FontWeight.Bold).fontColor('#03A9F4')
+                AnimatedNumber({
+                  targetValue: this.weekAvgWater,
+                  fontSize: 28,
+                  color: '#03A9F4',
+                  animKey: this.refreshAnimKey
+                })
                 Text('日均喝水').fontSize(12).fontColor(this.sub())
               }
               .width('45%').padding(16).backgroundColor(this.card()).borderRadius(12)
@@ -202,12 +216,23 @@ struct ReportPage {
 
             Row() {
               Column() {
-                Text(String(this.weekTotalHours.toFixed(1))).fontSize(28).fontWeight(FontWeight.Bold).fontColor('#FF6B35')
+                AnimatedNumber({
+                  targetValue: this.weekTotalHours,
+                  fontSize: 28,
+                  color: '#FF6B35',
+                  animKey: this.refreshAnimKey,
+                  decimalPlaces: 1
+                })
                 Text('运动(小时)').fontSize(12).fontColor(this.sub())
               }
               .width('45%').padding(16).backgroundColor(this.card()).borderRadius(12)
               Column() {
-                Text(String(this.weekTotalCalories)).fontSize(28).fontWeight(FontWeight.Bold).fontColor('#F44336')
+                AnimatedNumber({
+                  targetValue: this.weekTotalCalories,
+                  fontSize: 28,
+                  color: '#F44336',
+                  animKey: this.refreshAnimKey
+                })
                 Text('消耗(千卡)').fontSize(12).fontColor(this.sub())
               }
               .width('45%').padding(16).backgroundColor(this.card()).borderRadius(12)
@@ -312,7 +337,21 @@ struct ReportPage {
           Divider().opacity(0).height(24)
         }
         .width('100%')
-      }
+        }
+        }
+        .width('100%')
+        .height('100%')
+        .onRefreshing(() => {
+          // 下拉刷新：重新加载报告数据
+          this.refreshAnimKey++;
+          this.loadWeekData().then(() => {
+            setTimeout(() => {
+              this.isRefreshing = false;
+            }, 600);
+          }).catch(() => {
+            this.isRefreshing = false;
+          });
+        })
     }
     .width('100%').height('100%').backgroundColor(this.bg())
   }

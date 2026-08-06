@@ -45,9 +45,10 @@ export class LocationTrackerService {
     return this.points.length;
   }
 
-  start(): void {
+  start(): boolean {
     if (this.enabled) {
-      return;
+      hilog.warn(DOMAIN, TAG, 'Location tracking already enabled');
+      return true;
     }
     this.points = [];
     this.totalDistanceM = 0;
@@ -60,9 +61,11 @@ export class LocationTrackerService {
       geoLocationManager.on('locationChange', request, this.locationCallback);
       this.enabled = true;
       hilog.info(DOMAIN, TAG, 'Location tracking started');
+      return true;
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, 'start location failed code=%{public}d msg=%{public}s', e.code, e.message);
+      return false;
     }
   }
 
@@ -100,10 +103,18 @@ export class LocationTrackerService {
 
   stop(): void {
     if (!this.enabled) {
+      hilog.warn(DOMAIN, TAG, 'Location tracking already stopped');
+      // 即使已经停止，也尝试取消定位回调（确保清理）
+      try {
+        geoLocationManager.off('locationChange', this.locationCallback);
+      } catch (err) {
+        // 忽略错误
+      }
       return;
     }
     try {
       geoLocationManager.off('locationChange', this.locationCallback);
+      hilog.info(DOMAIN, TAG, 'Location callback removed');
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, 'stop location failed code=%{public}d msg=%{public}s', e.code, e.message);

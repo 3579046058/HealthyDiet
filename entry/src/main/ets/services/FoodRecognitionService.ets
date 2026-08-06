@@ -317,7 +317,7 @@ export class FoodRecognitionService {
    * 云端计算卡路里：根据食物名称 + 克数，让 GLM 估算热量
    * 返回 -1 表示计算失败
    */
-  async calculateCalories(foodName: string, grams: number): Promise<number> {
+  async calculateCalories(foodName: string, grams: number, forceRefresh: boolean = false): Promise<number> {
     if (!this.isCloudConfigured()) {
       return -1;
     }
@@ -334,8 +334,8 @@ export class FoodRecognitionService {
       console.info('calculateCalories rejected non-food: ' + key + ' reason=' + judge.reason);
       return -1;
     }
-    // 命中缓存：同一食物热量固定，避免多次识别数值漂移
-    if (this.per100Cache.has(key)) {
+    // 命中缓存：同一食物热量固定，避免多次识别数值漂移（forceRefresh 时跳过缓存重新识别）
+    if (!forceRefresh && this.per100Cache.has(key)) {
       const cachedPer100: number = this.per100Cache.get(key) ?? -1;
       if (cachedPer100 > 0) {
         return Math.round(cachedPer100 * grams / 100);
@@ -395,6 +395,12 @@ export class FoodRecognitionService {
                 finalPer100 = localPer100;
               }
             }
+            // 结果不合理（每100克<10千卡）时视为识别失败，不写缓存不返回
+            if (!this.isReasonablePer100(finalPer100)) {
+              console.warn('calculateCalories unreasonable result=' + String(finalPer100) +
+                ' for "' + key + '", treat as fail');
+              return -1;
+            }
             // 写入缓存，后续同食物直接复用
             this.per100Cache.set(key, finalPer100);
             return Math.round(finalPer100 * grams / 100);
@@ -442,7 +448,8 @@ export class FoodRecognitionService {
   }
 
   private isReasonablePer100(n: number): boolean {
-    return n > 0 && n <= 900;
+    // 每100克热量合理范围：10~900 千卡（低于10如纯水/茶几乎无热量，视为识别错误）
+    return n >= 10 && n <= 900;
   }
 
   /**

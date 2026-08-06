@@ -495,6 +495,17 @@ export class DatabaseHelper {
     await this.rdbStore.insert(TABLE_DIET, values);
   }
 
+  // 更新饮食记录的热量（下拉刷新重新识别未识别食物后用）
+  async updateDietRecordCalories(id: number, calories: number): Promise<void> {
+    if (!this.rdbStore) return;
+    const values: relationalStore.ValuesBucket = {
+      calories: calories
+    };
+    const pred = new relationalStore.RdbPredicates(TABLE_DIET);
+    pred.equalTo('id', id);
+    await this.rdbStore.update(values, pred);
+  }
+
   async getDietRecords(date: string): Promise<DbRow[]> {
     if (!this.rdbStore) return [];
     const pred = new relationalStore.RdbPredicates(TABLE_DIET);

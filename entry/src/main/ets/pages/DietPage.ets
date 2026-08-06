@@ -7,6 +7,7 @@ import { FoodRecognitionService } from '../services/FoodRecognitionService';
 @Component
 struct DietPage {
   @State date: string = '';
+  @State isRefreshing: boolean = false; // 下拉刷新状态
   @State records: DbRow[] = [];
   @State showInput: boolean = false;
   @State mealType: string = 'breakfast';
@@ -105,6 +106,34 @@ struct DietPage {
   async deleteDietRecord(id: number): Promise<void> {
     await GlobalData.db.deleteDietRecord(id);
     await this.loadData();
+  }
+
+  // 下拉刷新时重新识别"未识别"的食物（calories=0 的记录）
+  async reRecognizeUnrecognized(): Promise<void> {
+    const unrecognized: DbRow[] = [];
+    for (const r of this.records) {
+      const cal: number = Number(r.calories);
+      if (cal <= 0) {
+        unrecognized.push(r);
+      }
+    }
+    if (unrecognized.length === 0) {
+      return;
+    }
+    let updated: boolean = false;
+    for (const r of unrecognized) {
+      const name: string = String(r.food_name);
+      const grams: number = Number(r.amount_g);
+      // 重新走云端识别（非食物会被驳回返回 -1；forceRefresh 跳过旧缓存重新识别）
+      const cloud: number = await FoodRecognitionService.getInstance().calculateCalories(name, grams, true);
+      if (cloud > 0) {
+        await GlobalData.db.updateDietRecordCalories(Number(r.id), cloud);
+        updated = true;
+      }
+    }
+    if (updated) {
+      await this.loadData();
+    }
   }
 
   previewCalories(): number {
@@ -363,14 +392,14 @@ struct DietPage {
       .width('100%')
       .padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
-      Scroll() {
+      Refresh({ refreshing: $$this.isRefreshing }) {
+        Scroll() {
         Column() {
           if (!this.showInput) {
             Button('+ 添加食物')
               .width('100%')
               .backgroundColor(Constants.COLOR_DIET)
-              .borderRadius(10)
-              .margin({ bottom: 16 })
+              .borderRadius(10)              .margin({ bottom: 16 })
               .onClick(() => {
                 this.showInput = true;
               })
@@ -587,6 +616,16 @@ struct DietPage {
         .padding(16)
       }
       .layoutWeight(1)
+      }
+      .width('100%')
+      .height('100%')
+      .onRefreshing(() => {
+        // 下拉刷新：重新加载饮食记录 + 重新识别未识别食物
+        this.loadData().then(async () => {
+          await this.reRecognizeUnrecognized();
+          setTimeout(() => { this.isRefreshing = false; }, 600);
+        }).catch(() => { this.isRefreshing = false; });
+      })
     }
     .width('100%')
     .height('100%')

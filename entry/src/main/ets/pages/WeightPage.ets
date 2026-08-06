@@ -18,6 +18,7 @@ struct WeightPage {
   @State gender: string = '男';
   @State heightCm: number = 170;
   @State historyDates: string[] = [];
+  @State isRefreshing: boolean = false; // 下拉刷新状态
   @State historyWeights: number[] = [];
   @State historyHeights: number[] = [];
   @State historyBmis: number[] = [];
@@ -92,7 +93,10 @@ struct WeightPage {
       const weightRows = await GlobalData.db.getWeightRecords(
         GlobalData.formatDate(start), GlobalData.formatDate(end)
       );
-      this.records = weightRows;
+      // animateTo 包裹数据更新，触发列表项 transition 进入动画
+      animateTo({ duration: 350, curve: Curve.EaseOut }, () => {
+        this.records = weightRows;
+      });
 
       // 获取身高记录
       const heightRows = await GlobalData.db.getHeightRecords(
@@ -106,7 +110,10 @@ struct WeightPage {
       heightRows.forEach((item: DbRow) => allDates.add(String(item.date)));
 
       const sortedDates = Array.from(allDates).sort();
-      this.historyDates = sortedDates.map((date: string) => date.slice(5));
+      // animateTo 包裹历史列表更新，触发 ListItem transition 进入动画
+      animateTo({ duration: 350, curve: Curve.EaseOut }, () => {
+        this.historyDates = sortedDates.map((date: string) => date.slice(5));
+      });
 
       // 构建体重历史数据（按 timestamp 排序，保留最新的记录）
       const sortedWeightRows = weightRows.slice().sort((a: DbRow, b: DbRow) =>
@@ -415,6 +422,7 @@ struct WeightPage {
       .width('100%')
       .padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
+      Refresh({ refreshing: $$this.isRefreshing }) {
       Scroll() {
         Column() {
           // 当前数据展示
@@ -686,6 +694,14 @@ Text('历史记录')
                 .borderRadius(10)
                 .margin({ bottom: 8 })
               }
+              .transition(
+                TransitionEffect.OPACITY
+                  .combine(TransitionEffect.translate({ y: 30 }))
+                  .animation({
+                    duration: 350,
+                    curve: Curve.EaseOut
+                  })
+              )
             })
           }
           .width('100%')
@@ -694,10 +710,17 @@ Text('历史记录')
         }
         .width('100%')
       }
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(this.bg())
+      .onRefreshing(() => {
+        // 下拉刷新：重新加载体重数据
+        this.loadData().then(() => {
+          setTimeout(() => { this.isRefreshing = false; }, 600);
+        }).catch(() => { this.isRefreshing = false; });
+      })
     }
-    .width('100%')
-    .height('100%')
-    .backgroundColor(this.bg())
   }
 
   pageTransition() {

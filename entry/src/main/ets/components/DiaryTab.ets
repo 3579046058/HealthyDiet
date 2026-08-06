@@ -19,6 +19,8 @@ export struct DiaryTab {
   onDateChange: (offset: number) => void = () => {};
   onDateSelect: (date: string) => void = () => {};
   onShare: () => void = () => {};
+  onRefreshData: () => Promise<void> = async () => {};
+  @State isRefreshing: boolean = false;
 
   aboutToAppear(): void {
     // 解析当前日期
@@ -89,6 +91,7 @@ export struct DiaryTab {
 
   build() {
     Stack() {
+      Refresh({ refreshing: $$this.isRefreshing }) {
       Scroll() {
         Column() {
           // 标题栏：日期选择 + 分享按钮
@@ -248,7 +251,20 @@ export struct DiaryTab {
           Divider().opacity(0).height(24)
         }
         .width('100%')
-      }
+        }
+        }
+        .width('100%')
+        .height('100%')
+        .onRefreshing(() => {
+          // 下拉刷新：重新加载日记数据
+          this.onRefreshData().then(() => {
+            setTimeout(() => {
+              this.isRefreshing = false;
+            }, 600);
+          }).catch(() => {
+            this.isRefreshing = false;
+          });
+        })
 
       // 日期选择弹窗
       if (this.showDatePicker) {

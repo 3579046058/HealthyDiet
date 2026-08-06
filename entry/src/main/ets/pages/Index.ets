@@ -887,7 +887,11 @@ struct Index {
                 this.quickFunctionOrder.splice(to, 0, movedItem);
                 this.saveQuickFunctionOrder();
               },
-              onNavigate: (page: string) => { this.navigateTo(page); }
+              onNavigate: (page: string) => { this.navigateTo(page); },
+              onRefreshData: async () => {
+                await this.loadAllData();
+                await this.loadDiaryData();
+              }
             })
           }
           .tabBar(this.tabBuilder('ic_health', '健康', 0))
@@ -905,7 +909,8 @@ struct Index {
               diaryMoodRecords: this.diaryMoodRecords,
               onDateChange: (offset: number) => { this.changeDiaryDate(offset); },
               onDateSelect: (date: string) => { this.selectDiaryDate(date); },
-              onShare: () => { this.showSharePanel = true; }
+              onShare: () => { this.showSharePanel = true; },
+              onRefreshData: async () => { await this.loadDiaryData(); }
             })
           }
           .tabBar(this.tabBuilder('ic_diary', '记录', 1))

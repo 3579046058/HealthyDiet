@@ -14,7 +14,48 @@ export struct NestedRings {
   @Prop stepValue: string = '--';
   @Prop sleepValue: string = '--';
   @Prop moodValue: string = '--';
+  @State animStep: number = 0;
+  @State animSleep: number = 0;
+  @State animMood: number = 0;
+  @Prop @Watch('onAnimKeyChange') animKey: number = 0; // 刷新触发标记：变化时强制从 0 重新动画
   @StorageLink('currentTheme') theme: string = 'dark';
+
+  aboutToAppear(): void {
+    this.animStep = 0;
+    this.animSleep = 0;
+    this.animMood = 0;
+    this.animateTo(this.stepProgress, this.sleepProgress, this.moodProgress);
+  }
+
+  // animKey 变化（下拉刷新完成）→ 无条件从 0 重播动画
+  onAnimKeyChange(): void {
+    this.animStep = 0;
+    this.animSleep = 0;
+    this.animMood = 0;
+    this.animateTo(this.stepProgress, this.sleepProgress, this.moodProgress);
+  }
+
+  animateTo(targetStep: number, targetSleep: number, targetMood: number): void {
+    const fromStep: number = this.animStep;
+    const fromSleep: number = this.animSleep;
+    const fromMood: number = this.animMood;
+    const duration: number = 1000;
+    const start: number = Date.now();
+    const timer = setInterval(() => {
+      const elapsed: number = Date.now() - start;
+      const progress: number = Math.min(1, elapsed / duration);
+      const eased: number = 1 - Math.pow(1 - progress, 3);
+      this.animStep = fromStep + (targetStep - fromStep) * eased;
+      this.animSleep = fromSleep + (targetSleep - fromSleep) * eased;
+      this.animMood = fromMood + (targetMood - fromMood) * eased;
+      if (progress >= 1) {
+        this.animStep = targetStep;
+        this.animSleep = targetSleep;
+        this.animMood = targetMood;
+        clearInterval(timer);
+      }
+    }, 16);
+  }
 
   build() {
     Column() {
@@ -30,7 +71,7 @@ export struct NestedRings {
             .strokeWidth(12)
 
           // 进度圆环
-          Progress({ value: this.stepProgress, total: 100, type: ProgressType.Ring })
+          Progress({ value: this.animStep, total: 100, type: ProgressType.Ring })
             .width(160)
             .height(160)
             .color(this.stepColor)
@@ -48,7 +89,7 @@ export struct NestedRings {
             .strokeWidth(12)
 
           // 进度圆环
-          Progress({ value: this.sleepProgress, total: 100, type: ProgressType.Ring })
+          Progress({ value: this.animSleep, total: 100, type: ProgressType.Ring })
             .width(130)
             .height(130)
             .color(this.sleepColor)
@@ -66,7 +107,7 @@ export struct NestedRings {
             .strokeWidth(12)
 
           // 进度圆环
-          Progress({ value: this.moodProgress, total: 100, type: ProgressType.Ring })
+          Progress({ value: this.animMood, total: 100, type: ProgressType.Ring })
             .width(100)
             .height(100)
             .color(this.moodColor)

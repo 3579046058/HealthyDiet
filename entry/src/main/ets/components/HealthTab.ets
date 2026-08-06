@@ -3,6 +3,7 @@ import { HealthScoreUtil } from '../services/HealthScoreUtil';
 import { RingProgress } from './RingProgress';
 import { HealthCard } from './HealthCard';
 import { NestedRings } from './NestedRings';
+import { AnimatedNumber } from './AnimatedNumber';
 
 @Component
 export struct HealthTab {
@@ -24,17 +25,20 @@ export struct HealthTab {
   @Prop sleepScore: number = 0;
   @Prop waterMl: number = 0;
   @Prop waterGoal: number = 2000;
-@Prop todayCalorieIntake: number = 0;
-@Prop exerciseMin: number = 0;
-@Prop recommendCalorie: number = 2000;
+  @Prop todayCalorieIntake: number = 0;
+  @Prop exerciseMin: number = 0;
+  @Prop recommendCalorie: number = 2000;
   @StorageLink('liveSteps') liveSteps: number = 0;
   @Prop healthCardOrder: string[] = [];
   @Prop quickFunctionOrder: string[] = [];
+  @State isRefreshing: boolean = false; // 下拉刷新状态
+  @State refreshAnimKey: number = 0; // 刷新完成触发标记：变化时所有数字/圆环从 0 重新动画
   onToggleTheme: () => void = () => {};
   onToggleRingMode: () => void = () => {};
   onCardDrag: (from: number, to: number) => void = () => {};
   onFuncDrag: (from: number, to: number) => void = () => {};
   onNavigate: (page: string) => void = () => {};
+  onRefreshData: () => Promise<void> = async () => {}; // 下拉刷新回调（重新加载数据）
 
   getMoodEmoji(moodVal: number): string {
     if (moodVal >= 4.5) { return '😄'; }
@@ -224,7 +228,8 @@ export struct HealthTab {
   }
 
   build() {
-    Scroll() {
+    Refresh({ refreshing: $$this.isRefreshing }) {
+      Scroll() {
       Column() {
         Row() {
           Column() {
@@ -284,7 +289,8 @@ export struct HealthTab {
                 moodColor: Constants.COLOR_MOOD,
                 stepValue: this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--',
                 sleepValue: this.sleepHours !== '0' ? this.sleepHours : '--',
-                moodValue: this.moodValue > 0 ? this.getMoodEmoji(this.moodValue) + ' 心情 ' + String(this.moodValue) : '暂无记录'
+                moodValue: this.moodValue > 0 ? this.getMoodEmoji(this.moodValue) + ' 心情 ' + String(this.moodValue) : '暂无记录',
+                animKey: this.refreshAnimKey
               })
             }
             .width('100%')
@@ -292,9 +298,9 @@ export struct HealthTab {
           } else {
             // 三个独立圆环模式
             Row() {
-              RingProgress({ progress: (this.getDisplaySteps() / this.stepGoal) * 100, strokeColor: Constants.COLOR_STEP, ringSize: 90, strokeWidth: 10, label: '步数', valueText: this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--', unit: '步' })
-              RingProgress({ progress: (parseFloat(this.sleepHours) / Constants.DEFAULT_SLEEP_GOAL_HOURS) * 100, strokeColor: Constants.COLOR_SLEEP, ringSize: 90, strokeWidth: 10, label: '睡眠', valueText: this.sleepHours !== '0' ? this.sleepHours : '--', unit: '小时' })
-              RingProgress({ progress: this.moodProgress, strokeColor: Constants.COLOR_MOOD, ringSize: 90, strokeWidth: 10, label: '心情', valueText: this.moodValue > 0 ? this.getMoodEmoji(this.moodValue) : '--', unit: this.moodValue > 0 ? '心情 ' + String(this.moodValue) : '暂无记录' })
+              RingProgress({ progress: (this.getDisplaySteps() / this.stepGoal) * 100, strokeColor: Constants.COLOR_STEP, ringSize: 90, strokeWidth: 10, label: '步数', valueText: this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--', unit: '步', animKey: this.refreshAnimKey })
+              RingProgress({ progress: (parseFloat(this.sleepHours) / Constants.DEFAULT_SLEEP_GOAL_HOURS) * 100, strokeColor: Constants.COLOR_SLEEP, ringSize: 90, strokeWidth: 10, label: '睡眠', valueText: this.sleepHours !== '0' ? this.sleepHours : '--', unit: '小时', animKey: this.refreshAnimKey })
+              RingProgress({ progress: this.moodProgress, strokeColor: Constants.COLOR_MOOD, ringSize: 90, strokeWidth: 10, label: '心情', valueText: this.moodValue > 0 ? this.getMoodEmoji(this.moodValue) : '--', unit: this.moodValue > 0 ? '心情 ' + String(this.moodValue) : '暂无记录', animKey: this.refreshAnimKey })
             }
             .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding({ left: 16, right: 16, top: 8, bottom: 16 })
           }
@@ -310,11 +316,24 @@ export struct HealthTab {
               .fontColor(this.subTextColor)
             Row() {
               Column() {
-                Text(this.getScoreDisplay())
-                  .fontSize(28)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor(this.hasScoreData() ? this.getScoreColor(this.getHealthScore()) : this.subTextColor)
+                if (this.hasScoreData()) {
+                  AnimatedNumber({
+                    targetValue: this.getHealthScore(),
+                    fontSize: 28,
+                    color: this.getScoreColor(this.getHealthScore()),
+                    animKey: this.refreshAnimKey
+                  })
                   .margin({ top: 4 })
+                  Text('分')
+                    .fontSize(16)
+                    .fontColor(this.subTextColor)
+                } else {
+                  Text('--')
+                    .fontSize(28)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor(this.subTextColor)
+                    .margin({ top: 4 })
+                }
 
                 if (this.getScoreDetails()) {
                   Text(this.getScoreDetails())
@@ -425,7 +444,24 @@ export struct HealthTab {
         Divider().opacity(0).height(24)
       }
       .width('100%')
-    }
+      }
+      }
+      .width('100%')
+      .height('100%')
+      .onRefreshing(() => {
+        // 下拉刷新：重新加载数据，顶部停顿后所有数字/圆环从 0 非线性动画
+        this.onRefreshData().then(() => {
+          // 顶部停顿 600ms，让刷新指示器稳定显示
+          setTimeout(() => {
+            // 触发所有数字/圆环从 0 重新动画（无论数据是否变化）
+            this.refreshAnimKey++;
+            this.isRefreshing = false;
+          }, 600);
+        }).catch(() => {
+          this.refreshAnimKey++;
+          this.isRefreshing = false;
+        });
+      })
   }
 
   @Builder
@@ -434,6 +470,8 @@ export struct HealthTab {
       HealthCard({
         title: '步数',
         value: this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--',
+        animValue: this.getDisplaySteps() > 0 ? this.getDisplaySteps() : -1,
+        animKey: this.refreshAnimKey,
         unit: '/ ' + String(this.stepGoal),
         iconColor: Constants.COLOR_STEP,
         iconName: 'ic_steps',
@@ -444,6 +482,8 @@ export struct HealthTab {
       HealthCard({
         title: '热量',
         value: this.todayCalorieIntake > 0 ? String(this.todayCalorieIntake) : '--',
+        animValue: this.todayCalorieIntake > 0 ? this.todayCalorieIntake : -1,
+        animKey: this.refreshAnimKey,
         unit: 'kcal',
         iconColor: Constants.COLOR_DIET,
         iconName: 'ic_calorie',
@@ -454,6 +494,8 @@ export struct HealthTab {
       HealthCard({
         title: '睡眠',
         value: this.sleepHours !== '0.0' && this.sleepHours !== '0' ? this.sleepHours : '--',
+        animValue: this.sleepHours !== '0.0' && this.sleepHours !== '0' ? parseFloat(this.sleepHours) : -1,
+        animKey: this.refreshAnimKey,
         unit: '小时',
         iconColor: Constants.COLOR_SLEEP,
         iconName: 'ic_sleep',
@@ -464,6 +506,8 @@ export struct HealthTab {
       HealthCard({
         title: '喝水',
         value: this.waterMl > 0 ? String(this.waterMl) : '--',
+        animValue: this.waterMl > 0 ? this.waterMl : -1,
+        animKey: this.refreshAnimKey,
         unit: 'ml',
         iconColor: Constants.COLOR_WATER,
         iconName: 'ic_water',

@@ -19,6 +19,7 @@ struct MedicationPage {
   @State records: DbRow[] = [];
   @State todayMeds: DbRow[] = [];
   @State checkedIds: number[] = [];
+  @State isRefreshing: boolean = false; // 下拉刷新状态
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
 
@@ -29,8 +30,11 @@ struct MedicationPage {
   async loadData(): Promise<void> {
     try {
       const allRecords: DbRow[] = await GlobalData.db.getMedicationRecords();
-      this.records = allRecords;
-      this.todayMeds = this.getTodaysMeds(allRecords);
+      // animateTo 包裹数据更新，触发列表项 transition 进入动画
+      animateTo({ duration: 350, curve: Curve.EaseOut }, () => {
+        this.records = allRecords;
+        this.todayMeds = this.getTodaysMeds(allRecords);
+      });
     } catch (err) {
       console.error('MedicationPage loadData error:', JSON.stringify(err));
     }
@@ -252,6 +256,7 @@ struct MedicationPage {
       }
       .width('100%').padding({ top: 12 + this.statusBarHeight, bottom: 12, left: 16, right: 16 })
 
+      Refresh({ refreshing: $$this.isRefreshing }) {
       Scroll() {
         Column() {
           Text('今日用药')
@@ -431,6 +436,14 @@ struct MedicationPage {
                 .width('100%').padding(12)
                 .backgroundColor(this.card()).borderRadius(10)
                 .margin({ bottom: 8 })
+                .transition(
+                  TransitionEffect.OPACITY
+                    .combine(TransitionEffect.translate({ y: 30 }))
+                    .animation({
+                      duration: 350,
+                      curve: Curve.EaseOut
+                    })
+                )
               }, (item: DbRow): string => String(item.id))
             }
             .width('100%').padding({ left: 16, right: 16 })
@@ -439,8 +452,15 @@ struct MedicationPage {
         .width('100%')
       }
       .layoutWeight(1)
+      }
+      .width('100%').height('100%')    .backgroundColor(this.bg())
+      .onRefreshing(() => {
+        // 下拉刷新：重新加载用药记录
+        this.loadData().then(() => {
+          setTimeout(() => { this.isRefreshing = false; }, 600);
+        }).catch(() => { this.isRefreshing = false; });
+      })
     }
-    .width('100%').height('100%')    .backgroundColor(this.bg())
   }
 
   pageTransition() {

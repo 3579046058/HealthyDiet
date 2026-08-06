@@ -353,11 +353,65 @@ export class FoodCalories {
     return map;
   })();
 
+  // 同义词映射：把常见的加工前/别名叫法归一化到标准食物名（取实际摄入热量）
+  // 例如"大米/白米/白饭"统一为"米饭"（熟饭116千卡/100g，而非生米346）
+  private static readonly FOOD_SYNONYMS: Record<string, string> = {
+    '大米': '米饭', '白米': '米饭', '白饭': '米饭', '白米饭': '米饭',
+    '米饭': '米饭', '剩饭': '米饭', '蒸米饭': '米饭', '饭': '米饭',
+    '面条': '面条', '挂面': '面条', '汤面': '面条', '面': '面条',
+    '馒头': '馒头', '白馒头': '馒头',
+    '鸡蛋': '鸡蛋', '鸡蛋羹': '鸡蛋', '水煮蛋': '鸡蛋', '煎蛋': '鸡蛋',
+    '牛奶': '牛奶', '纯牛奶': '牛奶', '鲜奶': '牛奶', '奶': '牛奶',
+    '苹果': '苹果', '红苹果': '苹果', '青苹果': '苹果',
+    '香蕉': '香蕉',
+    '橙子': '橙子', '橘子': '橙子', '桔子': '橙子',
+    '土豆': '土豆', '马铃薯': '土豆',
+    '红薯': '红薯', '地瓜': '红薯', '番薯': '红薯',
+    '玉米': '玉米', '甜玉米': '玉米', '玉米棒': '玉米',
+    '鸡肉': '鸡肉', '鸡胸肉': '鸡肉', '鸡腿': '鸡肉', '鸡': '鸡肉',
+    '牛肉': '牛肉', '牛腩': '牛肉', '牛': '牛肉',
+    '猪肉': '猪肉', '猪': '猪肉',
+    '羊肉': '羊肉', '羊': '羊肉',
+    '鱼肉': '鱼肉', '鱼': '鱼肉',
+    '虾': '虾', '基围虾': '虾', '大虾': '虾',
+    '白菜': '白菜', '大白菜': '白菜', '小白菜': '白菜',
+    '西兰花': '西兰花', '西蓝花': '西兰花',
+    '西红柿': '西红柿', '番茄': '西红柿', '圣女果': '西红柿',
+    '黄瓜': '黄瓜', '青瓜': '黄瓜',
+    '胡萝卜': '胡萝卜', '红萝卜': '胡萝卜',
+    '豆浆': '豆浆', '黄豆浆': '豆浆',
+    '面包': '面包', '吐司': '面包', '全麦面包': '面包',
+    '酸奶': '酸奶', '纯酸奶': '酸奶',
+    '豆腐': '豆腐', '北豆腐': '豆腐', '南豆腐': '豆腐', '嫩豆腐': '豆腐',
+  };
+
   private static searchFood(rawName: string): FoodNutritionItem | null {
     const lowerName: string = rawName.toLowerCase();
+    // 1. 先查同义词映射（归一化到标准名）
+    const aliasKeys: string[] = Object.keys(FoodCalories.FOOD_SYNONYMS);
+    for (let i = 0; i < aliasKeys.length; i++) {
+      const alias: string = aliasKeys[i];
+      if (lowerName.indexOf(alias.toLowerCase()) >= 0) {
+        const stdName: string = FoodCalories.FOOD_SYNONYMS[alias];
+        const stdItem: FoodNutritionItem | null = FoodCalories.searchByExactName(stdName);
+        if (stdItem) {
+          return stdItem;
+        }
+      }
+    }
+    // 2. 再查精确/子串匹配
     for (const item of FoodCalories.FOOD_TABLE) {
       if (lowerName.indexOf(item.name.toLowerCase()) >= 0) {
         return item;
+      }
+    }
+    return null;
+  }
+
+  private static searchByExactName(name: string): FoodNutritionItem | null {
+    for (let i = 0; i < FoodCalories.FOOD_TABLE.length; i++) {
+      if (FoodCalories.FOOD_TABLE[i].name === name) {
+        return FoodCalories.FOOD_TABLE[i];
       }
     }
     return null;

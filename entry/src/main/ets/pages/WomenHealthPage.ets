@@ -19,6 +19,7 @@ struct WomenHealthPage {
   @State showInput: boolean = false;
   @State records: DbRowExt[] = [];
   @State predictedNext: string = '';
+  @State isRefreshing: boolean = false; // 下拉刷新状态
   @State predictedOvulation: string = '';
   @State avgCycle: number = 28;
   @State avgPeriod: number = 5;
@@ -39,14 +40,16 @@ struct WomenHealthPage {
   async loadData(): Promise<void> {
     try {
       const raw = await GlobalData.db.getPeriodRecords();
-      this.records = raw as DbRowExt[];
-
-      // ====关键修复：强制按照经期开始日期升序排序，最新记录放在数组末尾====
-      this.records.sort((itemA:DbRowExt,itemB:DbRowExt)=>{
-        const timeA = this.parseDate(String(itemA.start_date)).getTime()
-        const timeB = this.parseDate(String(itemB.start_date)).getTime()
-        return timeA - timeB
-      })
+      // animateTo 包裹数据更新，触发列表项 transition 进入动画
+      animateTo({ duration: 350, curve: Curve.EaseOut }, () => {
+        this.records = raw as DbRowExt[];
+        // ====关键修复：强制按照经期开始日期升序排序，最新记录放在数组末尾====
+        this.records.sort((itemA: DbRowExt, itemB: DbRowExt) => {
+          const timeA = this.parseDate(String(itemA.start_date)).getTime()
+          const timeB = this.parseDate(String(itemB.start_date)).getTime()
+          return timeA - timeB
+        })
+      });
 
       this.calcAverageData();
       this.calculatePredictions();
@@ -180,6 +183,7 @@ struct WomenHealthPage {
       .width('100%')
       .padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
+      Refresh({ refreshing: $$this.isRefreshing }) {
       Scroll() {
         Column() {
           Column() {
@@ -300,15 +304,30 @@ struct WomenHealthPage {
             .backgroundColor(this.card())
             .borderRadius(8)
             .margin({ bottom: 8 })
+            .transition(
+              TransitionEffect.OPACITY
+                .combine(TransitionEffect.translate({ y: 30 }))
+                .animation({
+                  duration: 350,
+                  curve: Curve.EaseOut
+                })
+            )
           }, (record: DbRowExt): string => String(record.start_date))
         }
         .width('100%')
         .padding(16)
       }
       .layoutWeight(1)
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(this.bg())
+      .onRefreshing(() => {
+        // 下拉刷新：重新加载健康记录
+        this.loadData().then(() => {
+          setTimeout(() => { this.isRefreshing = false; }, 600);
+        }).catch(() => { this.isRefreshing = false; });
+      })
     }
-    .width('100%')
-    .height('100%')
-    .backgroundColor(this.bg())
   }
 }

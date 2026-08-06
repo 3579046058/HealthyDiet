@@ -22,6 +22,8 @@ struct SleepPage {
   @State weekLabels: string[] = [];
   @State avgScore: number = 0;
   @State lastRecord: string = '暂无数据';
+  @State isRefreshing: boolean = false; // 下拉刷新状态
+  @State listAnimTick: number = 0; // 列表展开动画触发标记
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
   @State isSleeping: boolean = false;
@@ -120,7 +122,10 @@ struct SleepPage {
       const rows = await GlobalData.db.getSleepRecords(
         GlobalData.formatDate(start), GlobalData.formatDate(end)
       );
-      this.records = rows;
+      // animateTo 包裹数据更新，触发列表项 transition 进入动画
+      animateTo({ duration: 350, curve: Curve.EaseOut }, () => {
+        this.records = rows;
+      });
 
       // 近七天数据
       const recent = rows.slice(0, 7);
@@ -468,6 +473,7 @@ struct SleepPage {
       }
       .width('100%').padding({ left: 16, right: 16, top: 16 + this.statusBarHeight, bottom: 16 })
 
+      Refresh({ refreshing: $$this.isRefreshing }) {
       Scroll() {
         Column() {
           // 睡眠概览
@@ -728,6 +734,14 @@ struct SleepPage {
             .width('100%').padding(16)
             .backgroundColor(this.card()).borderRadius(12)
             .margin({ left: 16, right: 16, bottom: 8 })
+            .transition(
+              TransitionEffect.OPACITY
+                .combine(TransitionEffect.translate({ y: 30 }))
+                .animation({
+                  duration: 350,
+                  curve: Curve.EaseOut
+                })
+            )
           })
 
           Divider().opacity(0).height(24)
@@ -738,8 +752,15 @@ struct SleepPage {
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
+      }
+      .width('100%').height('100%').backgroundColor(this.bg())
+      .onRefreshing(() => {
+        // 下拉刷新：重新加载睡眠数据
+        this.loadData().then(() => {
+          setTimeout(() => { this.isRefreshing = false; }, 600);
+        }).catch(() => { this.isRefreshing = false; });
+      })
     }
-    .width('100%').height('100%').backgroundColor(this.bg())
   }
 
   pageTransition() {
