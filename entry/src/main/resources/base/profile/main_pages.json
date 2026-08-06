@@ -17,6 +17,7 @@
     "pages/SettingsPage",
     "pages/PermissionPage",
     "pages/RecycleBinPage",
-    "pages/MakeupDaysPage"
+    "pages/MakeupDaysPage",
+    "pages/SoundSettingsPage"
   ]
 }

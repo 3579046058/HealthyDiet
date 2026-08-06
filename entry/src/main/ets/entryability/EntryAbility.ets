@@ -6,6 +6,7 @@ import { PedometerService } from '../services/PedometerService';
 import { PermissionService } from '../services/PermissionService';
 import { ReminderScheduler } from '../services/ReminderScheduler';
 import { FoodRecognitionService } from '../services/FoodRecognitionService';
+import { SoundEffectService } from '../services/SoundEffectService';
 import { CardDataHelper } from '../services/CardDataHelper';
 import { ChatService } from '../services/ChatService';
 import { GoalNotificationHelper } from '../services/GoalNotificationHelper';
@@ -27,6 +28,7 @@ export default class EntryAbility extends UIAbility {
     ReminderScheduler.getInstance().stopAll().then(() => {
       hilog.info(DOMAIN, TAG, 'Reminders stopped');
     });
+    SoundEffectService.getInstance().release();
     hilog.info(DOMAIN, TAG, 'Ability onDestroy');
   }
 
@@ -38,6 +40,14 @@ export default class EntryAbility extends UIAbility {
       hilog.info(DOMAIN, TAG, 'GlobalData initialized successfully');
     } catch (err) {
       hilog.error(DOMAIN, TAG, 'Failed to init GlobalData: %{public}s', JSON.stringify(err));
+    }
+
+    // 初始化音效服务
+    try {
+      SoundEffectService.getInstance().setContext(this.context);
+      SoundEffectService.getInstance().init();
+    } catch (err) {
+      hilog.error(DOMAIN, TAG, 'SoundEffect init error: %{public}s', JSON.stringify(err));
     }
 
     // 初始化 AI 配置（从 rawfile 读取 API 密钥）

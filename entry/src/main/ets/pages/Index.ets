@@ -7,6 +7,7 @@ import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { image } from '@kit.ImageKit';
 import { GlobalData } from '../common/GlobalData';
 import { HealthScoreUtil } from '../services/HealthScoreUtil';
+import { SoundEffectService } from '../services/SoundEffectService';
 import { Constants, GoalConfig, StreakData, DbRow, ThemeColors } from '../common/Constants';
 import { RingProgress } from '../components/RingProgress';
 import { HealthCard } from '../components/HealthCard';
@@ -767,6 +768,8 @@ struct Index {
           if (newAchievements.length > 0) {
             this.currentAchievement = newAchievements[0]; // 显示第一个新成就
             this.showAchievementDialog = true;
+            // 播放成就解锁音效
+            SoundEffectService.getInstance().play('success');
             
             // 发送成就解锁通知
             const notifyEnabledRaw: string | number | boolean = await GlobalData.prefs.get('achievement_notify', 'true');

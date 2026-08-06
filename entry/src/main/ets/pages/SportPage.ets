@@ -7,6 +7,7 @@ import { CardDataHelper } from '../services/CardDataHelper';
 import { NotificationService, NOTIFICATION_ID } from '../services/NotificationService';
 import { GoalNotificationHelper } from '../services/GoalNotificationHelper';
 import { BackgroundTaskService } from '../services/BackgroundTaskService';
+import { SoundEffectService } from '../services/SoundEffectService';
 
 @Entry
 @Component
@@ -495,6 +496,8 @@ struct SportPage {
     }
     this.startTimer();
     
+    // 播放运动开始音效
+    SoundEffectService.getInstance().play('sport_start');
     // 发送运动开始通知（应用内计时只发开始通知，不发持续通知）
     const sportName: string = this.getSportName(this.currentSport);
     NotificationService.getInstance().notifySportStarted(sportName);
@@ -656,6 +659,8 @@ struct SportPage {
     if (this.durationSec > 0) {
       const endName: string = this.getSportName(this.currentSport);
       NotificationService.getInstance().notifySportCompleted(endName, this.durationSec, this.distanceKm, this.calorieBurn);
+      // 播放运动结束铃声
+      SoundEffectService.getInstance().play('notify');
     }
     // 取消持续通知（若有）
     NotificationService.getInstance().cancelSportTrackingNotification();

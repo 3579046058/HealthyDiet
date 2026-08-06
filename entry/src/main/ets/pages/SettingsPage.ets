@@ -64,6 +64,7 @@ struct SettingsPage {
           this.settingItem('🔔', '通知设置', '喝水、久坐、用药提醒', () => { this.navigate('pages/NotificationPage'); })
           this.settingItem('🎯', '目标设置', '步数、喝水、运动、睡眠目标', () => { this.navigate('pages/GoalPage'); })
           this.settingItem('🎨', '主题切换', '切换应用外观主题，当前：' + this.themeLabel(), () => { this.toggleTheme(); })
+          this.settingItem('🔊', '音效', '各场景音效开关与试听', () => { this.navigate('pages/SoundSettingsPage'); })
           this.settingItem('🔐', '权限管理', '管理运动、位置、蓝牙、健康数据等权限', () => { this.navigate('pages/PermissionPage'); })
 
           Text('AI 服务').fontSize(14).fontColor(this.sub()).width('100%')

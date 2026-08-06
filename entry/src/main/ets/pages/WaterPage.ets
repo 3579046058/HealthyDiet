@@ -3,6 +3,7 @@ import { promptAction } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { DbRow, ThemeColors } from '../common/Constants';
 import { CardDataHelper } from '../services/CardDataHelper';
+import { SoundEffectService } from '../services/SoundEffectService';
 
 @Entry
 @Component
@@ -116,6 +117,8 @@ struct WaterPage {
 
     await this.syncWaterSummary(today);
     this.refreshCard();
+    // 播放喝水音效
+    SoundEffectService.getInstance().play('water');
     promptAction.showToast({ message: `喝水记录添加成功  +${this.cupMl}ml`, duration: 2000, bottom: 80 });
   }
 

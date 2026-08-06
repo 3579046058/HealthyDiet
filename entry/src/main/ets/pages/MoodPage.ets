@@ -2,6 +2,7 @@ import { router, promptAction } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { DbRow, ThemeColors } from '../common/Constants';
 import { CardDataHelper } from '../services/CardDataHelper';
+import { SoundEffectService } from '../services/SoundEffectService';
 
 @Entry
 @Component
@@ -63,6 +64,8 @@ struct MoodPage {
       this.note = '';
       this.selectedMood = 3;
       this.showInput = false;
+      // 播放情绪记录音效
+      SoundEffectService.getInstance().play('notify');
       promptAction.showToast({ message: '已保存' });
     } catch (err) {
       console.error('MoodPage saveRecord error:', JSON.stringify(err));

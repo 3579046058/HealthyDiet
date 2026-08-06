@@ -1,6 +1,7 @@
 import { NotificationService } from './NotificationService';
 import { GlobalData } from '../common/GlobalData';
 import { GoalConfig } from '../common/Constants';
+import { SoundEffectService } from './SoundEffectService';
 
 /**
  * 目标达成通知辅助类
@@ -43,6 +44,8 @@ export class GoalNotificationHelper {
       if (currentSteps >= goalSteps && goalSteps > 0) {
         // 发送通知
         await NotificationService.getInstance().notifyStepsGoalAchieved(currentSteps);
+        // 播放目标达成音效
+        SoundEffectService.getInstance().play('success');
         await GlobalData.prefs.put('steps_goal_notified_date', today);
         await GlobalData.prefs.flush();
         console.info('[GoalNotificationHelper] 步数目标达成通知已发送: ' + currentSteps + '/' + goalSteps);
@@ -79,6 +82,8 @@ export class GoalNotificationHelper {
       if (sportDays >= goalSportDays && goalSportDays > 0) {
         // 发送通知
         await NotificationService.getInstance().notifySportGoalAchieved(sportDays);
+        // 播放目标达成音效
+        SoundEffectService.getInstance().play('success');
         await GlobalData.prefs.put('sport_goal_notified_date', today);
         await GlobalData.prefs.flush();
         console.info('[GoalNotificationHelper] 运动目标达成通知已发送: ' + sportDays + '/' + goalSportDays);
@@ -116,6 +121,8 @@ export class GoalNotificationHelper {
       if (sleepSeconds >= goalSleepSeconds && goalSleepHours > 0) {
         // 发送通知
         await NotificationService.getInstance().notifySleepGoalAchieved(sleepSeconds);
+        // 播放目标达成音效
+        SoundEffectService.getInstance().play('success');
         await GlobalData.prefs.put('sleep_goal_notified_date', today);
         await GlobalData.prefs.flush();
         console.info('[GoalNotificationHelper] 睡眠目标达成通知已发送: ' + (sleepSeconds / 3600).toFixed(1) + 'h/' + goalSleepHours + 'h');
