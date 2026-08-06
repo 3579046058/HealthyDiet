@@ -51,15 +51,24 @@ struct MusicPlayerPage {
     this.checkAutoPlay();
   }
 
-  // 进入播放器时自动播放：仅在开启"进入应用自动播放"时生效
+  // 进入播放器时自动播放：仅在开启"进入应用自动播放"且首次冷启动时生效；已有播放则保持进度
   async checkAutoPlay(): Promise<void> {
     try {
       const autoPlay = await this.musicService.isAutoPlayEnabled();
       if (!autoPlay) {
         return; // 用户关闭了自动播放
       }
+      // 已有播放列表：若暂停则恢复（保持进度），不重新开始
       if (this.musicService.getPlaylist().length > 0) {
-        return; // 已有播放列表（后台继续）
+        if (!this.musicService.isPlaying()) {
+          await this.musicService.resume();
+        }
+        return;
+      }
+      // 首次自动播放标记：仅冷启动第一次触发
+      const firstRaw: string | number | boolean = await GlobalData.prefs.get('music_first_autoplay_done', 'false');
+      if (String(firstRaw) === 'true') {
+        return;
       }
       // 确保内置默认歌单存在
       const defaultId = await this.musicService.ensureDefaultPlaylist();
@@ -73,6 +82,7 @@ struct MusicPlayerPage {
         this.playlistSongs = songs;
         this.viewTab = 1;
         await this.musicService.playList(songs, 0);
+        await GlobalData.prefs.put('music_first_autoplay_done', 'true');
         this.currentIndex = 0;
         this.isPlaying = true;
         this.startTimer();
@@ -82,6 +92,7 @@ struct MusicPlayerPage {
         if (allSongs.length > 0) {
           this.currentPlaylistId = -1;
           await this.musicService.playList(allSongs, 0);
+          await GlobalData.prefs.put('music_first_autoplay_done', 'true');
           this.currentIndex = 0;
           this.isPlaying = true;
           this.startTimer();

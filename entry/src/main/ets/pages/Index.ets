@@ -785,9 +785,23 @@ struct Index {
       console.info('[Achievement] score=' + String(score) + ' prevStreak=' + String(prevStreakCurrent) +
         ' steps=' + String(this.stepCount) + ' sleep=' + String(this.sleepScore) +
         ' water=' + String(this.waterMl) + ' ex=' + String(this.exerciseMin));
-      
+
+      // 成就保护：统计今天录入的正项数量（步数/睡眠/喝水/运动），<3 项时分数打 9 折且不允许打卡
+      const currentSteps = this.liveSteps > 0 ? this.liveSteps : this.stepCount;
+      let recordCount = 0;
+      if (currentSteps > 0) { recordCount++; }
+      if (this.sleepScore > 0) { recordCount++; }
+      if (this.waterMl > 0) { recordCount++; }
+      if (this.exerciseMin > 0) { recordCount++; }
+      const insufficientData: boolean = recordCount < 3;
+      // 数据不足时评分 ×0.9（用于展示），且不允许打卡
+      const effectiveScore: number = insufficientData ? Math.round(score * 0.9) : score;
+      console.info('[Achievement] recordCount=' + String(recordCount) + ' insufficientData=' + String(insufficientData) +
+        ' effectiveScore=' + String(effectiveScore));
+
       // 如果健康评分达到45分（放宽：原60，让连续打卡更容易达成），更新连续天数
-      if (score >= 45) {
+      // 数据不足3项时即使达标也不能打卡（成就保护）
+      if (effectiveScore >= 45 && !insufficientData) {
         const streak: StreakData = await GlobalData.prefs.updateStreak(true);
         this.streakCurrent = streak.current;
         this.streakBest = streak.best;
@@ -819,7 +833,7 @@ struct Index {
           this.dataUpdateTrigger = Date.now().toString();
         }
       } else {
-        // 如果没有达到60分，重置连续天数
+        // 没有达到45分，或数据不足3项（成就保护）：重置连续天数
         const streak: StreakData = await GlobalData.prefs.updateStreak(false);
         this.streakCurrent = streak.current;
         this.streakBest = streak.best;

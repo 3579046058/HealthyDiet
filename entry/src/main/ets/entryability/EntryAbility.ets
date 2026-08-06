@@ -55,7 +55,9 @@ export default class EntryAbility extends UIAbility {
 
     // 初始化音乐服务
     MusicService.getInstance().setContext(this.context);
-    MusicService.getInstance().initBuiltinMusic();
+    MusicService.getInstance().initBuiltinMusic().catch((err: Error) => {
+      hilog.error(DOMAIN, TAG, 'initBuiltinMusic failed: %{public}s', JSON.stringify(err));
+    });
 
     // 初始化 AI 配置（从 rawfile 读取 API 密钥）
     try {
@@ -263,7 +265,7 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, TAG, 'Ability onForeground, date=%{public}s', todayStr);
   }
 
-  // 回到前台时检查自动播放
+  // 回到前台时检查自动播放/恢复
   private async checkForegroundAutoPlay(): Promise<void> {
     try {
       const musicService = MusicService.getInstance();
@@ -271,8 +273,18 @@ export default class EntryAbility extends UIAbility {
       if (!autoPlay) {
         return;
       }
-      if (musicService.isPlaying() || musicService.getPlaylist().length > 0) {
-        return; // 已有播放状态，不重复触发
+      // 有播放列表且之前暂停（后台播放被关闭而暂停）：恢复播放，保持进度
+      if (musicService.getPlaylist().length > 0) {
+        if (!musicService.isPlaying() && musicService.hasStartedPlayback()) {
+          await musicService.resume();
+          hilog.info(DOMAIN, TAG, 'Foreground resume music playback');
+        }
+        return;
+      }
+      // 无播放列表（首次冷启动）：仅第一次自动播放
+      const firstLaunchRaw: string | number | boolean = await GlobalData.prefs.get('music_first_autoplay_done', 'false');
+      if (String(firstLaunchRaw) === 'true') {
+        return; // 已经自动播放过，不再触发
       }
       const defaultId = await musicService.ensureDefaultPlaylist();
       let songs: DbRow[] = [];
@@ -284,7 +296,8 @@ export default class EntryAbility extends UIAbility {
       }
       if (songs.length > 0) {
         await musicService.playList(songs, 0);
-        hilog.info(DOMAIN, TAG, 'Foreground auto play started');
+        await GlobalData.prefs.put('music_first_autoplay_done', 'true');
+        hilog.info(DOMAIN, TAG, 'Foreground first auto play started');
       }
     } catch (err) {
       hilog.error(DOMAIN, TAG, 'checkForegroundAutoPlay error: %{public}s', JSON.stringify(err));

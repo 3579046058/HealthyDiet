@@ -247,13 +247,23 @@ export class FoodRecognitionService {
           }
         }
       } else {
-        console.error('GLM request failed code=' + String(code) + ' resp=' + result);
+        // 打印完整错误码，便于真机排查（连不了 hdc 时也可通过错误信息判断）
+        console.error('GLM request failed code=' + String(code) + ' resp=' + result.substring(0, 200));
+        let errMsg: string = '云端识别失败（' + String(code) + '）';
+        if (code === 401) {
+          errMsg = '云端识别失败：API Key 无效';
+        } else if (code === 429) {
+          errMsg = '云端识别失败：请求过于频繁，请稍后再试';
+        } else if (code === 400) {
+          errMsg = '云端识别失败：请求参数异常';
+        }
+        return { foodName: '', confidence: 0, source: RecognitionMode.CLOUD, error: errMsg };
       }
       return { foodName: '', confidence: 0, source: RecognitionMode.CLOUD, error: '云端识别失败，请检查网络或稍后重试' };
     } catch (err) {
       const e = err as BusinessError;
       console.error('recognizeMultiple error: ' + e.code + ' ' + e.message);
-      return { foodName: '', confidence: 0, source: RecognitionMode.CLOUD, error: '识别过程出错' };
+      return { foodName: '', confidence: 0, source: RecognitionMode.CLOUD, error: '识别过程出错（' + e.code + '）' };
     }
   }
 
@@ -700,15 +710,16 @@ export class FoodRecognitionService {
       const file = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY);
       fd = file.fd;
       const source = image.createImageSource(fd);
+      // 压缩到 256px 并降低质量，控制 base64 体积（真机大图避免请求体过大被拒）
       const opts: image.DecodingOptions = {
-        desiredSize: { width: 512, height: 512 },
+        desiredSize: { width: 256, height: 256 },
         desiredPixelFormat: image.PixelMapFormat.RGBA_8888
       };
       const pixelMap = await source.createPixelMap(opts);
       const packer = image.createImagePacker();
       const packOpts: image.PackingOption = {
         format: 'image/jpeg',
-        quality: 80
+        quality: 55
       };
       const data: ArrayBuffer = await packer.packing(pixelMap, packOpts);
       const base64Helper = new util.Base64Helper();

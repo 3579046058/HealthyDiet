@@ -474,8 +474,8 @@ struct SleepPage {
     if (sleepDuration < 0) {
       sleepDuration += 24 * 60;
     }
-    if (sleepDuration < 120) {
-      this.getUIContext().getPromptAction().showToast({ message: '睡眠时长太短，至少2小时' });
+    if (sleepDuration < 30) {
+      this.getUIContext().getPromptAction().showToast({ message: '睡眠时长太短，至少半小时' });
       return;
     }
     if (sleepDuration > 18 * 60) {

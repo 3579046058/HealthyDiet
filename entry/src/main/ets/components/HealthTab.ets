@@ -386,9 +386,6 @@ export struct HealthTab {
                     animKey: this.refreshAnimKey
                   })
                   .margin({ top: 4 })
-                  Text('分')
-                    .fontSize(16)
-                    .fontColor(this.subTextColor)
                 } else {
                   Text('--')
                     .fontSize(28)

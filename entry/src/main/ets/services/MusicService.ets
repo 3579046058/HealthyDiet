@@ -11,7 +11,7 @@ import { GlobalData } from '../common/GlobalData';
 import { DbRow } from '../common/Constants';
 
 // 内置默认歌单的原始文件名列表（rawfile/music/ 下的文件）
-const BUILTIN_MUSIC_FILES: string[] = ['NewMorning.mp3'];
+const BUILTIN_MUSIC_FILES: string[] = ['NewMorning.m4a'];
 
 // 音乐库服务：导入本地音频到沙箱、管理播放
 export class MusicService {
@@ -161,6 +161,11 @@ export class MusicService {
 
   isPlaying(): boolean {
     return this.isPlayingFlag;
+  }
+
+  // 是否启动过播放（用于判断是否应恢复而非重新自动播放）
+  hasStartedPlayback(): boolean {
+    return this.playlist.length > 0;
   }
 
   getDuration(): number {
@@ -361,13 +366,8 @@ export class MusicService {
           await this.avPlayer?.prepare();
         }
         if (state === 'prepared') {
-          // 应用音量设置
-          try {
-            await this.avPlayer?.setVolume(this.volumeValue);
-          } catch (volErr) {
-            console.error('apply volume error:', JSON.stringify(volErr));
-          }
-          await this.avPlayer?.play();
+          // 播放前 2s 淡入：音量从 0 非线性渐增（二次曲线，速度越来越快）
+          this.startFadeIn();
         }
         if (state === 'playing') {
           this.isPlayingFlag = true;
@@ -411,11 +411,79 @@ export class MusicService {
     }
   }
 
+  // 探测音频时长（毫秒）
+  private async probeDuration(path: string): Promise<number> {
+    let duration: number = 0;
+    const probe: media.AVPlayer = await media.createAVPlayer();
+    try {
+      await new Promise<void>((resolve) => {
+        let resolved: boolean = false;
+        const done = (): void => {
+          if (!resolved) {
+            resolved = true;
+            resolve();
+          }
+        };
+        probe.on('durationUpdate', (d: number) => {
+          duration = d;
+          done();
+        });
+        probe.on('error', (err: BusinessError) => {
+          console.error('probe error:', JSON.stringify(err));
+          done();
+        });
+        probe.on('stateChange', async (state: string) => {
+          if (state === 'prepared') {
+            await probe.pause();
+            done();
+          }
+        });
+        probe.url = 'file://' + path;
+        probe.prepare();
+        setTimeout(() => { done(); }, 5000);
+      });
+    } catch (err) {
+      console.error('probe duration error:', JSON.stringify(err));
+    }
+    probe.release();
+    return duration;
+  }
+
   // 暂停
   async pause(): Promise<void> {
     if (this.avPlayer) {
       await this.avPlayer.pause();
     }
+  }
+
+  // 播放淡入：2 秒内音量从 0 非线性（二次曲线，先慢后快）增至目标音量
+  private fadeTimer: number = -1;
+
+  private startFadeIn(): void {
+    if (this.fadeTimer >= 0) {
+      clearInterval(this.fadeTimer);
+      this.fadeTimer = -1;
+    }
+    const durationMs: number = 2000;
+    const steps: number = 40;
+    const intervalMs: number = durationMs / steps;
+    let step: number = 0;
+    // 立即播放（音量 0 起步）
+    this.avPlayer?.play();
+    this.fadeTimer = setInterval(() => {
+      step++;
+      if (step > steps) {
+        clearInterval(this.fadeTimer);
+        this.fadeTimer = -1;
+        // 确保达到目标音量
+        this.avPlayer?.setVolume(this.volumeValue);
+        return;
+      }
+      // 二次曲线：t = (step/steps)^2，先慢后快
+      const t: number = step / steps;
+      const vol: number = this.volumeValue * t * t;
+      this.avPlayer?.setVolume(vol);
+    }, intervalMs);
   }
 
   // 继续播放
@@ -519,19 +587,41 @@ export class MusicService {
 
   // 初始化内置音乐：将 rawfile/music/ 下的内置曲目复制到沙箱并加入默认歌单
   async initBuiltinMusic(): Promise<void> {
+    console.info('[MusicInit] initBuiltinMusic called, files=' + BUILTIN_MUSIC_FILES.length);
     if (!this.context || BUILTIN_MUSIC_FILES.length === 0) {
+      console.error('[MusicInit] early return: context=' + String(this.context !== null) +
+        ' files=' + String(BUILTIN_MUSIC_FILES.length));
       return;
     }
     try {
       const defaultId = await this.ensureDefaultPlaylist();
+      console.info('[MusicInit] defaultId=' + String(defaultId));
       if (defaultId <= 0) {
         return;
       }
       // 检查沙箱中是否已有内置音乐（用标记文件判断是否已初始化）
       const markerPath = this.context.filesDir + '/builtin_music_initialized';
-      if (this.exists(markerPath)) {
+      // 若标记存在，仍需确认内置歌曲真的在库中；缺失则重新初始化（避免"标记在了但歌没进去"）
+      const lib = await GlobalData.db.getMusicRecords();
+      let hasAllBuiltin: boolean = true;
+      for (let i = 0; i < BUILTIN_MUSIC_FILES.length; i++) {
+        let found = false;
+        for (const r of lib) {
+          if (String(r.file_name) === BUILTIN_MUSIC_FILES[i]) {
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          hasAllBuiltin = false;
+          break;
+        }
+      }
+      if (this.exists(markerPath) && hasAllBuiltin) {
+        console.info('[MusicInit] already initialized, all builtin songs present');
         return;
       }
+      console.info('[MusicInit] marker exists but songs missing, re-init');
       // 逐个复制内置音乐到沙箱
       for (let i = 0; i < BUILTIN_MUSIC_FILES.length; i++) {
         const rawName = BUILTIN_MUSIC_FILES[i];
@@ -547,10 +637,17 @@ export class MusicService {
           }
         }
         if (!alreadyExists) {
+          // 探测时长（毫秒）
+          let durationMs = 0;
+          try {
+            durationMs = await this.probeDuration(destPath);
+          } catch (probeErr) {
+            console.error('[MusicInit] probe duration error:', JSON.stringify(probeErr));
+          }
           const record: DbRow = {
             title: this.stripExtension(rawName),
             artist: '内置音乐',
-            duration_ms: 0,
+            duration_ms: durationMs,
             file_name: rawName,
             file_uri: 'file://' + destPath,
             created_at: Date.now()
@@ -579,36 +676,40 @@ export class MusicService {
     }
   }
 
-  // 将 rawfile 文件复制到沙箱（流式读取）
+  // 将 rawfile 文件复制到沙箱（官方推荐：readSync 用 data.offset+off，writeSync 从头写）
   private async copyRawfileToSandbox(rawName: string, destPath: string): Promise<void> {
     try {
       const rawFile = this.context?.resourceManager.getRawFdSync('music/' + rawName);
       if (!rawFile) {
+        console.error('[MusicInit] getRawFdSync failed: ' + rawName);
         return;
       }
       const dest = fs.openSync(destPath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC);
-      const bufSize = 8192;
+      const bufSize = 4096;
       const buf = new ArrayBuffer(bufSize);
       let off = 0;
       let len = 0;
-      let readed = 0;
-      const total = rawFile.length;
+      let readedLen = 0;
+      let remain = rawFile.length;
       while (true) {
-        const remain = total - readed;
         const toRead = remain < bufSize ? remain : bufSize;
         if (toRead <= 0) {
           break;
         }
-        len = fs.readSync(rawFile.fd, buf, { offset: rawFile.offset + readed, length: toRead });
+        // 关键：readSync 的 offset 必须是 rawFile.offset + 已读偏移（rawfile 在 HAP 内的绝对位置）
+        len = fs.readSync(rawFile.fd, buf, { offset: rawFile.offset + off, length: toRead });
         if (len <= 0) {
           break;
         }
-        fs.writeSync(dest.fd, buf, { offset: 0, length: len });
-        readed += len;
+        // writeSync 从 dest 文件头开始顺序写
+        fs.writeSync(dest.fd, buf, { offset: off, length: len });
+        off += len;
+        readedLen += len;
+        remain = rawFile.length - readedLen;
       }
       fs.closeSync(dest);
       this.context?.resourceManager.closeRawFd('music/' + rawName);
-      console.info('[MusicInit] copied rawfile: ' + rawName);
+      console.info('[MusicInit] copied rawfile: ' + rawName + ' size=' + String(readedLen) + ' total=' + String(rawFile.length));
     } catch (err) {
       console.error('copyRawfileToSandbox error:', JSON.stringify(err));
     }

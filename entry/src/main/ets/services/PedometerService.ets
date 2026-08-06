@@ -73,14 +73,8 @@ export class PedometerService {
     try {
       sensor.on(sensor.SensorId.PEDOMETER, (data: sensor.PedometerResponse) => {
         const totalSteps: number = data.steps;
-        // 首次收到数据：若基准为0（新一天），记录基准 = 当前累计，今日步数从0开始
-        if (this.baseSteps === 0) {
-          this.baseSteps = totalSteps;
-          GlobalData.prefs.put('step_base_value', String(totalSteps));
-          GlobalData.prefs.flush();
-        }
-        // 今日步数 = 累计 - 基准（PEDOMETER 是设备启动以来累计）
-        this.cumulativeSteps = Math.max(0, totalSteps - this.baseSteps);
+        // PEDOMETER 返回当前步数（模拟器/多数设备为今日步数语义），直接使用
+        this.cumulativeSteps = totalSteps;
         AppStorage.setOrCreate('liveSteps', this.cumulativeSteps);
         if (this.stepCallback) {
           this.stepCallback(this.cumulativeSteps);

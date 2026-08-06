@@ -59,6 +59,9 @@ struct NotificationPage {
   @State sleepReminderEnabled: boolean = false;
   @State sleepReminderTime: string = '22:30';
   @State showSleepTimePicker: boolean = false;
+  @State checkinReminderEnabled: boolean = false;
+  @State checkinReminderTime: string = '20:00';
+  @State showCheckinTimePicker: boolean = false;
 
   // 用药提醒（有用药计划且有闹铃时视为已启用）
   @State medicationEnabled: boolean = false;
@@ -107,6 +110,12 @@ struct NotificationPage {
       this.sleepReminderEnabled = String(sleepRaw) === 'true';
       const sleepTimeRaw: string | number | boolean = await GlobalData.prefs.get('sleep_reminder_time', '22:30');
       this.sleepReminderTime = String(sleepTimeRaw);
+      
+      // 打卡提醒
+      const checkinRaw: string | number | boolean = await GlobalData.prefs.get('checkin_reminder_enabled', 'false');
+      this.checkinReminderEnabled = String(checkinRaw) === 'true';
+      const checkinTimeRaw: string | number | boolean = await GlobalData.prefs.get('checkin_reminder_time', '20:00');
+      this.checkinReminderTime = String(checkinTimeRaw);
       
       // 目标达成通知
       const stepsRaw: string | number | boolean = await GlobalData.prefs.get('goal_steps_notify', 'true');
@@ -210,6 +219,28 @@ struct NotificationPage {
     if (this.sleepReminderEnabled) {
       const id: number = await ReminderScheduler.getInstance().scheduleSleepReminder(this.sleepReminderTime);
       await GlobalData.prefs.put('sleep_reminder_id', id);
+    }
+  }
+
+  // ===== 打卡提醒 =====
+  async toggleCheckinReminder(isEnabled: boolean): Promise<void> {
+    this.checkinReminderEnabled = isEnabled;
+    await GlobalData.prefs.put('checkin_reminder_enabled', String(isEnabled));
+    if (isEnabled) {
+      const id: number = await ReminderScheduler.getInstance().scheduleCheckinReminder(this.checkinReminderTime);
+      await GlobalData.prefs.put('checkin_reminder_id', id);
+      promptAction.showToast({ message: '打卡提醒已开启：' + this.checkinReminderTime });
+    } else {
+      await ReminderScheduler.getInstance().cancelCheckinReminder();
+      promptAction.showToast({ message: '打卡提醒已关闭' });
+    }
+  }
+
+  async updateCheckinReminderTime(): Promise<void> {
+    await GlobalData.prefs.put('checkin_reminder_time', this.checkinReminderTime);
+    if (this.checkinReminderEnabled) {
+      const id: number = await ReminderScheduler.getInstance().scheduleCheckinReminder(this.checkinReminderTime);
+      await GlobalData.prefs.put('checkin_reminder_id', id);
     }
   }
 
@@ -325,6 +356,44 @@ struct NotificationPage {
               .onChange((value: TimePickerResult) => {
                 this.sleepReminderTime = this.formatReminderTime(value);
                 this.updateSleepReminderTime();
+              })
+              .margin({ left: 16, bottom: 8 })
+          }
+
+          // 打卡提醒
+          NotifCard({
+            title: '打卡提醒',
+            icon: $r('app.media.ic_check'),
+            isEnabled: this.checkinReminderEnabled,
+            cardColor: this.card(),
+            txtColor: this.txt(),
+            subColor: this.sub(),
+            accentColor: this.accent(),
+            onChange: (on: boolean) => {
+              this.toggleCheckinReminder(on);
+            }
+          }) {
+            Text('每天 ' + this.checkinReminderTime + ' 提醒打卡（未打卡时提醒）')
+              .fontSize(12).fontColor(this.sub()).margin({ top: 4 })
+          }
+
+          Row() {
+            Text('提醒时间：').fontSize(14).fontColor(this.sub())
+            Text(this.checkinReminderTime).fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
+              .onClick(() => { this.showCheckinTimePicker = !this.showCheckinTimePicker; })
+            Blank()
+            Image($r('app.media.ic_edit')).width(16).height(16).fillColor(this.txt())
+              .onClick(() => { this.showCheckinTimePicker = !this.showCheckinTimePicker; })
+          }
+          .width('100%').padding({ left: 16, right: 16, bottom: 4 })
+
+          if (this.showCheckinTimePicker) {
+            TimePicker({ selected: this.parseReminderTime(this.checkinReminderTime) })
+              .useMilitaryTime(true)
+              .width(200).height(120)
+              .onChange((value: TimePickerResult) => {
+                this.checkinReminderTime = this.formatReminderTime(value);
+                this.updateCheckinReminderTime();
               })
               .margin({ left: 16, bottom: 8 })
           }

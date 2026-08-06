@@ -28,6 +28,12 @@ export class ReminderScheduler {
       if (String(waterEnabledRaw) === 'true') {
         this.scheduleWaterReminder(waterTimes.length > 0 ? waterTimes : ['10:00']);
       }
+      // 打卡提醒（默认 20:00）
+      const checkinEnabledRaw: string | number | boolean = await GlobalData.prefs.get('checkin_reminder_enabled', 'false');
+      if (String(checkinEnabledRaw) === 'true') {
+        const checkinTimeRaw: string | number | boolean = await GlobalData.prefs.get('checkin_reminder_time', '20:00');
+        this.scheduleCheckinReminder(String(checkinTimeRaw));
+      }
     } catch (err) {
       console.error('ReminderScheduler startAll error:', JSON.stringify(err));
     }
@@ -125,6 +131,34 @@ export class ReminderScheduler {
       }
     } catch (err) {
       console.error('cancelSleepReminder error:', JSON.stringify(err));
+    }
+  }
+
+  /**
+   * 发布打卡提醒（单时间点，默认 20:00）
+   * @param time 提醒时间，如 "20:00"
+   */
+  async scheduleCheckinReminder(time: string): Promise<number> {
+    await this.cancelCheckinReminder();
+    const h: number = this.parseHour(time);
+    const m: number = this.parseMinute(time);
+    const id: number = await this.publishAlarm(h, m, 1005, '📝 打卡提醒', '今天还没有打卡，记得记录健康数据完成打卡哦！');
+    if (id > 0) {
+      await GlobalData.prefs.put('checkin_reminder_id', id);
+    }
+    return id;
+  }
+
+  async cancelCheckinReminder(): Promise<void> {
+    try {
+      const idRaw: string | number | boolean = await GlobalData.prefs.get('checkin_reminder_id', -1);
+      const id: number = Number(idRaw);
+      if (id > 0) {
+        await reminderAgentManager.cancelReminder(id);
+        await GlobalData.prefs.put('checkin_reminder_id', -1);
+      }
+    } catch (err) {
+      console.error('cancelCheckinReminder error:', JSON.stringify(err));
     }
   }
 
