@@ -322,16 +322,10 @@ export struct FoodRecognitionTab {
       const minute = now.getMinutes();
       const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
 
-      // 判断餐次
-      let mealType = '加餐';
+      // 判断餐次（使用英文值以匹配DietPage的过滤逻辑）
+      let mealType = this.getCurrentMealType();
       if (item.isSnack) {
-        mealType = '零食';
-      } else if (hour >= 6 && hour < 9) {
-        mealType = '早餐';
-      } else if (hour >= 11 && hour < 14) {
-        mealType = '午餐';
-      } else if (hour >= 17 && hour < 20) {
-        mealType = '晚餐';
+        mealType = 'snack';
       }
 
       // 创建 DbRow 对象
@@ -409,6 +403,8 @@ export struct FoodRecognitionTab {
 
       if (savedCount > 0) {
         promptAction.showToast({ message: '已添加 ' + savedCount + ' 种食物到饮食记录' });
+        // 触发首页数据更新
+        AppStorage.setOrCreate('dataUpdateTrigger', `food_recognition_${Date.now()}`);
         this.onSaveSuccess();
       }
     } catch (err) {
