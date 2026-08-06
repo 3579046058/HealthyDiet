@@ -89,15 +89,19 @@ struct DietPage {
       carbs: nutrition.carb,
       timestamp: Date.now()
     };
+    console.info('[热量调试] 准备保存饮食记录:', JSON.stringify(record));
     try {
       await GlobalData.db.addDietRecord(record);
+      console.info('[热量调试] 饮食记录保存成功');
       this.foodName = '';
       this.amountG = '';
       this.showInput = false;
       await this.loadData();
       
       // 通知 Index 页面数据已更新
-      AppStorage.setOrCreate('dataUpdateTrigger', `diet_${Date.now()}`);
+      const triggerValue = `diet_${Date.now()}`;
+      console.info('[热量调试] 触发数据更新通知:', triggerValue);
+      AppStorage.setOrCreate('dataUpdateTrigger', triggerValue);
     } catch (err) {
       console.error('DietPage saveRecord error:', JSON.stringify(err));
     }

@@ -13,6 +13,10 @@ export interface RecognizedFoodItem {
   isSnack: boolean;
   snackReason: string;
   saved: boolean;
+  isCalcCalories: boolean; // 是否正在计算卡路里
+  isJudgingSnack: boolean; // 是否正在判断零食
+  snackAnswer: string; // AI 零食判断答案
+  snackAnswerIsSnack: boolean; // AI 判断是否是零食
 }
 
 export interface RecognitionOutcome {
@@ -70,6 +74,7 @@ export class FoodRecognitionService {
   private glmApiKey: string = '';
   private static readonly VISION_URL: string = AiDefaults.API_URL;
   private static readonly VISION_MODEL: string = AiDefaults.VISION_MODEL;
+  private static readonly CHAT_MODEL: string = AiDefaults.CHAT_MODEL;
   // 每100克热量缓存：同一食物首次云端计算后固定，避免多次识别数值漂移
   private per100Cache: Map<string, number> = new Map<string, number>();
 
@@ -224,7 +229,11 @@ export class FoodRecognitionService {
           calories: 0,
           isSnack: false,
           snackReason: '',
-          saved: false
+          saved: false,
+          isCalcCalories: false,
+          isJudgingSnack: false,
+          snackAnswer: '',
+          snackAnswerIsSnack: false
         });
       }
     }
@@ -352,7 +361,7 @@ export class FoodRecognitionService {
       const message: GlmMessage = { role: 'user', content: contents };
       const messages: Array<GlmMessage> = [message];
       const requestBody: GlmRequestBody = {
-        model: FoodRecognitionService.VISION_MODEL,
+        model: FoodRecognitionService.CHAT_MODEL,
         messages: messages,
         temperature: 0
       };
@@ -478,7 +487,7 @@ export class FoodRecognitionService {
       const message: GlmMessage = { role: 'user', content: contents };
       const messages: Array<GlmMessage> = [message];
       const requestBody: GlmRequestBody = {
-        model: FoodRecognitionService.VISION_MODEL,
+        model: FoodRecognitionService.CHAT_MODEL,
         messages: messages,
         temperature: 0
       };
@@ -551,7 +560,7 @@ export class FoodRecognitionService {
       const message: GlmMessage = { role: 'user', content: contents };
       const messages: Array<GlmMessage> = [message];
       const requestBody: GlmRequestBody = {
-        model: FoodRecognitionService.VISION_MODEL,
+        model: FoodRecognitionService.CHAT_MODEL,
         messages: messages,
         temperature: 0
       };
@@ -618,7 +627,7 @@ export class FoodRecognitionService {
       const message: GlmMessage = { role: 'user', content: contents };
       const messages: Array<GlmMessage> = [message];
       const requestBody: GlmRequestBody = {
-        model: FoodRecognitionService.VISION_MODEL,
+        model: FoodRecognitionService.CHAT_MODEL,
         messages: messages,
         temperature: 0
       };

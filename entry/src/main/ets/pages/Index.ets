@@ -446,7 +446,11 @@ struct Index {
 
       // 计算今日摄入热量
       const todayDietRecords = await GlobalData.db.getDietRecordsRange(today, today);
+      console.info('[热量调试] 今日日期:', today);
+      console.info('[热量调试] 查询到的饮食记录数量:', todayDietRecords.length);
+      console.info('[热量调试] 饮食记录详情:', JSON.stringify(todayDietRecords));
       this.todayCalorieIntake = todayDietRecords.reduce((sum: number, record: DbRow) => sum + (Number(record.calories) || 0), 0);
+      console.info('[热量调试] 计算出的今日摄入热量:', this.todayCalorieIntake);
 
       // 数据加载完成后，检查成就（评分更新时自动检查）
       await this.checkAchievements();
@@ -813,6 +817,7 @@ struct Index {
 
   // 数据更新通知处理
   onDataUpdate(propName: string): void {
+    console.info('[热量调试] onDataUpdate 被触发, dataUpdateTrigger:', this.dataUpdateTrigger);
     if (this.dataUpdateTrigger.length > 0) {
       console.info('DATA_UPDATE trigger:', this.dataUpdateTrigger);
       // 重新加载数据（会自动检查成就）
