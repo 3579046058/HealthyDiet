@@ -15,7 +15,7 @@ interface PlaylistInfo {
 struct MusicSettingsPage {
   @State playlists: PlaylistInfo[] = [];
   @State defaultPlaylistId: number = 0;
-  @State volume: number = 0.3;
+  @State volume: number = 0.2;
   @State autoPlayOnEnter: boolean = true;
   @State backgroundPlay: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';

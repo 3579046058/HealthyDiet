@@ -521,8 +521,8 @@ export class MusicService {
   // 加载音量设置（从偏好存储），默认 30%
   async loadVolumeSetting(): Promise<void> {
     try {
-      const v = await GlobalData.prefs.get('music_volume', 0.3) as number;
-      this.volumeValue = v >= 0 && v <= 1 ? v : 0.3;
+      const v = await GlobalData.prefs.get('music_volume', 0.2) as number;
+      this.volumeValue = v >= 0 && v <= 1 ? v : 0.2;
     } catch (err) {
       console.error('loadVolumeSetting error:', JSON.stringify(err));
     }
