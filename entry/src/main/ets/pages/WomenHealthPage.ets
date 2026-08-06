@@ -317,10 +317,11 @@ struct WomenHealthPage {
         .width('100%')
         .padding(16)
       }
-      .layoutWeight(1)
-      }
       .width('100%')
       .height('100%')
+      }
+      .width('100%')
+      .layoutWeight(1)
     .backgroundColor(this.bg())
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
     .onRefreshing(() => {
