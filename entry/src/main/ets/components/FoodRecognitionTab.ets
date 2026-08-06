@@ -13,10 +13,9 @@ export struct FoodRecognitionTab {
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
   @Prop activeTheme: string = 'dark';
   @State previewUri: string = '';
-  
+
   // 保存成功后的回调
   onSaveSuccess: () => void = () => {};
-
   @State bgColor: string = '#0D0D1A';
   @State cardColor: string = '#1A1A2E';
   @State textColor: string = '#FFFFFF';
@@ -39,16 +38,16 @@ export struct FoodRecognitionTab {
     this.stopScanAnimation(); // 先停止之前的动画
     this.scanLineY = 0; // 从顶部开始
     this.scanDirection = 1; // 向下移动
-    
+
     // 计算扫描区域高度
-    const scanAreaHeight = this.imageWidth > 0 && this.imageHeight > 0 ? 
+    const scanAreaHeight = this.imageWidth > 0 && this.imageHeight > 0 ?
       (this.imageHeight / this.imageWidth * 320) : 220;
-    
+
     // 每30ms更新一次位置，实现平滑动画
     this.scanTimer = setInterval(() => {
       const speed = 3; // 移动速度
       this.scanLineY += speed * this.scanDirection;
-      
+
       // 到达底部时反向
       if (this.scanLineY >= scanAreaHeight - 3) {
         this.scanLineY = scanAreaHeight - 3;
@@ -83,19 +82,25 @@ export struct FoodRecognitionTab {
   // 食物识别相关状态（统一使用数组）
   @State recognizedFoodItems: RecognizedFoodItem[] = [];
   @State savedFoodList: RecognizedFoodItem[] = [];
-
   private uiContext: common.UIAbilityContext | null = null;
 
   // 计算单个食物项的卡路里
-  async refreshItemCalories(item: RecognizedFoodItem): Promise<void> {
+  async refreshItemCalories(item: RecognizedFoodItem, index: number): Promise<void> {
     if (item.foodName.length === 0 || item.grams <= 0) {
       item.calories = 0;
+      // 触发数组响应式更新
+      this.recognizedFoodItems = [...this.recognizedFoodItems];
       return;
     }
     item.isCalcCalories = true; // 开始计算
+    this.recognizedFoodItems = [...this.recognizedFoodItems];
+
     const result = await FoodRecognitionService.getInstance().calculateCalories(item.foodName, item.grams);
     item.calories = result >= 0 ? result : 0;
     item.isCalcCalories = false; // 计算完成
+
+    // 强制触发数组响应式更新，确保页面数值刷新
+    this.recognizedFoodItems = [...this.recognizedFoodItems];
   }
 
   aboutToAppear(): void {
@@ -150,7 +155,6 @@ export struct FoodRecognitionTab {
     this.scanAnim = true;
     this.startScanAnimation(); // 启动扫描动画
     this.resultMsg = '正在识别...';
-
     setTimeout(async () => {
       try {
         const outcome: RecognitionOutcome = await FoodRecognitionService.getInstance().recognizeMultiple(uri);
@@ -178,15 +182,18 @@ export struct FoodRecognitionTab {
         this.resultMsg = '本地识别完成，共识别到 ' + outcome.foodItems.length + ' 种食物';
       }
       // 为每个食物项计算初始卡路里并进行 AI 零食判断
-      for (const item of this.recognizedFoodItems) {
+      for (let i = 0; i < this.recognizedFoodItems.length; i++) {
+        const item = this.recognizedFoodItems[i];
         // 初始化 AI 零食判断相关字段
         item.isJudgingSnack = false;
         item.snackAnswer = '';
         item.snackAnswerIsSnack = false;
-        
-        await this.refreshItemCalories(item);
+
+        await this.refreshItemCalories(item, i);
         // 为每个食物进行 AI 零食判断
         item.isJudgingSnack = true;
+        this.recognizedFoodItems = [...this.recognizedFoodItems];
+
         try {
           const judge = await FoodRecognitionService.getInstance().askIsSnack(item.foodName);
           item.isSnack = judge.isSnack;
@@ -200,10 +207,10 @@ export struct FoodRecognitionTab {
           item.snackAnswerIsSnack = false;
         }
         item.isJudgingSnack = false;
+        this.recognizedFoodItems = [...this.recognizedFoodItems];
       }
       return;
     }
-
     // 兼容单食物识别结果 - 转换为 RecognizedFoodItem 数组
     if (outcome.foodName.length === 0) {
       this.recogSource = '';
@@ -211,7 +218,7 @@ export struct FoodRecognitionTab {
       this.resultMsg = outcome.error && outcome.error.length > 0 ? outcome.error : '未识别出菜品，换个角度或光线试试';
       return;
     }
-    
+
     // 将单食物转换为 RecognizedFoodItem 数组（只包含一个元素）
     const singleItem: RecognizedFoodItem = {
       id: Date.now().toString(),
@@ -226,16 +233,18 @@ export struct FoodRecognitionTab {
       snackAnswer: '',
       snackAnswerIsSnack: false
     };
-    
+
     this.recognizedFoodItems = [singleItem];
     this.recogSource = outcome.source;
     this.savedFoodList = [];
-    
+
     // 计算初始卡路里
-    await this.refreshItemCalories(singleItem);
-    
+    await this.refreshItemCalories(singleItem, 0);
+
     // 进行 AI 零食判断
     singleItem.isJudgingSnack = true;
+    this.recognizedFoodItems = [...this.recognizedFoodItems];
+
     try {
       const judge = await FoodRecognitionService.getInstance().askIsSnack(singleItem.foodName);
       singleItem.isSnack = judge.isSnack;
@@ -249,7 +258,8 @@ export struct FoodRecognitionTab {
       singleItem.snackAnswerIsSnack = false;
     }
     singleItem.isJudgingSnack = false;
-    
+    this.recognizedFoodItems = [...this.recognizedFoodItems];
+
     if (outcome.source === 'cloud') {
       this.resultMsg = '云端 AI 识别完成';
     } else if (outcome.source === 'local') {
@@ -314,20 +324,17 @@ export struct FoodRecognitionTab {
       promptAction.showToast({ message: '该食物已保存' });
       return;
     }
-
     try {
       const today = await GlobalData.getTodayDate();
       const now = new Date();
       const hour = now.getHours();
       const minute = now.getMinutes();
       const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
-
       // 判断餐次（使用英文值以匹配DietPage的过滤逻辑）
       let mealType = this.getCurrentMealType();
       if (item.isSnack) {
         mealType = 'snack';
       }
-
       // 创建 DbRow 对象
       const record: DbRow = {
         date: today,
@@ -338,7 +345,6 @@ export struct FoodRecognitionTab {
         calories: item.calories
       };
       await GlobalData.db.addDietRecord(record);
-
       // 标记为已保存
       item.saved = true;
       // 手动复制对象属性，避免使用展开运算符
@@ -356,7 +362,8 @@ export struct FoodRecognitionTab {
         snackAnswerIsSnack: item.snackAnswerIsSnack
       };
       this.savedFoodList.push(savedItem);
-
+      // 触发列表刷新
+      this.recognizedFoodItems = [...this.recognizedFoodItems];
       promptAction.showToast({ message: '已保存：' + item.foodName });
     } catch (err) {
       console.error('saveFoodItem error:', JSON.stringify(err));
@@ -391,7 +398,6 @@ export struct FoodRecognitionTab {
       promptAction.showToast({ message: '所有食物已添加到饮食记录' });
       return;
     }
-
     try {
       let savedCount = 0;
       for (const item of unsavedItems) {
@@ -400,7 +406,6 @@ export struct FoodRecognitionTab {
           savedCount++;
         }
       }
-
       if (savedCount > 0) {
         promptAction.showToast({ message: '已添加 ' + savedCount + ' 种食物到饮食记录' });
         // 触发首页数据更新
@@ -421,7 +426,6 @@ export struct FoodRecognitionTab {
           Blank()
         }
         .width('100%').padding({ left: 20, right: 20, top: 16 + this.statusBarHeight })
-
         Text('拍照看看这是什么菜').fontSize(13).fontColor(this.subTextColor)
           .width('100%').padding({ left: 20, top: 4, bottom: 16 })
 
@@ -431,7 +435,7 @@ export struct FoodRecognitionTab {
             if (this.previewUri.length > 0) {
               Image(this.previewUri)
                 .width('100%')
-                .height(this.imageWidth > 0 && this.imageHeight > 0 ? 
+                .height(this.imageWidth > 0 && this.imageHeight > 0 ?
                   (this.imageHeight / this.imageWidth * 320) : 220)
                 .objectFit(ImageFit.Contain)
                 .borderRadius(20)
@@ -451,7 +455,7 @@ export struct FoodRecognitionTab {
             }
           }
           .width('100%')
-          .height(this.previewUri.length > 0 && this.imageWidth > 0 && this.imageHeight > 0 ? 
+          .height(this.previewUri.length > 0 && this.imageWidth > 0 && this.imageHeight > 0 ?
             (this.imageHeight / this.imageWidth * 320) : 220)
           .borderRadius(20)
           .backgroundColor(this.cardColor)
@@ -494,7 +498,7 @@ export struct FoodRecognitionTab {
           }
         }
         .width('calc(100% - 32vp)')
-        .height(this.previewUri.length > 0 && this.imageWidth > 0 && this.imageHeight > 0 ? 
+        .height(this.previewUri.length > 0 && this.imageWidth > 0 && this.imageHeight > 0 ?
           (this.imageHeight / this.imageWidth * 320) : 220)
         .margin({ left: 16, right: 16 })
 
@@ -506,10 +510,10 @@ export struct FoodRecognitionTab {
               Text('拍照').fontSize(15).fontColor(Color.White).margin({ left: 4 })
             }
           }
-            .layoutWeight(1).height(48)
-            .backgroundColor('#FF6B35').borderRadius(24)
-            .fontColor(Color.White).fontSize(15)
-            .onClick(() => { this.takePhoto(); })
+          .layoutWeight(1).height(48)
+          .backgroundColor('#FF6B35').borderRadius(24)
+          .fontColor(Color.White).fontSize(15)
+          .onClick(() => { this.takePhoto(); })
 
           Button() {
             Row() {
@@ -517,11 +521,11 @@ export struct FoodRecognitionTab {
               Text('相册').fontSize(15).fontColor(Color.White).margin({ left: 4 })
             }
           }
-            .layoutWeight(1).height(48)
-            .backgroundColor('#4CAF50').borderRadius(24)
-            .fontColor(Color.White).fontSize(15)
-            .margin({ left: 12 })
-            .onClick(() => { this.pickFromAlbum(); })
+          .layoutWeight(1).height(48)
+          .backgroundColor('#4CAF50').borderRadius(24)
+          .fontColor(Color.White).fontSize(15)
+          .margin({ left: 12 })
+          .onClick(() => { this.pickFromAlbum(); })
         }
         .width('100%').padding({ left: 16, right: 16, top: 16 })
 
@@ -536,7 +540,7 @@ export struct FoodRecognitionTab {
                   .fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
                   .margin({ left: 6 })
               }
-                .width('100%').margin({ bottom: 12 })
+              .width('100%').margin({ bottom: 12 })
 
               // 多食物列表
               ForEach(this.recognizedFoodItems, (item: RecognizedFoodItem, index: number) => {
@@ -567,9 +571,7 @@ export struct FoodRecognitionTab {
                           // 更新数组元素的值
                           this.recognizedFoodItems[index].grams = valid;
                           // 刷新卡路里计算
-                          this.refreshItemCalories(this.recognizedFoodItems[index]);
-                          // 触发数组响应式更新
-                          this.recognizedFoodItems = [...this.recognizedFoodItems];
+                          this.refreshItemCalories(this.recognizedFoodItems[index], index);
                         }
                       })
                     Text(String(this.recognizedFoodItems[index].grams) + 'g')
@@ -592,9 +594,7 @@ export struct FoodRecognitionTab {
                           // 更新数组元素的值
                           this.recognizedFoodItems[index].grams = num;
                           // 刷新卡路里计算
-                          this.refreshItemCalories(this.recognizedFoodItems[index]);
-                          // 触发数组响应式更新
-                          this.recognizedFoodItems = [...this.recognizedFoodItems];
+                          this.refreshItemCalories(this.recognizedFoodItems[index], index);
                         }
                       })
                     Text('g').fontSize(12).fontColor(this.subTextColor).margin({ left: 6 })
@@ -642,28 +642,30 @@ export struct FoodRecognitionTab {
                         }
                       }
                     }
-                      .layoutWeight(1).height(40)
-                      .backgroundColor('#7B68EE')
-                      .borderRadius(20)
-                      .fontColor(Color.White).fontSize(14)
-                      .enabled(!item.isJudgingSnack)
-                      .onClick(async () => {
-                        item.isJudgingSnack = true;
-                        item.snackAnswer = '';
-                        try {
-                          const judge = await FoodRecognitionService.getInstance().askIsSnack(item.foodName);
-                          item.isSnack = judge.isSnack;
-                          item.snackReason = judge.reason;
-                          item.snackAnswer = judge.reason;
-                          item.snackAnswerIsSnack = judge.isSnack;
-                        } catch (e) {
-                          item.isSnack = false;
-                          item.snackReason = 'AI 判断失败，按时间归类';
-                          item.snackAnswer = 'AI 判断失败，按时间归类';
-                          item.snackAnswerIsSnack = false;
-                        }
-                        item.isJudgingSnack = false;
-                      })
+                    .layoutWeight(1).height(40)
+                    .backgroundColor('#7B68EE')
+                    .borderRadius(20)
+                    .fontColor(Color.White).fontSize(14)
+                    .enabled(!item.isJudgingSnack)
+                    .onClick(async () => {
+                      item.isJudgingSnack = true;
+                      item.snackAnswer = '';
+                      this.recognizedFoodItems = [...this.recognizedFoodItems];
+                      try {
+                        const judge = await FoodRecognitionService.getInstance().askIsSnack(item.foodName);
+                        item.isSnack = judge.isSnack;
+                        item.snackReason = judge.reason;
+                        item.snackAnswer = judge.reason;
+                        item.snackAnswerIsSnack = judge.isSnack;
+                      } catch (e) {
+                        item.isSnack = false;
+                        item.snackReason = 'AI 判断失败，按时间归类';
+                        item.snackAnswer = 'AI 判断失败，按时间归类';
+                        item.snackAnswerIsSnack = false;
+                      }
+                      item.isJudgingSnack = false;
+                      this.recognizedFoodItems = [...this.recognizedFoodItems];
+                    })
                   }
                   .width('100%').margin({ top: 10 })
 
@@ -705,11 +707,11 @@ export struct FoodRecognitionTab {
                     Text('全部添加到饮食记录').fontSize(14).fontColor(Color.White).margin({ left: 4 })
                   }
                 }
-                  .layoutWeight(1).height(44)
-                  .backgroundColor('#FF6B35')
-                  .borderRadius(22)
-                  .fontColor(Color.White).fontSize(14)
-                  .onClick(() => { this.saveAllToDiet(); })
+                .layoutWeight(1).height(44)
+                .backgroundColor('#FF6B35')
+                .borderRadius(22)
+                .fontColor(Color.White).fontSize(14)
+                .onClick(() => { this.saveAllToDiet(); })
 
                 Button() {
                   Row() {
@@ -717,12 +719,12 @@ export struct FoodRecognitionTab {
                     Text('重新识别').fontSize(14).fontColor(Color.White).margin({ left: 4 })
                   }
                 }
-                  .layoutWeight(1).height(44)
-                  .backgroundColor(this.subTextColor)
-                  .borderRadius(22)
-                  .fontColor(Color.White).fontSize(14)
-                  .margin({ left: 12 })
-                  .onClick(() => { this.resetAll(); })
+                .layoutWeight(1).height(44)
+                .backgroundColor(this.subTextColor)
+                .borderRadius(22)
+                .fontColor(Color.White).fontSize(14)
+                .margin({ left: 12 })
+                .onClick(() => { this.resetAll(); })
               }
               .width('100%').margin({ top: 8 })
 
@@ -732,7 +734,6 @@ export struct FoodRecognitionTab {
                   Text('✅ 已保存的食物')
                     .fontSize(15).fontWeight(FontWeight.Bold).fontColor(this.textColor)
                     .width('100%').margin({ bottom: 8 })
-
                   ForEach(this.savedFoodList, (item: RecognizedFoodItem) => {
                     Row() {
                       Text('✅ ' + item.foodName + ' ' + String(item.grams) + 'g - ' + String(item.calories) + '千卡')

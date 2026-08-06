@@ -1,4 +1,4 @@
-﻿import { image } from '@kit.ImageKit';
+import { image } from '@kit.ImageKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { http } from '@kit.NetworkKit';
@@ -140,15 +140,15 @@ export class FoodRecognitionService {
         console.error('recognizeMultiple: base64 empty, uri=' + uri);
         return { foodName: '', confidence: 0, source: RecognitionMode.CLOUD, error: '图片读取失败' };
       }
-
       const imageUrl: Record<string, string> = { 'url': 'data:image/jpeg;base64,' + base64 };
       const imgContent: GlmContent = {
         type: 'image_url',
         image_url: imageUrl
       };
+      // 优化Prompt：严格约束输出格式，禁止序号、解释、多余符号
       const textContent: GlmContent = {
         type: 'text',
-        text: '请识别图片中的所有食物，用逗号分隔列出每个食物名称（中文），不要其他文字。例如：米饭,红烧肉,青菜'
+        text: '请识别图片中所有可食用的食物、菜品、食材，用英文逗号严格分隔每个食物的中文名称，禁止添加序号、解释、换行、顿号、分号等任何多余内容。例如：米饭,番茄炒蛋,清炒生菜'
       };
       const contents: Array<GlmContent> = [imgContent, textContent];
       const message: GlmMessage = { role: 'user', content: contents };
@@ -157,7 +157,6 @@ export class FoodRecognitionService {
         model: FoodRecognitionService.VISION_MODEL,
         messages: messages
       };
-
       const request = http.createHttp();
       const response = await request.request(FoodRecognitionService.VISION_URL, {
         method: http.RequestMethod.POST,
@@ -170,7 +169,6 @@ export class FoodRecognitionService {
         readTimeout: 30000
       });
       request.destroy();
-
       const code: number = response.responseCode;
       const result: string = typeof response.result === 'string' ? response.result : JSON.stringify(response.result);
       if (code === 200) {
@@ -184,9 +182,9 @@ export class FoodRecognitionService {
             const content: string = String(messageObj['content'] ?? '');
             const foodItems = this.parseMultipleFoodResult(content);
             if (foodItems.length > 0) {
-              return { 
-                foodName: foodItems.map(item => item.foodName).join(','), 
-                confidence: 0.8, 
+              return {
+                foodName: foodItems.map(item => item.foodName).join(','),
+                confidence: 0.8,
                 source: RecognitionMode.CLOUD,
                 foodItems: foodItems
               };
@@ -206,18 +204,29 @@ export class FoodRecognitionService {
 
   /**
    * 解析多食物识别结果
-   * 输入格式：米饭,红烧肉,青菜 或 米饭、红烧肉、青菜
+   * 增强鲁棒性：处理序号、前缀、多种分隔符、多余符号
    */
   private parseMultipleFoodResult(raw: string): RecognizedFoodItem[] {
-    const text = raw.trim();
+    let text = raw.trim();
     if (text.length === 0) {
       return [];
     }
-    
-    // 按逗号、顿号、空格分隔
-    const foodNames = text.split(/[,，、\s]+/).map(s => s.trim()).filter(s => s.length > 0);
-    
-    // 为每个食物创建 RecognizedFoodItem
+
+    // 第一步：清洗原始文本，去除干扰内容
+    // 去除换行、引号、特殊符号
+    text = text.replace(/[\n\r「」""'']/g, '');
+    // 去除常见前缀
+    text = text.replace(/^(识别结果|答案|食物名称|菜品)[:：]\s*/, '');
+    // 去除序号格式：1. 2、 (1) 一、 等
+    text = text.replace(/\d+[.、\)）]\s*/g, '');
+    text = text.replace(/[一二三四五六七八九十]+[、\)）]\s*/g, '');
+
+    // 第二步：按多种分隔符拆分
+    const foodNames = text.split(/[,，、；;\s]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && s.length <= 20);
+
+    // 第三步：为每个食物创建 RecognizedFoodItem
     const items: RecognizedFoodItem[] = [];
     for (let i = 0; i < foodNames.length; i++) {
       const name = foodNames[i];
@@ -237,7 +246,7 @@ export class FoodRecognitionService {
         });
       }
     }
-    
+
     console.info('parseMultipleFoodResult: found ' + String(items.length) + ' foods');
     return items;
   }
@@ -255,6 +264,7 @@ export class FoodRecognitionService {
 
   /**
    * 云端通道：GLM-4V 多模态大模型
+   * 优化Prompt约束，增强结果清洗
    */
   private async recognizeCloud(uri: string): Promise<RecognitionOutcome> {
     try {
@@ -263,15 +273,15 @@ export class FoodRecognitionService {
         console.error('recognizeCloud: base64 empty, uri=' + uri);
         return { foodName: '', confidence: 0, source: RecognitionMode.CLOUD };
       }
-
       const imageUrl: Record<string, string> = { 'url': 'data:image/jpeg;base64,' + base64 };
       const imgContent: GlmContent = {
         type: 'image_url',
         image_url: imageUrl
       };
+      // 优化Prompt：严格约束仅返回食物名称，禁止多余内容
       const textContent: GlmContent = {
         type: 'text',
-        text: '请识别图片中的食物，只回答食物名称（中文），不要多余文字。'
+        text: '请识别图片中的主食/菜品/食材，只返回最准确的中文食物名称，禁止添加任何解释、序号、标点、单位、前缀后缀。例如：番茄炒蛋'
       };
       const contents: Array<GlmContent> = [imgContent, textContent];
       const message: GlmMessage = { role: 'user', content: contents };
@@ -280,7 +290,6 @@ export class FoodRecognitionService {
         model: FoodRecognitionService.VISION_MODEL,
         messages: messages
       };
-
       const request = http.createHttp();
       const response = await request.request(FoodRecognitionService.VISION_URL, {
         method: http.RequestMethod.POST,
@@ -293,7 +302,6 @@ export class FoodRecognitionService {
         readTimeout: 30000
       });
       request.destroy();
-
       const code: number = response.responseCode;
       const result: string = typeof response.result === 'string' ? response.result : JSON.stringify(response.result);
       if (code === 200) {
@@ -325,6 +333,7 @@ export class FoodRecognitionService {
   /**
    * 云端计算卡路里：根据食物名称 + 克数，让 GLM 估算热量
    * 返回 -1 表示计算失败
+   * 优化：修复小数解析bug，增强Prompt约束，提升成功率
    */
   async calculateCalories(foodName: string, grams: number, forceRefresh: boolean = false): Promise<number> {
     if (!this.isCloudConfigured()) {
@@ -353,9 +362,8 @@ export class FoodRecognitionService {
     try {
       // 本地食物库参考值（每100克千卡），用于校验云端结果是否异常偏离
       const localPer100: number = FoodCalories.lookupCaloriesPer100g(foodName);
-      // 让 GLM 只返回每100克热量，本地再乘克数，避免大克数计算误差
-      const promptText = '"' + foodName + '"每100克的热量是多少千卡？' +
-        '只回答一个数字（每100克的千卡数），不要任何其他文字。';
+      // 优化Prompt：严格要求返回纯数字，避免单位和解释
+      const promptText = '请查询"' + foodName + '"每100克的热量，只返回一个纯数字（单位：千卡），禁止添加任何解释、单位、文字、标点。例如：116';
       const textContent: GlmContent = { type: 'text', text: promptText };
       const contents: Array<GlmContent> = [textContent];
       const message: GlmMessage = { role: 'user', content: contents };
@@ -365,7 +373,6 @@ export class FoodRecognitionService {
         messages: messages,
         temperature: 0
       };
-
       const request = http.createHttp();
       const response = await request.request(FoodRecognitionService.VISION_URL, {
         method: http.RequestMethod.POST,
@@ -378,7 +385,6 @@ export class FoodRecognitionService {
         readTimeout: 30000
       });
       request.destroy();
-
       const code: number = response.responseCode;
       if (code !== 200) {
         console.error('calculateCalories http failed code=' + String(code));
@@ -424,34 +430,39 @@ export class FoodRecognitionService {
     }
   }
 
+  /**
+   * 解析热量数值
+   * 修复：支持小数解析，避免整数拆分导致的数值错误
+   */
   private parseCalories(raw: string): number {
     const text: string = raw.trim();
     if (text === '') {
       return -1;
     }
-    // 优先识别范围格式："60-120" / "80~160" / "约70到140"，取中间值
-    const range = text.match(/(\d+)\s*[-~至到]\s*(\d+)/);
+    // 优先识别范围格式：支持小数，如"60.5-120.3" / "80~160" / "约70到140"，取中间值
+    const range = text.match(/(\d+(?:\.\d+)?)\s*[-~至到]\s*(\d+(?:\.\d+)?)/);
     if (range && range.length >= 3) {
-      const a: number = parseInt(range[1]);
-      const b: number = parseInt(range[2]);
+      const a: number = parseFloat(range[1]);
+      const b: number = parseFloat(range[2]);
       const mid: number = Math.round((a + b) / 2);
       if (this.isReasonablePer100(mid)) {
         return mid;
       }
     }
-    // 识别所有数字，选取位于合理范围（1~900 千卡/100g）的那个
+    // 识别所有数字（支持小数），选取位于合理范围（10~900 千卡/100g）的数值
     const numbers: number[] = [];
-    const re = /\d+/g;
+    const re = /\d+(?:\.\d+)?/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
-      numbers.push(parseInt(m[0]));
+      numbers.push(parseFloat(m[0]));
     }
     if (numbers.length === 0) {
       return -1;
     }
     const candidates = numbers.filter((n: number) => this.isReasonablePer100(n));
     if (candidates.length > 0) {
-      return candidates[candidates.length - 1];
+      // 取最后一个合理数值（通常为热量值，排除"100克"中的100）
+      return Math.round(candidates[candidates.length - 1]);
     }
     return -1;
   }
@@ -491,7 +502,6 @@ export class FoodRecognitionService {
         messages: messages,
         temperature: 0
       };
-
       const request = http.createHttp();
       const response = await request.request(FoodRecognitionService.VISION_URL, {
         method: http.RequestMethod.POST,
@@ -504,7 +514,6 @@ export class FoodRecognitionService {
         readTimeout: 30000
       });
       request.destroy();
-
       const code: number = response.responseCode;
       if (code !== 200) {
         console.error('calculateSportCalories http failed code=' + String(code));
@@ -532,10 +541,26 @@ export class FoodRecognitionService {
     }
   }
 
+  /**
+   * 清洗云端识别结果
+   * 增强：去除序号、前缀、多余符号，提取纯净食物名
+   */
   private cleanCloudResult(raw: string): string {
     let text = raw.trim();
-    text = text.replace(/[「」"'\n\r]/g, '');
-    text = text.split(':')[0];
+    // 去除换行、引号、特殊符号
+    text = text.replace(/[\n\r「」""'']/g, '');
+    // 去除常见前缀（冒号前的描述）
+    if (text.includes(':')) {
+      text = text.substring(text.indexOf(':') + 1);
+    }
+    if (text.includes('：')) {
+      text = text.substring(text.indexOf('：') + 1);
+    }
+    // 去除开头序号
+    text = text.replace(/^\d+[.、\)）]\s*/, '');
+    text = text.replace(/^[一二三四五六七八九十]+[、\)）]\s*/, '');
+    text = text.trim();
+    // 长度限制
     if (text.length > 20) {
       text = text.substring(0, 20);
     }
@@ -564,7 +589,6 @@ export class FoodRecognitionService {
         messages: messages,
         temperature: 0
       };
-
       const request = http.createHttp();
       const response = await request.request(FoodRecognitionService.VISION_URL, {
         method: http.RequestMethod.POST,
@@ -577,7 +601,6 @@ export class FoodRecognitionService {
         readTimeout: 30000
       });
       request.destroy();
-
       const code: number = response.responseCode;
       if (code !== 200) {
         console.error('askIsSnack http failed code=' + String(code));
@@ -631,7 +654,6 @@ export class FoodRecognitionService {
         messages: messages,
         temperature: 0
       };
-
       const request = http.createHttp();
       const response = await request.request(FoodRecognitionService.VISION_URL, {
         method: http.RequestMethod.POST,
@@ -644,7 +666,6 @@ export class FoodRecognitionService {
         readTimeout: 30000
       });
       request.destroy();
-
       const code: number = response.responseCode;
       if (code !== 200) {
         console.error('askIsFood http failed code=' + String(code));
