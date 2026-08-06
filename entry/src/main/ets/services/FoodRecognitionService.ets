@@ -731,4 +731,10 @@ export class FoodRecognitionService {
       if (fd !== -1) {
         try {
           fileIo.closeSync(fd);
-  
+        } catch (err) {
+          console.error('close fd error');
+        }
+      }
+    }
+  }
+}
