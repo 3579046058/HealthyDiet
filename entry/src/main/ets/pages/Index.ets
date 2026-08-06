@@ -1150,11 +1150,21 @@ struct Index {
       height += this.diarySleepRecords.length * 60;
     }
     
-    // 情绪记录
+    // 情绪记录（文本可能很长，按长度动态估算高度）
     if (this.shareMood && this.diaryMoodRecords.length > 0) {
       height += 20; // 标题
       for (const item of this.diaryMoodRecords) {
-        height += item.note && String(item.note).length > 0 ? 80 : 60; // 有note则更高
+        let itemHeight: number = 60; // 基础：时间行+emoji+间距
+        const noteLen: number = item.note ? String(item.note).length : 0;
+        if (noteLen > 0) {
+          // 内容宽约280vp，字号12，中文每行约18字符，行高约18vp
+          const lines: number = Math.max(1, Math.ceil(noteLen / 18));
+          itemHeight = 60 + (lines - 1) * 18;
+          if (noteLen > 40) {
+            itemHeight += 10; // 长文本额外留白
+          }
+        }
+        height += itemHeight;
       }
     }
     
@@ -1301,7 +1311,6 @@ struct Index {
             }.width('100%')
             if (item.note && String(item.note).length > 0) {
               Text(String(item.note)).fontSize(12).fontColor(this.textColor)
-                .maxLines(2).textOverflow({ overflow: TextOverflow.Ellipsis })
                 .width('100%').margin({ top: 4 })
             }
           }

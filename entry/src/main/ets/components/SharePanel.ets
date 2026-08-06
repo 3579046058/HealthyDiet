@@ -30,6 +30,19 @@ export struct SharePanel {
   onOverviewChange: (on: boolean) => void = () => {};
   onClose: () => void = () => {};
   onGenerate: () => void = () => {};
+  @State expandedMoodIds: string[] = [];
+
+  isMoodExpanded(id: string): boolean {
+    return this.expandedMoodIds.indexOf(id) >= 0;
+  }
+
+  toggleMoodExpand(id: string): void {
+    if (this.isMoodExpanded(id)) {
+      this.expandedMoodIds = this.expandedMoodIds.filter((x: string) => x !== id);
+    } else {
+      this.expandedMoodIds = [...this.expandedMoodIds, id];
+    }
+  }
 
   build() {
     Column() {
@@ -216,9 +229,26 @@ export struct SharePanel {
               Text(this.getMoodEmoji(Number(item.mood))).fontSize(18)
             }.width('100%')
             if (item.note && String(item.note).length > 0) {
-              Text(String(item.note)).fontSize(11).fontColor(this.textColor)
-                .maxLines(2).textOverflow({ overflow: TextOverflow.Ellipsis })
-                .width('100%').margin({ top: 3 })
+              Column() {
+                Text(String(item.note)).fontSize(11).fontColor(this.textColor)
+                  .maxLines(this.isMoodExpanded(String(item.id)) ? 100 : 2)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .width('100%')
+                  .onClick(() => {
+                    this.toggleMoodExpand(String(item.id));
+                  })
+                if (String(item.note).length > 40) {
+                  Text(this.isMoodExpanded(String(item.id)) ? '收起' : '展开')
+                    .fontSize(10).fontColor(this.accentColor)
+                    .margin({ top: 2 })
+                    .onClick(() => {
+                      this.toggleMoodExpand(String(item.id));
+                    })
+                }
+              }
+              .width('100%')
+              .alignItems(HorizontalAlign.Start)
+              .margin({ top: 3 })
             }
           }
           .width('100%').padding(6).backgroundColor(this.cardColor).borderRadius(6)

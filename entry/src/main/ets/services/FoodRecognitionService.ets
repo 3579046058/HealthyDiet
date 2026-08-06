@@ -26,6 +26,8 @@ export interface RecognizedFoodItem {
   proteinPer100?: number;
   fatPer100?: number;
   carbsPer100?: number;
+  // 用户手动选择的餐次（为空时用自动逻辑）
+  selectedMealType?: string;
 }
 
 export interface RecognitionOutcome {
@@ -39,6 +41,8 @@ export interface RecognitionOutcome {
 export interface SnackJudge {
   isSnack: boolean;
   reason: string;
+  // 是否真实调用了 AI（false 表示云端未配置/跳过，未参与判断）
+  aiUsed: boolean;
 }
 
 export interface FoodJudge {
@@ -73,6 +77,18 @@ interface GlmMessage {
 interface GlmRequestBody {
   model: string;
   messages: Array<GlmMessage>;
+  temperature?: number;
+}
+
+// 文字模型请求：content 是纯字符串（GLM 要求）
+interface ChatTextMessage {
+  role: string;
+  content: string;
+}
+
+interface ChatTextRequestBody {
+  model: string;
+  messages: Array<ChatTextMessage>;
   temperature?: number;
 }
 
@@ -146,7 +162,7 @@ export class FoodRecognitionService {
       };
       const textContent: GlmContent = {
         type: 'text',
-        text: '请识别图片中所有可食用的食物、菜品、食材，用英文逗号严格分隔每个食物的中文名称，禁止添加序号、解释、换行、顿号、分号等任何多余内容。例如：米饭,番茄炒蛋,清炒生菜'
+        text: '请识别图片中所有主要的菜品或食物名称。要求：1. 如果图片中有多个菜（如餐桌上的多道菜），尽量全部识别出来；2. 最多返回5个，按视觉主次排序；3. 只返回菜品/食物名称（如"鱼香肉丝""宫保鸡丁""米饭"），不要列出辣椒、花椒、肉末等配料或单一食材；4. 如果图片中没有任何可食用的食物（如风景、物品、人物、建筑），只返回"无"；5. 用英文逗号严格分隔，禁止序号、解释、换行、顿号等多余内容。例如：鱼香肉丝,米饭,紫菜蛋花汤'
       };
       const contents: Array<GlmContent> = [imgContent, textContent];
       const message: GlmMessage = { role: 'user', content: contents };
@@ -169,7 +185,7 @@ export class FoodRecognitionService {
       request.destroy();
       const code: number = response.responseCode;
       const result: string = typeof response.result === 'string' ? response.result : JSON.stringify(response.result);
-      if (code === 200) {
+          if (code === 200) {
         const parsed: Record<string, Object> = JSON.parse(result) as Record<string, Object>;
         const choicesObj = parsed['choices'];
         if (choicesObj !== undefined && Array.isArray(choicesObj)) {
@@ -178,11 +194,22 @@ export class FoodRecognitionService {
             const first = choicesArr[0];
             const messageObj = first['message'] as Record<string, Object>;
             const content: string = String(messageObj['content'] ?? '');
+            console.info('[Recog] GLM raw content: ' + content.substring(0, 300));
             const foodNames = this.parseMultipleFoodNames(content);
-            if (foodNames.length > 0) {
+            // 非食物图：GLM 返回"无"或空 → 直接拒绝
+            if (foodNames.length === 0) {
+              console.info('[Recog] GLM returned no food, rejecting');
+              return { foodName: '', confidence: 0, source: RecognitionMode.CLOUD,
+                error: '未识别到可食用的食物，请对准食物拍照' };
+            }
+            // 限制最多 5 个（避免 GLM 联想出过多相似菜）
+            const limited: string[] = foodNames.slice(0, 5);
+            console.info('[Recog] parsed food count=' + String(foodNames.length) + ' limited=' + String(limited.length) +
+              ' names=' + limited.join(','));
+            if (limited.length > 0) {
               const items: RecognizedFoodItem[] = [];
-              for (let i = 0; i < foodNames.length; i++) {
-                const name = foodNames[i];
+              for (let i = 0; i < limited.length; i++) {
+                const name = limited[i];
                 // 先创建基础对象，稍后填充营养
                 const item: RecognizedFoodItem = {
                   id: 'food_' + Date.now() + '_' + i,
@@ -207,35 +234,41 @@ export class FoodRecognitionService {
                 items.push(item);
               }
 
-              // 并发获取营养
-              await Promise.all(items.map(async (item) => {
-                const nutrition = await this.getFoodNutrition(item.foodName);
-                if (nutrition) {
-                  // 填充每100g原始值
-                  item.caloriesPer100 = nutrition.cal;
-                  item.proteinPer100 = nutrition.pro;
-                  item.fatPer100 = nutrition.fat;
-                  item.carbsPer100 = nutrition.carb;
-                  // 计算200g实际值
-                  item.calories = Math.round(nutrition.cal * 200 / 100);
-                  item.protein = Math.round(nutrition.pro * 200 / 100);
-                  item.fat = Math.round(nutrition.fat * 200 / 100);
-                  item.carbs = Math.round(nutrition.carb * 200 / 100);
-                } else {
-                  // 尝试本地库
-                  const local = FoodCalories.getNutrition(item.foodName, 100);
-                  if (local.cal > 0) {
-                    item.caloriesPer100 = local.cal;
-                    item.proteinPer100 = local.pro;
-                    item.fatPer100 = local.fat;
-                    item.carbsPer100 = local.carb;
-                    item.calories = Math.round(local.cal * 200 / 100);
-                    item.protein = Math.round(local.pro * 200 / 100);
-                    item.fat = Math.round(local.fat * 200 / 100);
-                    item.carbs = Math.round(local.carb * 200 / 100);
+              // 串行获取营养（避免并发打爆 GLM 免费 key，减少失败率）
+              for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                try {
+                  const nutrition = await this.getFoodNutrition(item.foodName);
+                  if (nutrition) {
+                    item.caloriesPer100 = nutrition.cal;
+                    item.proteinPer100 = nutrition.pro;
+                    item.fatPer100 = nutrition.fat;
+                    item.carbsPer100 = nutrition.carb;
+                    item.calories = Math.round(nutrition.cal * 200 / 100);
+                    item.protein = Math.round(nutrition.pro * 200 / 100);
+                    item.fat = Math.round(nutrition.fat * 200 / 100);
+                    item.carbs = Math.round(nutrition.carb * 200 / 100);
+                  } else {
+                    const local = FoodCalories.getNutrition(item.foodName, 100);
+                    if (local.cal > 0) {
+                      item.caloriesPer100 = local.cal;
+                      item.proteinPer100 = local.pro;
+                      item.fatPer100 = local.fat;
+                      item.carbsPer100 = local.carb;
+                      item.calories = Math.round(local.cal * 200 / 100);
+                      item.protein = Math.round(local.pro * 200 / 100);
+                      item.fat = Math.round(local.fat * 200 / 100);
+                      item.carbs = Math.round(local.carb * 200 / 100);
+                    }
                   }
+                } catch (e) {
+                  console.error('[Recog] nutrition error for ' + item.foodName, JSON.stringify(e));
                 }
-              }));
+                // 串行间隔，避免瞬时并发
+                if (i < items.length - 1) {
+                  await new Promise<void>((resolve) => setTimeout(resolve, 300));
+                }
+              }
 
               return {
                 foodName: items.map(item => item.foodName).join(','),
@@ -272,13 +305,19 @@ export class FoodRecognitionService {
     if (text.length === 0) {
       return [];
     }
+    // 非食物图：GLM 可能返回"无"/"没有"/"未识别"等
+    if (text === '无' || text === '没有' || text === '未识别到食物' || text === '未识别到' ||
+      text.indexOf('无食物') >= 0 || text.indexOf('没有食物') >= 0 || text.indexOf('不是食物') >= 0 ||
+      text.indexOf('无任何') >= 0) {
+      return [];
+    }
     text = text.replace(/[\n\r「」""'']/g, '');
     text = text.replace(/^(识别结果|答案|食物名称|菜品)[:：]\s*/, '');
     text = text.replace(/\d+[.、\)）]\s*/g, '');
     text = text.replace(/[一二三四五六七八九十]+[、\)）]\s*/g, '');
     const names = text.split(/[,，、；;\s]+/)
       .map(s => s.trim())
-      .filter(s => s.length > 0 && s.length <= 20);
+      .filter(s => s.length > 0 && s.length <= 20 && s !== '无' && s !== '没有' && s !== '无食物');
     return names;
   }
 
@@ -308,13 +347,15 @@ export class FoodRecognitionService {
       }
 
       const promptText = `请提供"${key}"每100克可食用部分的营养成分，包括热量（千卡）、蛋白质（克）、脂肪（克）、碳水化合物（克）。只返回一个JSON对象，格式为{"cal":数值,"pro":数值,"fat":数值,"carb":数值}，不要任何其他文字。`;
-      const textContent: GlmContent = { type: 'text', text: promptText };
-      const contents: Array<GlmContent> = [textContent];
-      const message: GlmMessage = { role: 'user', content: contents };
-      const messages: Array<GlmMessage> = [message];
-      const requestBody: GlmRequestBody = {
+      // 文字模型：content 必须是纯字符串（不能是对象数组）
+      const textBody: ChatTextRequestBody = {
         model: FoodRecognitionService.CHAT_MODEL,
-        messages: messages,
+        messages: [
+          {
+            role: 'user',
+            content: promptText
+          }
+        ],
         temperature: 0
       };
       const request = http.createHttp();
@@ -324,17 +365,18 @@ export class FoodRecognitionService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + this.glmApiKey
         },
-        extraData: JSON.stringify(requestBody),
+        extraData: JSON.stringify(textBody),
         connectTimeout: 15000,
         readTimeout: 30000
       });
       request.destroy();
-      const code: number = response.responseCode;
+        const code: number = response.responseCode;
       if (code !== 200) {
         console.error('getFoodNutrition http failed code=' + String(code));
         return null;
       }
       const result: string = typeof response.result === 'string' ? response.result : JSON.stringify(response.result);
+      console.info('[Nutrition] GLM resp for "' + key + '": ' + result.substring(0, 200));
       const parsed: Record<string, Object> = JSON.parse(result) as Record<string, Object>;
       const choicesObj = parsed['choices'];
       if (choicesObj !== undefined && Array.isArray(choicesObj)) {
@@ -350,7 +392,10 @@ export class FoodRecognitionService {
               const pro = parseFloat(String(data.pro));
               const fat = parseFloat(String(data.fat));
               const carb = parseFloat(String(data.carb));
-              if (!isNaN(cal) && !isNaN(pro) && !isNaN(fat) && !isNaN(carb) && cal >= 10 && cal <= 900) {
+              console.info('[Nutrition] parsed cal=' + String(cal) + ' pro=' + String(pro) +
+                ' fat=' + String(fat) + ' carb=' + String(carb));
+              // 放宽热量范围：>=5 视为有效（原 >=10）
+              if (!isNaN(cal) && !isNaN(pro) && !isNaN(fat) && !isNaN(carb) && cal >= 5 && cal <= 2000) {
                 const nutrition: NutritionPer100 = { cal, pro, fat, carb };
                 this.per100NutritionCache.set(key, nutrition);
                 return nutrition;
@@ -358,6 +403,8 @@ export class FoodRecognitionService {
             } catch (e) {
               console.warn('parse nutrition JSON failed', e);
             }
+          } else {
+            console.warn('[Nutrition] no JSON found in content: ' + content.substring(0, 150));
           }
         }
       }
@@ -409,13 +456,15 @@ export class FoodRecognitionService {
           '分钟，强度为' + intensity + '，体重' + String(Math.round(weightKg)) +
           '公斤。请估算这次运动消耗的千卡数。只回答一个数字（总千卡数），不要任何其他文字。';
       }
-      const textContent: GlmContent = { type: 'text', text: promptText };
-      const contents: Array<GlmContent> = [textContent];
-      const message: GlmMessage = { role: 'user', content: contents };
-      const messages: Array<GlmMessage> = [message];
-      const requestBody: GlmRequestBody = {
+      // 文字模型：content 必须是纯字符串（不能是对象数组）
+      const textBody: ChatTextRequestBody = {
         model: FoodRecognitionService.CHAT_MODEL,
-        messages: messages,
+        messages: [
+          {
+            role: 'user',
+            content: promptText
+          }
+        ],
         temperature: 0
       };
       const request = http.createHttp();
@@ -425,7 +474,7 @@ export class FoodRecognitionService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + this.glmApiKey
         },
-        extraData: JSON.stringify(requestBody),
+        extraData: JSON.stringify(textBody),
         connectTimeout: 15000,
         readTimeout: 30000
       });
@@ -583,7 +632,7 @@ export class FoodRecognitionService {
   }
 
   async askIsSnack(foodName: string): Promise<SnackJudge> {
-    const result: SnackJudge = { isSnack: false, reason: '' };
+    const result: SnackJudge = { isSnack: false, reason: '', aiUsed: false };
     if (!this.isCloudConfigured() || foodName.trim().length === 0) {
       return result;
     }
@@ -591,13 +640,15 @@ export class FoodRecognitionService {
       const promptText = '判断"' + foodName.trim() + '"是否属于零食（非正餐的小吃、甜点、加餐食品）。' +
         '用以下格式回答，不要多余文字：' +
         '是或不是' + '|' + '简要理由（20字以内）';
-      const textContent: GlmContent = { type: 'text', text: promptText };
-      const contents: Array<GlmContent> = [textContent];
-      const message: GlmMessage = { role: 'user', content: contents };
-      const messages: Array<GlmMessage> = [message];
-      const requestBody: GlmRequestBody = {
+      // 文字模型：content 必须是纯字符串（不能是对象数组）
+      const textBody: ChatTextRequestBody = {
         model: FoodRecognitionService.CHAT_MODEL,
-        messages: messages,
+        messages: [
+          {
+            role: 'user',
+            content: promptText
+          }
+        ],
         temperature: 0
       };
       const request = http.createHttp();
@@ -607,7 +658,7 @@ export class FoodRecognitionService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + this.glmApiKey
         },
-        extraData: JSON.stringify(requestBody),
+        extraData: JSON.stringify(textBody),
         connectTimeout: 15000,
         readTimeout: 30000
       });
@@ -617,6 +668,8 @@ export class FoodRecognitionService {
         console.error('askIsSnack http failed code=' + String(code));
         return result;
       }
+      // 请求已成功发出并返回，AI 参与了判断
+      result.aiUsed = true;
       const resp: string = typeof response.result === 'string' ? response.result : JSON.stringify(response.result);
       const parsed: Record<string, Object> = JSON.parse(resp) as Record<string, Object>;
       const choicesObj = parsed['choices'];
@@ -647,18 +700,32 @@ export class FoodRecognitionService {
       result.reason = '云端不可用，跳过校验';
       return result;
     }
+    // 常见食材/配料直接放行（AI 可能误判为"非食物"，但实际可食用）
+    const ingredientWhitelist: string[] = ['肉末', '肉丝', '肉片', '辣椒', '花椒', '蘑菇', '木耳',
+      '葱', '姜', '蒜', '蒜末', '姜末', '葱花', '香菜', '豆瓣', '酱油', '醋', '糖', '盐',
+      '鸡肉', '猪肉', '牛肉', '鱼肉', '虾', '鸡蛋', '豆腐', '土豆', '白菜', '青菜', '胡萝卜',
+      '洋葱', '番茄', '黄瓜', '茄子', '青椒', '豆角', '玉米', '花生', '芝麻', '粉丝', '粉条',
+      '大米', '面条', '米饭', '馒头', '包子', '饺子', '馄饨', '粥'];
+    const isIngredient: boolean = ingredientWhitelist.some((w: string) => key.indexOf(w) >= 0);
+    if (isIngredient) {
+      result.isFood = true;
+      result.reason = '常见食材，直接放行';
+      return result;
+    }
     try {
       const promptText = '判断"' + key + '"是否是可食用的食物或饮品（包括水果、蔬菜、肉类、主食、零食、饮料、调味品等任何可以吃进肚子里的东西）。' +
         '如果是食物或饮品回答"是"，如果是手机、桌子、汽车、电脑、书本等非食用物品回答"不是"。' +
         '用以下格式回答，不要多余文字：' +
         '是或不是' + '|' + '简要理由（15字以内）';
-      const textContent: GlmContent = { type: 'text', text: promptText };
-      const contents: Array<GlmContent> = [textContent];
-      const message: GlmMessage = { role: 'user', content: contents };
-      const messages: Array<GlmMessage> = [message];
-      const requestBody: GlmRequestBody = {
+      // 文字模型：content 必须是纯字符串（不能是对象数组）
+      const textBody: ChatTextRequestBody = {
         model: FoodRecognitionService.CHAT_MODEL,
-        messages: messages,
+        messages: [
+          {
+            role: 'user',
+            content: promptText
+          }
+        ],
         temperature: 0
       };
       const request = http.createHttp();
@@ -668,7 +735,7 @@ export class FoodRecognitionService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + this.glmApiKey
         },
-        extraData: JSON.stringify(requestBody),
+        extraData: JSON.stringify(textBody),
         connectTimeout: 15000,
         readTimeout: 30000
       });
@@ -690,7 +757,11 @@ export class FoodRecognitionService {
           const content: string = String(messageObj['content'] ?? '');
           const parts: string[] = content.split('|');
           const answer: string = parts.length > 0 ? parts[0].trim() : '';
-          result.isFood = answer.indexOf('是') >= 0 && answer.indexOf('不是') < 0;
+          // 只有明确回答"不是/否"才拒绝；含糊/包含"是"都放行（宁多勿漏）
+          const clearlyNotFood: boolean = (answer.indexOf('不是') >= 0 || answer.indexOf('否') >= 0 ||
+            answer.indexOf('不能吃') >= 0 || answer.indexOf('非食物') >= 0) &&
+            answer.indexOf('是') < 0;
+          result.isFood = !clearlyNotFood;
           result.reason = parts.length > 1 ? parts[1].trim() : content;
         }
       }

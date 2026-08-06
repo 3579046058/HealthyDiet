@@ -21,6 +21,19 @@ export struct DiaryTab {
   onShare: () => void = () => {};
   onRefreshData: () => Promise<void> = async () => {};
   @State isRefreshing: boolean = false;
+  @State expandedMoodIds: string[] = [];
+
+  isMoodExpanded(id: string): boolean {
+    return this.expandedMoodIds.indexOf(id) >= 0;
+  }
+
+  toggleMoodExpand(id: string): void {
+    if (this.isMoodExpanded(id)) {
+      this.expandedMoodIds = this.expandedMoodIds.filter((x: string) => x !== id);
+    } else {
+      this.expandedMoodIds = [...this.expandedMoodIds, id];
+    }
+  }
 
   aboutToAppear(): void {
     // 解析当前日期
@@ -241,14 +254,31 @@ export struct DiaryTab {
                     Blank()
                     Text(this.getMoodEmoji(Number(item.mood))).fontSize(24)
                   }.width('100%')
-                  // 显示情绪笔记文本
+                  // 显示情绪笔记文本（过长可点击展开/收起）
                   if (item.note && String(item.note).length > 0) {
-                    Text(String(item.note))
-                      .fontSize(14).fontColor(this.textColor)
-                      .maxLines(3)
-                      .textOverflow({ overflow: TextOverflow.Ellipsis })
-                      .width('100%')
-                      .margin({ top: 8 })
+                    Column() {
+                      Text(String(item.note))
+                        .fontSize(14).fontColor(this.textColor)
+                        .maxLines(this.isMoodExpanded(String(item.id)) ? 100 : 3)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        .width('100%')
+                        .onClick(() => {
+                          if (String(item.note).length > 60) {
+                            this.toggleMoodExpand(String(item.id));
+                          }
+                        })
+                      if (String(item.note).length > 60) {
+                        Text(this.isMoodExpanded(String(item.id)) ? '收起 ▲' : '展开 ▼')
+                          .fontSize(12).fontColor(this.accentColor)
+                          .margin({ top: 4 })
+                          .onClick(() => {
+                            this.toggleMoodExpand(String(item.id));
+                          })
+                      }
+                    }
+                    .width('100%')
+                    .alignItems(HorizontalAlign.Start)
+                    .margin({ top: 8 })
                   }
                 }
                 .width('100%').padding(12).backgroundColor(this.cardColor).borderRadius(8)
