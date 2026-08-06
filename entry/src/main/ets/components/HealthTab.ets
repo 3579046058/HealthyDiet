@@ -26,7 +26,7 @@ export struct HealthTab {
   @Prop sleepScore: number = 0;
   @Prop waterMl: number = 0;
   @Prop waterGoal: number = 2000;
-  @Prop todayCalorieIntake: number = 0;
+  @Prop @Watch('onCalorieIntakeChange') todayCalorieIntake: number = 0;
   @Prop exerciseMin: number = 0;
   @Prop recommendCalorie: number = 2000;
   @StorageLink('liveSteps') liveSteps: number = 0;
@@ -35,6 +35,15 @@ export struct HealthTab {
   @State isRefreshing: boolean = false; // 下拉刷新状态
   @Prop @Watch('onRefreshKeyChange') refreshKey: number = 0; // 外部（Index）触发的刷新动画标记
   @State refreshAnimKey: number = 0; // 刷新完成触发标记：变化时所有数字/圆环从 0 重新动画
+
+  // 监听 todayCalorieIntake 变化
+  onCalorieIntakeChange(): void {
+    console.info('[热量调试] HealthTab todayCalorieIntake 变化, 新值=' + String(this.todayCalorieIntake));
+  }
+
+  aboutToAppear(): void {
+    console.info('[热量调试] HealthTab aboutToAppear, todayCalorieIntake=' + String(this.todayCalorieIntake));
+  }
 
   // 外部 refreshKey 变化（Tab 切回/数据刷新完成）→ 触发动画重播
   onRefreshKeyChange(): void {
