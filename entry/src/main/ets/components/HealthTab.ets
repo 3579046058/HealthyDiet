@@ -352,6 +352,7 @@ export struct HealthTab {
                 stepValue: this.getDisplaySteps() > 0 ? String(this.getDisplaySteps()) : '--',
                 sleepValue: this.sleepHours !== '0' ? this.sleepHours : '--',
                 moodValue: this.moodValue > 0 ? this.getMoodEmoji(this.moodValue) + ' 心情 ' + String(this.moodValue) : '暂无记录',
+                stepGoal: this.stepGoal,
                 animKey: this.refreshAnimKey
               })
             }

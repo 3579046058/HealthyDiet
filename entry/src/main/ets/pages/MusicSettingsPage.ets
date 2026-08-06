@@ -17,7 +17,7 @@ struct MusicSettingsPage {
   @State defaultPlaylistId: number = 0;
   @State volume: number = 0.3;
   @State autoPlayOnEnter: boolean = true;
-  @State backgroundPlay: boolean = true;
+  @State backgroundPlay: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
   private musicService: MusicService = MusicService.getInstance();
@@ -42,7 +42,7 @@ struct MusicSettingsPage {
       this.autoPlayOnEnter = true;
     }
     try {
-      const bp = await GlobalData.prefs.get('music_background_play', true);
+      const bp = await GlobalData.prefs.get('music_background_play', false);
       this.backgroundPlay = bp === true || bp === 'true';
     } catch (err) {
       this.backgroundPlay = true;

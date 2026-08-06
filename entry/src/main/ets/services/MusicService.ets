@@ -542,7 +542,7 @@ export class MusicService {
   // 是否开启后台播放
   async isBackgroundPlayEnabled(): Promise<boolean> {
     try {
-      const v = await GlobalData.prefs.get('music_background_play', true);
+      const v = await GlobalData.prefs.get('music_background_play', false);
       return v === true || v === 'true';
     } catch (err) {
       console.error('isBackgroundPlayEnabled error:', JSON.stringify(err));

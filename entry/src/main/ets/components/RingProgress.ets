@@ -5,7 +5,7 @@ import { ThemeColors } from '../common/Constants';
 
 @Component
 export struct RingProgress {
-  @Prop progress: number = 0; // 0-100
+  @Prop @Watch('onProgressChange') progress: number = 0; // 0-100
   @Prop strokeColor: string = '#FF6B35';
   @Prop ringSize: number = 120;
   @Prop strokeWidth: number = 12;
@@ -14,36 +14,60 @@ export struct RingProgress {
   @Prop unit: string = '';
   @Prop @Watch('onAnimKeyChange') animKey: number = 0; // 刷新触发标记：变化时强制从 0 重新动画
   @State animProgress: number = 0;
+  private animTimer: number = -1;
+  private lastProgress: number = -1;
   @StorageLink('currentTheme') theme: string = 'dark';
 
   aboutToAppear(): void {
     this.animProgress = 0;
+    this.lastProgress = this.progress;
     this.animateTo(this.progress);
+  }
+
+  // progress 变化（如步数实时更新）→ 从当前值平滑过渡到新值
+  onProgressChange(): void {
+    const target: number = this.progress;
+    if (this.lastProgress < 0) {
+      this.lastProgress = target;
+      return;
+    }
+    const diff: number = Math.abs(target - this.lastProgress);
+    if (diff < 0.1) {
+      return;
+    }
+    this.lastProgress = target;
+    this.animateTo(target);
   }
 
   // animKey 变化（下拉刷新完成）→ 无条件从 0 重播动画
   onAnimKeyChange(): void {
     this.animProgress = 0;
+    this.lastProgress = this.progress;
     this.animateTo(this.progress);
   }
 
   animateTo(target: number): void {
+    if (this.animTimer >= 0) {
+      clearInterval(this.animTimer);
+      this.animTimer = -1;
+    }
     const from: number = this.animProgress;
     const diff: number = target - from;
     if (Math.abs(diff) < 0.1) {
       this.animProgress = target;
       return;
     }
-    const duration: number = 1000;
+    const duration: number = 500;
     const start: number = Date.now();
-    const timer = setInterval(() => {
+    this.animTimer = setInterval(() => {
       const elapsed: number = Date.now() - start;
       const progress: number = Math.min(1, elapsed / duration);
       const eased: number = 1 - Math.pow(1 - progress, 3);
       this.animProgress = from + diff * eased;
       if (progress >= 1) {
         this.animProgress = target;
-        clearInterval(timer);
+        clearInterval(this.animTimer);
+        this.animTimer = -1;
       }
     }, 16);
   }
