@@ -443,7 +443,7 @@ export struct FoodRecognitionTab {
                 })
             } else {
               Column() {
-                Image($r('app.media.ic_diet')).width(72).height(72).opacity(0.3)
+                Image($r('app.media.ic_diet')).width(72).height(72).fillColor(this.subTextColor).opacity(0.3)
                 Text('对准食物拍照或选择图片').fontSize(14).fontColor(this.subTextColor).margin({ top: 12 })
                 Text('自动识别这是什么菜').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
               }
@@ -531,7 +531,7 @@ export struct FoodRecognitionTab {
           if (this.recognizedFoodItems.length > 0) {
             Column() {
               Row() {
-                Image($r('app.media.ic_diet')).width(18).height(18)
+                Image($r('app.media.ic_diet')).width(18).height(18).fillColor(this.textColor)
                 Text('识别结果')
                   .fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
                   .margin({ left: 6 })
@@ -542,7 +542,7 @@ export struct FoodRecognitionTab {
               ForEach(this.recognizedFoodItems, (item: RecognizedFoodItem, index: number) => {
                 Column() {
                   Row() {
-                    Image($r('app.media.ic_diet')).width(24).height(24)
+                    Image($r('app.media.ic_diet')).width(24).height(24).fillColor(this.textColor)
                     Text(item.foodName)
                       .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
                       .margin({ left: 8 })

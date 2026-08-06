@@ -156,6 +156,8 @@ export class PreferenceHelper {
     } else {
       await this.pref.put(key, value);
     }
+    // 立即持久化，确保重启后仍能读到
+    await this.pref.flush();
   }
 
   async delete(key: string): Promise<void> {

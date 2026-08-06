@@ -78,7 +78,7 @@ export struct FoodItemCard {
     Column() {
       // 食物名称 + 识别来源标签
       Row() {
-        Image($r('app.media.ic_diet')).width(24).height(24)
+        Image($r('app.media.ic_diet')).width(24).height(24).fillColor(this.textColor)
         Column() {
           Text(this.item.foodName)
             .fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)

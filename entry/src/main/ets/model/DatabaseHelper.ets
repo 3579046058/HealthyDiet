@@ -19,6 +19,9 @@ const TABLE_BODY_COMP = 'body_composition_records';
 const TABLE_PLAN = 'workout_plans';
 const TABLE_WATER_TIMELINE = 'water_timeline';
 const TABLE_SLEEP_START = 'sleep_start_records';
+const TABLE_MUSIC = 'music_records';
+const TABLE_PLAYLIST = 'playlists';
+const TABLE_PLAYLIST_SONG = 'playlist_songs';
 
 export class DatabaseHelper {
   private rdbStore: relationalStore.RdbStore | null = null;
@@ -191,6 +194,26 @@ export class DatabaseHelper {
         date TEXT,
         start_time TEXT,
         timestamp INTEGER
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_MUSIC} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        artist TEXT,
+        duration_ms INTEGER DEFAULT 0,
+        file_name TEXT,
+        file_uri TEXT,
+        created_at INTEGER
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_PLAYLIST} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        created_at INTEGER
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${TABLE_PLAYLIST_SONG} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        playlist_id INTEGER,
+        song_id INTEGER,
+        sort_order INTEGER DEFAULT 0
       )`,
     ];
     if (this.rdbStore) {
@@ -1011,6 +1034,163 @@ export class DatabaseHelper {
       return true;
     } catch (e) {
       console.error('Failed to restore water timeline item:', e);
+      return false;
+    }
+  }
+
+  // ==================== 音乐库 ====================
+
+  async addMusicRecord(record: DbRow): Promise<void> {
+    if (!this.rdbStore) return;
+    try {
+      const values: relationalStore.ValuesBucket = {
+        title: record.title,
+        artist: record.artist ?? '',
+        duration_ms: record.duration_ms ?? 0,
+        file_name: record.file_name,
+        file_uri: record.file_uri,
+        created_at: Date.now()
+      };
+      await this.rdbStore.insert(TABLE_MUSIC, values);
+    } catch (err) {
+      console.error('addMusicRecord error:', JSON.stringify(err));
+    }
+  }
+
+  async getMusicRecords(): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const result: DbRow[] = [];
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE_MUSIC);
+      predicates.orderByDesc('created_at');
+      const resultSet: relationalStore.ResultSet = await this.rdbStore.query(predicates);
+      while (resultSet.goToNextRow()) {
+        result.push(resultSet.getRow());
+      }
+      resultSet.close();
+    } catch (err) {
+      console.error('getMusicRecords error:', JSON.stringify(err));
+    }
+    return result;
+  }
+
+  async deleteMusicRecord(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE_MUSIC);
+      predicates.equalTo('id', id);
+      await this.rdbStore.delete(predicates);
+    } catch (err) {
+      console.error('deleteMusicRecord error:', JSON.stringify(err));
+    }
+  }
+
+  // ==================== 歌单 ====================
+
+  async addPlaylist(name: string): Promise<number> {
+    if (!this.rdbStore) return -1;
+    try {
+      const values: relationalStore.ValuesBucket = {
+        name: name,
+        created_at: Date.now()
+      };
+      return await this.rdbStore.insert(TABLE_PLAYLIST, values);
+    } catch (err) {
+      console.error('addPlaylist error:', JSON.stringify(err));
+      return -1;
+    }
+  }
+
+  async getPlaylists(): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const result: DbRow[] = [];
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE_PLAYLIST);
+      predicates.orderByDesc('created_at');
+      const resultSet: relationalStore.ResultSet = await this.rdbStore.query(predicates);
+      while (resultSet.goToNextRow()) {
+        result.push(resultSet.getRow());
+      }
+      resultSet.close();
+    } catch (err) {
+      console.error('getPlaylists error:', JSON.stringify(err));
+    }
+    return result;
+  }
+
+  async deletePlaylist(id: number): Promise<void> {
+    if (!this.rdbStore) return;
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE_PLAYLIST);
+      predicates.equalTo('id', id);
+      await this.rdbStore.delete(predicates);
+      // 同时删除关联歌曲
+      const songPredicates = new relationalStore.RdbPredicates(TABLE_PLAYLIST_SONG);
+      songPredicates.equalTo('playlist_id', id);
+      await this.rdbStore.delete(songPredicates);
+    } catch (err) {
+      console.error('deletePlaylist error:', JSON.stringify(err));
+    }
+  }
+
+  async addSongToPlaylist(playlistId: number, songId: number): Promise<void> {
+    if (!this.rdbStore) return;
+    try {
+      const values: relationalStore.ValuesBucket = {
+        playlist_id: playlistId,
+        song_id: songId,
+        sort_order: Date.now()
+      };
+      await this.rdbStore.insert(TABLE_PLAYLIST_SONG, values);
+    } catch (err) {
+      console.error('addSongToPlaylist error:', JSON.stringify(err));
+    }
+  }
+
+  async removeSongFromPlaylist(playlistId: number, songId: number): Promise<void> {
+    if (!this.rdbStore) return;
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE_PLAYLIST_SONG);
+      predicates.equalTo('playlist_id', playlistId);
+      predicates.equalTo('song_id', songId);
+      await this.rdbStore.delete(predicates);
+    } catch (err) {
+      console.error('removeSongFromPlaylist error:', JSON.stringify(err));
+    }
+  }
+
+  // 获取歌单内歌曲（关联 music_records）
+  async getPlaylistSongs(playlistId: number): Promise<DbRow[]> {
+    if (!this.rdbStore) return [];
+    const result: DbRow[] = [];
+    try {
+      const sql = `SELECT m.* FROM ${TABLE_MUSIC} m
+        INNER JOIN ${TABLE_PLAYLIST_SONG} ps ON m.id = ps.song_id
+        WHERE ps.playlist_id = ? ORDER BY ps.sort_order ASC`;
+      const resultSet: relationalStore.ResultSet = await this.rdbStore.querySql(sql, [playlistId]);
+      while (resultSet.goToNextRow()) {
+        result.push(resultSet.getRow());
+      }
+      resultSet.close();
+    } catch (err) {
+      console.error('getPlaylistSongs error:', JSON.stringify(err));
+    }
+    return result;
+  }
+
+  // 判断歌曲是否已在某歌单中
+  async isSongInPlaylist(playlistId: number, songId: number): Promise<boolean> {
+    if (!this.rdbStore) return false;
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE_PLAYLIST_SONG);
+      predicates.equalTo('playlist_id', playlistId);
+      predicates.equalTo('song_id', songId);
+      const resultSet: relationalStore.ResultSet = await this.rdbStore.query(predicates);
+      const has = resultSet.goToNextRow();
+      resultSet.close();
+      return has;
+    } catch (err) {
+      console.error('isSongInPlaylist error:', JSON.stringify(err));
       return false;
     }
   }

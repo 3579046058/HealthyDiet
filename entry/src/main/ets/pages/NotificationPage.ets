@@ -277,7 +277,7 @@ struct NotificationPage {
               .height(32).margin({ left: 12 })
               .onClick(() => { this.addWaterTime(); })
             Blank()
-            Image($r('app.media.ic_edit')).width(16).height(16).margin({ left: 8 })
+            Image($r('app.media.ic_edit')).width(16).height(16).fillColor(this.txt()).margin({ left: 8 })
               .onClick(() => { this.showWaterTimePicker = !this.showWaterTimePicker; })
           }
           .width('100%').padding({ left: 16, right: 16, bottom: 4 })
@@ -314,7 +314,7 @@ struct NotificationPage {
             Text(this.sleepReminderTime).fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
               .onClick(() => { this.showSleepTimePicker = !this.showSleepTimePicker; })
             Blank()
-            Image($r('app.media.ic_edit')).width(16).height(16).onClick(() => { this.showSleepTimePicker = !this.showSleepTimePicker; })
+            Image($r('app.media.ic_edit')).width(16).height(16).fillColor(this.txt()).onClick(() => { this.showSleepTimePicker = !this.showSleepTimePicker; })
           }
           .width('100%').padding({ left: 16, right: 16, bottom: 4 })
 

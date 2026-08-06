@@ -90,7 +90,7 @@
             "value": "YOUR_CLIENT_ID_FROM_AGC"
           }
         ],
-        "backgroundModes": ["dataTransfer", "location"]
+        "backgroundModes": ["dataTransfer", "location", "audioPlayback"]
       }
     ],
     "extensionAbilities": [

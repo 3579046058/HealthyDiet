@@ -263,6 +263,14 @@ export struct HealthTab {
             }
             .margin({ right: 12 })
           }
+          // 音乐入口图标
+          Image($r('app.media.ic_music'))
+            .width(24).height(24)
+            .supportSvg2(true)
+            .margin({ right: 12 })
+            .accessibilityText('音乐播放器')
+            .accessibilityLevel('important')
+            .onClick(() => { this.onNavigate(Constants.PAGE_MUSIC); })
           // 成就入口图标
           Image($r('app.media.ic_trophy_color'))
             .width(24).height(24)

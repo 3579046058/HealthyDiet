@@ -66,6 +66,7 @@ struct SettingsPage {
           this.settingItem($r('app.media.ic_target'), '目标设置', '步数、喝水、运动、睡眠目标', () => { this.navigate('pages/GoalPage'); })
           this.settingItem($r('app.media.ic_palette'), '主题切换', '切换应用外观主题，当前：' + this.themeLabel(), () => { this.toggleTheme(); })
           this.settingItem($r('app.media.ic_volume'), '音效', '各场景音效开关与试听', () => { this.navigate('pages/SoundSettingsPage'); })
+          this.settingItem($r('app.media.ic_music'), '音乐播放设置', '默认歌单、播放音量', () => { this.navigate('pages/MusicSettingsPage'); })
           this.settingItem($r('app.media.ic_lock'), '权限管理', '管理运动、位置、蓝牙、健康数据等权限', () => { this.navigate('pages/PermissionPage'); })
 
           Text('AI 服务').fontSize(14).fontColor(this.sub()).width('100%')
@@ -73,7 +74,7 @@ struct SettingsPage {
 
           Column() {
             Row() {
-              Image($r('app.media.ic_ai')).width(20).height(20)
+              Image($r('app.media.ic_ai')).width(20).height(20).fillColor(this.txt())
               Column() {
                 Text('AI 模型服务').fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.txt())
                 Text(this.keyStatus).fontSize(11).fontColor(this.sub()).margin({ top: 2 })
@@ -321,7 +322,7 @@ struct SettingsPage {
       if (typeof icon === 'string') {
         Text(icon).fontSize(20)
       } else {
-        Image(icon).width(20).height(20)
+        Image(icon).width(20).height(20).fillColor(this.txt())
       }
       Column() {
         Text(title).fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.txt())

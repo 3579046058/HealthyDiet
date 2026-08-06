@@ -20,6 +20,7 @@ import { ChatTab } from '../components/ChatTab';
 import { WeightOverlay, MoodOverlay } from '../components/OverlayDialogs';
 import { SharePanel } from '../components/SharePanel';
 import { NotificationService } from '../services/NotificationService';
+import { MusicService } from '../services/MusicService';
 import { AchievementHelper, AchievementInfo } from '../model/AchievementHelper';
 import { AchievementDialog, AchievementListDialog } from '../components/AchievementDialog';
 
@@ -158,6 +159,34 @@ struct Index {
     this.checkMoodPrompt();
     this.loadHealthCardOrder(); // 加载卡片顺序
     this.loadQuickFunctionOrder(); // 加载快捷功能顺序
+    this.checkAppStartAutoPlay();
+  }
+
+  // 应用启动时按设置自动播放默认歌单
+  async checkAppStartAutoPlay(): Promise<void> {
+    try {
+      const musicService = MusicService.getInstance();
+      const autoPlay = await musicService.isAutoPlayEnabled();
+      if (!autoPlay) {
+        return;
+      }
+      if (musicService.getPlaylist().length > 0) {
+        return; // 已有播放列表
+      }
+      const defaultId = await musicService.ensureDefaultPlaylist();
+      let songs: DbRow[] = [];
+      if (defaultId > 0) {
+        songs = await GlobalData.db.getPlaylistSongs(defaultId);
+      }
+      if (songs.length === 0) {
+        songs = await musicService.loadLibrary();
+      }
+      if (songs.length > 0) {
+        await musicService.playList(songs, 0);
+      }
+    } catch (err) {
+      console.error('checkAppStartAutoPlay error:', JSON.stringify(err));
+    }
   }
 
   aboutToDisappear(): void {

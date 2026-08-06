@@ -99,7 +99,7 @@ export struct DiaryTab {
             Text('每日日记').fontSize(22).fontWeight(FontWeight.Bold).fontColor(this.textColor)
             Blank()
             // 分享按钮
-            Image($r('app.media.ic_share')).width(20).height(20)
+            Image($r('app.media.ic_share')).width(20).height(20).fillColor(this.textColor)
               .fillColor(this.textColor)
               .onClick(() => { this.onShare(); })
             // 日期导航
@@ -121,7 +121,7 @@ export struct DiaryTab {
           if (this.diaryDietRecords.length === 0 && this.diarySportRecords.length === 0 &&
             this.diarySleepRecords.length === 0 && this.diaryMoodRecords.length === 0) {
             Column() {
-              Image($r('app.media.ic_diary')).width(48).height(48).margin({ top: 40 })
+              Image($r('app.media.ic_diary')).width(48).height(48).fillColor(this.subTextColor).margin({ top: 40 })
               Text('暂无记录').fontSize(16).fontColor(this.subTextColor).margin({ top: 12 })
               Text('开始记录你的健康生活吧').fontSize(13).fontColor(this.subTextColor)
             }

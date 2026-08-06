@@ -1069,7 +1069,7 @@ struct SportPage {
 
               if (this.useGps) {
                 Row() {
-                  Image($r('app.media.ic_gps')).width(14).height(14)
+                  Image($r('app.media.ic_gps')).width(14).height(14).fillColor(this.gpsStatus.includes('定位') ? '#FF9800' : '#4CAF50')
                     .fillColor(this.gpsStatus.includes('定位') ? '#FF9800' : '#4CAF50')
                     .margin({ right: 4 })
                   Text(this.gpsStatus).fontSize(11)

@@ -109,12 +109,10 @@ export struct AccountTab {
 
       // 通过文件选择器选择备份文件并读取
       const jsonData: string = await backupHelper.pickAndReadBackupFile();
-      if (jsonData.length === 0) {
-        this.backupStatus = '';
-        return;
+      if (jsonData.length > 0) {
+        // 旧版纯 JSON 备份：执行导入
+        await backupHelper.importData(jsonData);
       }
-      // 执行导入
-      await backupHelper.importData(jsonData);
       this.backupStatus = '';
       promptAction.showToast({ message: '数据导入成功！', duration: 2000 });
       console.info('数据导入成功');
@@ -199,12 +197,13 @@ export struct AccountTab {
         this.accountMenuItem($r('app.media.ic_account'), '个人信息', '身高、体重、性别设置', () => { this.onNavigate(Constants.PAGE_PROFILE); })
         this.accountMenuItem($r('app.media.ic_settings'), '设置', '通知、目标、主题、关于', () => { this.onNavigate(Constants.PAGE_SETTINGS); })
         this.accountMenuItem($r('app.media.ic_report'), '健康报告', '查看周报月报', () => { this.onNavigate(Constants.PAGE_REPORT); })
+        this.accountMenuItem($r('app.media.ic_music'), '音乐播放器', '播放本地音乐', () => { this.onNavigate(Constants.PAGE_MUSIC); })
         this.accountMenuItem($r('app.media.ic_delete'), '回收站', '恢复已删除的数据', () => { this.onNavigate(Constants.PAGE_RECYCLE_BIN); })
         this.accountMenuItem($r('app.media.ic_save'), '数据备份', '导出/导入健康数据', () => { this.showBackupDialog = true; })
 
         // 补录达标天数
         Row() {
-          Image($r('app.media.ic_calendar')).width(22).height(22)
+          Image($r('app.media.ic_calendar')).width(22).height(22).fillColor(this.textColor)
           Column() {
             Text('补录达标天数').fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.textColor)
             Text('手动添加历史达标记录')

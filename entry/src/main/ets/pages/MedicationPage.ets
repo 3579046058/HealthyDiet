@@ -272,7 +272,7 @@ struct MedicationPage {
               ForEach(this.todayMeds, (item: DbRow) => {
                 Row() {
                   if (this.isChecked(Number(item.id))) {
-                    Image($r('app.media.ic_checkbox_on')).width(24).height(24)
+                    Image($r('app.media.ic_checkbox_on')).width(24).height(24).fillColor('#00897B')
                       .onClick(() => { this.toggleCheck(Number(item.id)); })
                   } else {
                     Image($r('app.media.ic_checkbox_off')).width(24).height(24).fillColor(this.sub())

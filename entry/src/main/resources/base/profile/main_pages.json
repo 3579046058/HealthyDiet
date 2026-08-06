@@ -18,6 +18,8 @@
     "pages/PermissionPage",
     "pages/RecycleBinPage",
     "pages/MakeupDaysPage",
-    "pages/SoundSettingsPage"
+    "pages/SoundSettingsPage",
+    "pages/MusicPlayerPage",
+    "pages/MusicSettingsPage"
   ]
 }

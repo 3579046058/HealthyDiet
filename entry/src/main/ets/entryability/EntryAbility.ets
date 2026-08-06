@@ -2,6 +2,7 @@ import { AbilityConstant, Configuration, ConfigurationConstant, UIAbility, Want 
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window, display } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
+import { DbRow } from '../common/Constants';
 import { PedometerService } from '../services/PedometerService';
 import { PermissionService } from '../services/PermissionService';
 import { ReminderScheduler } from '../services/ReminderScheduler';
@@ -11,6 +12,7 @@ import { CardDataHelper } from '../services/CardDataHelper';
 import { ChatService } from '../services/ChatService';
 import { GoalNotificationHelper } from '../services/GoalNotificationHelper';
 import { BackgroundTaskService } from '../services/BackgroundTaskService';
+import { MusicService } from '../services/MusicService';
 
 const DOMAIN = 0x0000;
 const TAG = 'HarmonyHealth';
@@ -29,6 +31,7 @@ export default class EntryAbility extends UIAbility {
       hilog.info(DOMAIN, TAG, 'Reminders stopped');
     });
     SoundEffectService.getInstance().release();
+    MusicService.getInstance().release();
     hilog.info(DOMAIN, TAG, 'Ability onDestroy');
   }
 
@@ -49,6 +52,10 @@ export default class EntryAbility extends UIAbility {
     } catch (err) {
       hilog.error(DOMAIN, TAG, 'SoundEffect init error: %{public}s', JSON.stringify(err));
     }
+
+    // 初始化音乐服务
+    MusicService.getInstance().setContext(this.context);
+    MusicService.getInstance().initBuiltinMusic();
 
     // 初始化 AI 配置（从 rawfile 读取 API 密钥）
     try {
@@ -251,7 +258,37 @@ export default class EntryAbility extends UIAbility {
     CardDataHelper.refreshWidget(this.context).catch((err: Error) => {
       hilog.error(DOMAIN, TAG, 'Foreground refresh widget error: %{public}s', JSON.stringify(err));
     });
+    // 前台恢复时按设置自动播放默认歌单（开启自动播放且无播放列表时）
+    this.checkForegroundAutoPlay();
     hilog.info(DOMAIN, TAG, 'Ability onForeground, date=%{public}s', todayStr);
+  }
+
+  // 回到前台时检查自动播放
+  private async checkForegroundAutoPlay(): Promise<void> {
+    try {
+      const musicService = MusicService.getInstance();
+      const autoPlay = await musicService.isAutoPlayEnabled();
+      if (!autoPlay) {
+        return;
+      }
+      if (musicService.isPlaying() || musicService.getPlaylist().length > 0) {
+        return; // 已有播放状态，不重复触发
+      }
+      const defaultId = await musicService.ensureDefaultPlaylist();
+      let songs: DbRow[] = [];
+      if (defaultId > 0) {
+        songs = await GlobalData.db.getPlaylistSongs(defaultId);
+      }
+      if (songs.length === 0) {
+        songs = await musicService.loadLibrary();
+      }
+      if (songs.length > 0) {
+        await musicService.playList(songs, 0);
+        hilog.info(DOMAIN, TAG, 'Foreground auto play started');
+      }
+    } catch (err) {
+      hilog.error(DOMAIN, TAG, 'checkForegroundAutoPlay error: %{public}s', JSON.stringify(err));
+    }
   }
 
   onBackground(): void {
@@ -261,6 +298,16 @@ export default class EntryAbility extends UIAbility {
       hilog.info(DOMAIN, TAG, 'Background task started: %{public}s', success.toString());
     }).catch((err: Error) => {
       hilog.error(DOMAIN, TAG, 'Failed to start background task: %{public}s', JSON.stringify(err));
+    });
+    // 后台播放设置关闭时：切后台暂停音乐
+    MusicService.getInstance().isBackgroundPlayEnabled().then((enabled: boolean) => {
+      if (!enabled && MusicService.getInstance().isPlaying()) {
+        MusicService.getInstance().pause().catch((err: Error) => {
+          hilog.error(DOMAIN, TAG, 'Pause music on background error: %{public}s', JSON.stringify(err));
+        });
+      }
+    }).catch((err: Error) => {
+      hilog.error(DOMAIN, TAG, 'check background play error: %{public}s', JSON.stringify(err));
     });
   }
 }
