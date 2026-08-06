@@ -15,7 +15,7 @@ interface PlaylistInfo {
 struct MusicSettingsPage {
   @State playlists: PlaylistInfo[] = [];
   @State defaultPlaylistId: number = 0;
-  @State volume: number = 0.2;
+  @State volume: number = 0.1;
   @State autoPlayOnEnter: boolean = true;
   @State backgroundPlay: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
@@ -152,7 +152,7 @@ struct MusicSettingsPage {
           // 默认音量
           Text('默认音量').fontSize(14).fontColor(this.sub()).width('100%')
             .padding({ left: 20, bottom: 8 })
-          Text('进入应用时的初始音量（默认 30%）').fontSize(12).fontColor(this.sub()).width('100%')
+          Text('进入应用时的初始音量（默认 10%）').fontSize(12).fontColor(this.sub()).width('100%')
             .padding({ left: 20, bottom: 8 })
 
           Row() {

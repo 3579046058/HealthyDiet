@@ -26,7 +26,7 @@ struct MusicPlayerPage {
   @State playlistSongs: DbRow[] = [];
   @State showAddPlaylist: boolean = false;
   @State newPlaylistName: string = '';
-  @State volume: number = 0.2;
+  @State volume: number = 0.1;
   @State showVolumeBar: boolean = false;
   @State pickSong: DbRow | null = null;
   @State playMode: number = 0;
