@@ -67,11 +67,11 @@ export struct SharePanel {
           .padding({ left: 20, top: 12, bottom: 8 })
 
         Column() {
-          this.shareCheckItem('🍎', '饮食记录', this.diaryDietRecords.length > 0, this.shareDiet, (on: boolean) => { this.onDietChange(on); })
-          this.shareCheckItem('🏃', '运动记录', this.diarySportRecords.length > 0, this.shareSport, (on: boolean) => { this.onSportChange(on); })
-          this.shareCheckItem('😴', '睡眠记录', this.diarySleepRecords.length > 0, this.shareSleep, (on: boolean) => { this.onSleepChange(on); })
-          this.shareCheckItem('😊', '情绪记录', this.diaryMoodRecords.length > 0, this.shareMood, (on: boolean) => { this.onMoodChange(on); })
-          this.shareCheckItem('📊', '今日健康概览', true, this.shareOverview, (on: boolean) => { this.onOverviewChange(on); })
+          this.shareCheckItem($r('app.media.ic_diet'), '饮食记录', this.diaryDietRecords.length > 0, this.shareDiet, (on: boolean) => { this.onDietChange(on); })
+          this.shareCheckItem($r('app.media.ic_sport'), '运动记录', this.diarySportRecords.length > 0, this.shareSport, (on: boolean) => { this.onSportChange(on); })
+          this.shareCheckItem($r('app.media.ic_sleep'), '睡眠记录', this.diarySleepRecords.length > 0, this.shareSleep, (on: boolean) => { this.onSleepChange(on); })
+          this.shareCheckItem($r('app.media.ic_mood'), '情绪记录', this.diaryMoodRecords.length > 0, this.shareMood, (on: boolean) => { this.onMoodChange(on); })
+          this.shareCheckItem($r('app.media.ic_report'), '今日健康概览', true, this.shareOverview, (on: boolean) => { this.onOverviewChange(on); })
         }
         .width('100%')
         .padding({ left: 20, right: 20 })
@@ -235,9 +235,13 @@ export struct SharePanel {
     .borderRadius(12)
   }
 
-  @Builder shareCheckItem(icon: string, label: string, hasData: boolean, checked: boolean, onChange: (on: boolean) => void) {
+  @Builder shareCheckItem(icon: ResourceStr, label: string, hasData: boolean, checked: boolean, onChange: (on: boolean) => void) {
     Row() {
-      Text(icon).fontSize(18)
+      if (typeof icon === 'string') {
+        Text(icon).fontSize(18)
+      } else {
+        Image(icon).width(18).height(18).fillColor(this.textColor)
+      }
       Text(label).fontSize(14).fontColor(this.textColor).margin({ left: 8 })
       if (!hasData) {
         Text('（无记录）').fontSize(11).fontColor(this.subTextColor).margin({ left: 4 })

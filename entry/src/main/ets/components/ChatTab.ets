@@ -277,7 +277,7 @@ export struct ChatTab {
         if (this.vm.isExpanded) {
           Column() {
         Row() {
-          Text('🤖').fontSize(18)
+          Image($r('app.media.ic_ai')).width(18).height(18)
           Text('会话').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 6 })
           Blank()
         }
@@ -312,9 +312,9 @@ export struct ChatTab {
         Column() {
         Row() {
           if (!this.vm.isWide) {
-            Text('☰')
-              .fontSize(18)
-              .fontColor(this.txt())
+            Image($r('app.media.ic_menu'))
+              .width(18).height(18)
+              .fillColor(this.txt())
               .padding(4)
               .onClick(() => { this.vm.drawerOpen = true; })
           }
@@ -335,7 +335,7 @@ export struct ChatTab {
 
           if (this.vm.messages.length === 0) {
             Column() {
-              Text('🤖').fontSize(56)
+              Image($r('app.media.ic_ai')).width(56).height(56).opacity(0.4)
               Text('健康助手已就绪').fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.txt()).margin({ top: 12 })
               Text('可以问我饮食、运动、睡眠、喝水等健康问题\n回答会结合你今天的真实健康记录').fontSize(13).fontColor(this.sub())
                 .textAlign(TextAlign.Center).margin({ top: 8 })

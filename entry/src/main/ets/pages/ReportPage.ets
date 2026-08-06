@@ -176,18 +176,22 @@ struct ReportPage {
             Button(this.reportType === 'week' ? '📊 周报' : '周报')
               .width(100).height(40)
               .backgroundColor(this.reportType === 'week' ? '#FF6B35' : this.card())
-              .borderRadius(20).fontColor(this.txt()).fontSize(14)
+              .borderRadius(20)
+              .fontColor(this.reportType === 'week' ? Color.White : this.txt())
+              .fontSize(14)
               .onClick(() => { this.reportType = 'week'; })
             Button(this.reportType === 'month' ? '📅 月报' : '月报')
               .width(100).height(40)
               .backgroundColor(this.reportType === 'month' ? '#FF6B35' : this.card())
-              .borderRadius(20).fontColor(this.txt()).fontSize(14).margin({ left: 12 })
+              .borderRadius(20)
+              .fontColor(this.reportType === 'month' ? Color.White : this.txt())
+              .fontSize(14).margin({ left: 12 })
               .onClick(() => { this.reportType = 'month'; })
           }
           .width('100%').justifyContent(FlexAlign.Center).padding(16)
 
           if (this.reportType === 'week') {
-            Text('本周概况').fontSize(18).fontWeight(FontWeight.Bold)
+            Text('本周概况').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.txt())
               .width('100%').padding({ left: 16, bottom: 8 })
 
             Row() {
@@ -240,7 +244,7 @@ struct ReportPage {
             .width('100%').justifyContent(FlexAlign.SpaceEvenly).padding({ left: 16, right: 16, bottom: 12 })
 
             if (this.weekSteps.length > 1) {
-              Text('步数趋势').fontSize(16).fontWeight(FontWeight.Bold)
+              Text('步数趋势').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
                 .width('100%').padding({ left: 16, bottom: 8 })
               TrendChart({
                 dataPoints: this.weekSteps,
@@ -251,7 +255,7 @@ struct ReportPage {
             }
 
             if (this.weekWaterData.length > 1) {
-              Text('喝水情况').fontSize(16).fontWeight(FontWeight.Bold)
+              Text('喝水情况').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
                 .width('100%').padding({ left: 16, top: 16, bottom: 8 })
               BarChart({
                 dataPoints: this.weekWaterData,
@@ -262,7 +266,7 @@ struct ReportPage {
             }
 
             if (this.weekSleepData.length > 1) {
-              Text('睡眠时长').fontSize(16).fontWeight(FontWeight.Bold)
+              Text('睡眠时长').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
                 .width('100%').padding({ left: 16, top: 16, bottom: 8 })
               BarChart({
                 dataPoints: this.weekSleepData,
@@ -284,7 +288,7 @@ struct ReportPage {
               }).margin({ left: 16, right: 16, top: 16 })
             }
           } else {
-            Text('本月概况').fontSize(18).fontWeight(FontWeight.Bold)
+            Text('本月概况').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.txt())
               .width('100%').padding({ left: 16, bottom: 8 })
 
             Row() {
@@ -297,7 +301,7 @@ struct ReportPage {
             .width('100%').justifyContent(FlexAlign.Center).padding({ left: 16, right: 16, bottom: 12 })
 
             if (this.monthSteps.length > 1) {
-              Text('本月步数趋势').fontSize(16).fontWeight(FontWeight.Bold)
+              Text('本月步数趋势').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
                 .width('100%').padding({ left: 16, bottom: 8 })
               TrendChart({
                 dataPoints: this.monthSteps,
@@ -354,6 +358,7 @@ struct ReportPage {
         })
     }
     .width('100%').height('100%').backgroundColor(this.bg())
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

@@ -155,7 +155,7 @@ struct LoginPage {
 
       if (!this.isLoggedIn) {
         Column() {
-          Text('🔐').fontSize(72).margin({ top: 40 })
+          Image($r('app.media.ic_lock')).width(72).height(72).fillColor(this.txt()).margin({ top: 40 })
           Text('华为账号登录').fontSize(24).fontColor(this.txt()).fontWeight(FontWeight.Bold).margin({ top: 20 })
           Text('使用系统华为账号一键登录').fontSize(14).fontColor(this.sub()).margin({ top: 8 })
 
@@ -275,6 +275,7 @@ struct LoginPage {
       }
     }
     .width('100%').height('100%').backgroundColor(this.bg())
+        .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

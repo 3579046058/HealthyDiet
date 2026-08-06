@@ -49,12 +49,12 @@ export class Constants {
   static readonly PAGE_MAKEUP_DAYS: string = 'pages/MakeupDaysPage';
 
   static readonly SPORT_TYPES: SportTypeDef[] = [
-    { label: '步行', value: 'walk', icon: '🚶' },
-    { label: '跑步', value: 'run', icon: '🏃' },
-    { label: '骑行', value: 'cycle', icon: '🚴' },
-    { label: '游泳', value: 'swim', icon: '🏊' },
-    { label: '瑜伽', value: 'yoga', icon: '🧘' },
-    { label: '力量', value: 'strength', icon: '🏋️' },
+    { label: '步行', value: 'walk', icon: '🚶', iconName: 'ic_walk', iconColor: 'ic_walk_color' },
+    { label: '跑步', value: 'run', icon: '🏃', iconName: 'ic_run', iconColor: 'ic_run_color' },
+    { label: '骑行', value: 'cycle', icon: '🚴', iconName: 'ic_cycle', iconColor: 'ic_cycle_color' },
+    { label: '游泳', value: 'swim', icon: '🏊', iconName: 'ic_swim', iconColor: 'ic_swim_color' },
+    { label: '瑜伽', value: 'yoga', icon: '🧘', iconName: 'ic_yoga', iconColor: 'ic_yoga_color' },
+    { label: '力量', value: 'strength', icon: '🏋️', iconName: 'ic_strength', iconColor: 'ic_strength_color' },
   ];
 
   static readonly INTENSITIES: string[] = ['低强度', '中强度', '高强度'];
@@ -86,6 +86,8 @@ export interface SportTypeDef {
   label: string;
   value: string;
   icon: string;
+  iconName: string;
+  iconColor: string;
 }
 
 export interface SportState {

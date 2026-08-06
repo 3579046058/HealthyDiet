@@ -162,6 +162,7 @@ struct PermissionPage {
       }
     }
     .width('100%').height('100%').backgroundColor(this.bg())
+        .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

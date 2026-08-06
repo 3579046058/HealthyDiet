@@ -289,7 +289,7 @@ struct WomenHealthPage {
 
               Row() {
                 Text(`${record.cycle_length}天周期`).fontSize(12).fontColor('#E91E63').margin({ right: 8 })
-                Text('🗑').fontSize(16)
+                Image($r('app.media.ic_delete')).width(16).height(16).fillColor(this.sub())
                   .onClick(() => {
                     if (record.id) {
                       const idNum = Number(record.id);
@@ -321,13 +321,17 @@ struct WomenHealthPage {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor(this.bg())
-      .onRefreshing(() => {
+    .backgroundColor(this.bg())
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
+    .onRefreshing(() => {
         // 下拉刷新：重新加载健康记录
         this.loadData().then(() => {
           setTimeout(() => { this.isRefreshing = false; }, 600);
         }).catch(() => { this.isRefreshing = false; });
       })
     }
+    .width('100%').height('100%')
+    .backgroundColor(this.bg())
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 }

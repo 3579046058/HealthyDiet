@@ -29,7 +29,8 @@ struct SettingsPage {
   themeLabel(): string {
     if (this.themeMode === 'dark') { return '深色模式'; }
     if (this.themeMode === 'light') { return '浅色模式'; }
-    return '跟随系统';
+    // 跟随系统时，显示系统当前的主题状态
+    return '跟随系统（' + (this.systemDark ? '深色' : '浅色') + '）';
   }
 
   toggleTheme(): void {
@@ -61,18 +62,18 @@ struct SettingsPage {
           Text('通用设置').fontSize(14).fontColor(this.sub()).width('100%')
             .padding({ left: 20, bottom: 8 })
 
-          this.settingItem('🔔', '通知设置', '喝水、久坐、用药提醒', () => { this.navigate('pages/NotificationPage'); })
-          this.settingItem('🎯', '目标设置', '步数、喝水、运动、睡眠目标', () => { this.navigate('pages/GoalPage'); })
-          this.settingItem('🎨', '主题切换', '切换应用外观主题，当前：' + this.themeLabel(), () => { this.toggleTheme(); })
-          this.settingItem('🔊', '音效', '各场景音效开关与试听', () => { this.navigate('pages/SoundSettingsPage'); })
-          this.settingItem('🔐', '权限管理', '管理运动、位置、蓝牙、健康数据等权限', () => { this.navigate('pages/PermissionPage'); })
+          this.settingItem($r('app.media.ic_bell'), '通知设置', '喝水、久坐、用药提醒', () => { this.navigate('pages/NotificationPage'); })
+          this.settingItem($r('app.media.ic_target'), '目标设置', '步数、喝水、运动、睡眠目标', () => { this.navigate('pages/GoalPage'); })
+          this.settingItem($r('app.media.ic_palette'), '主题切换', '切换应用外观主题，当前：' + this.themeLabel(), () => { this.toggleTheme(); })
+          this.settingItem($r('app.media.ic_volume'), '音效', '各场景音效开关与试听', () => { this.navigate('pages/SoundSettingsPage'); })
+          this.settingItem($r('app.media.ic_lock'), '权限管理', '管理运动、位置、蓝牙、健康数据等权限', () => { this.navigate('pages/PermissionPage'); })
 
           Text('AI 服务').fontSize(14).fontColor(this.sub()).width('100%')
             .padding({ left: 20, top: 20, bottom: 8 })
 
           Column() {
             Row() {
-              Text('🤖').fontSize(20)
+              Image($r('app.media.ic_ai')).width(20).height(20)
               Column() {
                 Text('AI 模型服务').fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.txt())
                 Text(this.keyStatus).fontSize(11).fontColor(this.sub()).margin({ top: 2 })
@@ -106,7 +107,7 @@ struct SettingsPage {
               .margin({ top: 10 })
               .onChange((value: string) => { this.apiKeyInput = value; })
 
-            TextInput({ placeholder: '对话模型（默认 glm-4-flash，可换其他厂商模型）', text: this.chatModelInput })
+            TextInput({ placeholder: '对话模型（默认 glm-4-V，可换其他厂商模型）', text: this.chatModelInput })
               .width('100%')
               .height(42)
               .fontSize(13)
@@ -185,13 +186,13 @@ struct SettingsPage {
           Text('关于').fontSize(14).fontColor(this.sub()).width('100%')
             .padding({ left: 20, top: 20, bottom: 8 })
 
-          this.settingItem('⭐', '评分标准', '查看健康评分规则说明', () => {
+          this.settingItem($r('app.media.ic_star'), '评分标准', '查看健康评分规则说明', () => {
             this.showScoreRule();
           })
-          this.settingItem('ℹ️', '关于', 'Harmony健康 v1.0', () => {
+          this.settingItem($r('app.media.ic_info'), '关于', 'Harmony健康 v1.0', () => {
             this.showAbout();
           })
-          this.settingItem('💾', '数据说明', '数据存储在本地数据库，无需联网。关机会保留。', () => {
+          this.settingItem($r('app.media.ic_save'), '数据说明', '数据存储在本地数据库，无需联网。关机会保留。', () => {
             this.showDataInfo();
           })
 
@@ -201,6 +202,7 @@ struct SettingsPage {
       }
     }
     .width('100%').height('100%').backgroundColor(this.bg())
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   navigate(page: string): void {
@@ -314,9 +316,13 @@ struct SettingsPage {
     });
   }
 
-  @Builder settingItem(icon: string, title: string, desc: string, action: () => void) {
+  @Builder settingItem(icon: ResourceStr, title: string, desc: string, action: () => void) {
     Row() {
-      Text(icon).fontSize(20)
+      if (typeof icon === 'string') {
+        Text(icon).fontSize(20)
+      } else {
+        Image(icon).width(20).height(20)
+      }
       Column() {
         Text(title).fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.txt())
         Text(desc).fontSize(11).fontColor(this.sub()).margin({ top: 2 })

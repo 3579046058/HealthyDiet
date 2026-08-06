@@ -127,11 +127,29 @@ struct SleepPage {
         this.records = rows;
       });
 
-      // 近七天数据
-      const recent = rows.slice(0, 7);
-      this.weekLabels = recent.map((item: DbRow) => String(item.date).slice(5)).reverse();
-      // 显示睡眠时长（分钟）
-      this.weekScores = recent.map((item: DbRow) => Number(item.total_minutes) || 0).reverse();
+      // 按天聚合睡眠记录（同一天多段睡眠合并为一天）
+      const dayMap = new Map<string, DbRow[]>();
+      for (const r of rows) {
+        const day: string = String(r.date);
+        const dayRows: DbRow[] | undefined = dayMap.get(day);
+        if (dayRows) {
+          dayRows.push(r);
+        } else {
+          dayMap.set(day, [r]);
+        }
+      }
+      // 按日期倒序取最近 7 天
+      const dayKeys: string[] = Array.from(dayMap.keys()).sort().reverse().slice(0, 7);
+      const recent: DbRow[][] = [];
+      for (const k of dayKeys) {
+        const arr: DbRow[] | undefined = dayMap.get(k);
+        if (arr) {
+          recent.push(arr);
+        }
+      }
+      this.weekLabels = dayKeys.map((d: string) => d.slice(5)).reverse();
+      // 每天用聚合评分（多段合并），不是分钟数
+      this.weekScores = recent.map((dayRows: DbRow[]) => this.calcAggregatedScore(dayRows)).reverse();
       if (this.weekScores.length > 0) {
         this.avgScore = Math.round(this.weekScores.reduce((a: number, b: number) => a + b, 0) / this.weekScores.length);
       }
@@ -276,6 +294,88 @@ struct SleepPage {
     return Math.min(100, durationScore + deepScore + remScore + lightScore);
   }
 
+  // 按某天所有睡眠段聚合计算评分（多段睡眠：总时长+按比例加权分期，跨天归属按醒来日期）
+  calcAggregatedScore(records: DbRow[]): number {
+    let totalMin: number = 0;
+    let deepMin: number = 0;
+    let lightMin: number = 0;
+    let remMin: number = 0;
+    for (const r of records) {
+      totalMin += Number(r.total_minutes) || 0;
+      deepMin += Number(r.deep_sleep_min) || 0;
+      lightMin += Number(r.light_sleep_min) || 0;
+      remMin += Number(r.rem_min) || 0;
+    }
+    if (totalMin <= 0) {
+      return 0;
+    }
+    const deepRatio: number = totalMin > 0 ? deepMin / totalMin : 0;
+    const lightRatio: number = totalMin > 0 ? lightMin / totalMin : 0;
+    const remRatio: number = totalMin > 0 ? remMin / totalMin : 0;
+
+    // 与 calcScore 相同的四维评分
+    let durationScore = 0;
+    if (totalMin >= 420 && totalMin <= 540) {
+      durationScore = 40;
+    } else if (totalMin >= 360 && totalMin <= 600) {
+      durationScore = 32;
+    } else if (totalMin >= 300) {
+      durationScore = 24;
+    } else {
+      durationScore = 12;
+    }
+
+    let deepScore = 0;
+    const deepDiff = Math.abs(deepRatio - 0.2);
+    if (deepRatio >= 0.15 && deepRatio <= 0.25) {
+      deepScore = 25;
+    } else if (deepDiff <= 0.1) {
+      deepScore = 18;
+    } else {
+      deepScore = 10;
+    }
+
+    let remScore = 0;
+    const remDiff = Math.abs(remRatio - 0.22);
+    if (remRatio >= 0.2 && remRatio <= 0.25) {
+      remScore = 20;
+    } else if (remDiff <= 0.1) {
+      remScore = 14;
+    } else {
+      remScore = 8;
+    }
+
+    let lightScore = 0;
+    if (lightRatio >= 0.45 && lightRatio <= 0.6) {
+      lightScore = 15;
+    } else if (lightRatio >= 0.35 && lightRatio <= 0.65) {
+      lightScore = 11;
+    } else {
+      lightScore = 6;
+    }
+
+    return Math.min(100, durationScore + deepScore + remScore + lightScore);
+  }
+
+  // 重算某天的聚合睡眠数据（多段合并），写入 summary
+  async recalcDailySleepSummary(date: string): Promise<void> {
+    try {
+      const rows: DbRow[] = await GlobalData.db.getSleepRecords(date, date);
+      let totalMin: number = 0;
+      for (const r of rows) {
+        totalMin += Number(r.total_minutes) || 0;
+      }
+      const aggregatedScore: number = this.calcAggregatedScore(rows);
+      const hours: number = Math.round(totalMin / 60 * 10) / 10;
+      await GlobalData.db.updateDailySummaryField(date, 'sleep_score', aggregatedScore);
+      await GlobalData.db.updateDailySummaryField(date, 'sleep_hours', hours);
+      console.info('[SleepPage] recalc ' + date + ' segments=' + String(rows.length) +
+        ' totalMin=' + String(totalMin) + ' score=' + String(aggregatedScore));
+    } catch (err) {
+      console.error('SleepPage recalcDailySleepSummary error:', JSON.stringify(err));
+    }
+  }
+
   async saveSleep(): Promise<void> {
     const startParts = this.startTime.split(':');
     const endParts = this.endTime.split(':');
@@ -337,8 +437,8 @@ struct SleepPage {
       this.getUIContext().getPromptAction().showToast({ message: '与已有睡眠记录时间重叠，无法添加' });
       return;
     }
-    await GlobalData.db.updateDailySummaryField(this.endDate, 'sleep_score', score);
-    await GlobalData.db.updateDailySummaryField(this.endDate, 'sleep_hours', Math.round(sleepDuration / 60 * 10) / 10);
+    // 保存后按醒来日期聚合重算当天所有睡眠段（多段睡眠合并评分）
+    await this.recalcDailySleepSummary(this.endDate);
     await CardDataHelper.refreshWidget(getContext(this));
     // 通知 Index 页面数据已更新
     AppStorage.setOrCreate('dataUpdateTrigger', `sleep_${Date.now()}`);
@@ -408,8 +508,8 @@ struct SleepPage {
       this.getUIContext().getPromptAction().showToast({ message: '与已有睡眠记录时间重叠，无法保存' });
       return;
     }
-    await GlobalData.db.updateDailySummaryField(today, 'sleep_score', score);
-    await GlobalData.db.updateDailySummaryField(today, 'sleep_hours', Math.round(sleepDuration / 60 * 10) / 10);
+    // 保存后按醒来日期聚合重算当天所有睡眠段
+    await this.recalcDailySleepSummary(today);
     await CardDataHelper.refreshWidget(getContext(this));
     // 通知 Index 页面数据已更新
     AppStorage.setOrCreate('dataUpdateTrigger', `sleep_${Date.now()}`);
@@ -437,11 +537,20 @@ struct SleepPage {
   }
 
   async deleteRecord(id: number): Promise<void> {
+    // 先查出被删记录属于哪天（用于重算该天聚合）
+    let deletedDate: string = '';
+    for (const r of this.records) {
+      if (Number(r.id) === id) {
+        deletedDate = String(r.date);
+        break;
+      }
+    }
     await GlobalData.db.deleteSleepRecord(id);
     await this.loadData();
-    const today = await GlobalData.getTodayDate();
-    await GlobalData.db.updateDailySummaryField(today, 'sleep_score', 0);
-    await GlobalData.db.updateDailySummaryField(today, 'sleep_hours', 0);
+    if (deletedDate.length > 0) {
+      // 按被删记录的日期重算当天聚合（保留当天其他睡眠段）
+      await this.recalcDailySleepSummary(deletedDate);
+    }
     await CardDataHelper.refreshWidget(getContext(this));
     // 通知 Index 页面数据已更新
     AppStorage.setOrCreate('dataUpdateTrigger', `sleep_${Date.now()}`);
@@ -480,7 +589,7 @@ struct SleepPage {
           Row() {
             Column() {
               Text(String(this.avgScore)).fontSize(48).fontWeight(FontWeight.Bold).fontColor('#9C27B0')
-              Text('平均睡眠时长(分钟)').fontSize(13).fontColor(this.sub()).margin({ top: 4 })
+              Text('平均睡眠评分').fontSize(13).fontColor(this.sub()).margin({ top: 4 })
             }
             Divider().vertical(true).height(70).margin({ left: 30, right: 30 })
             Column() {
@@ -598,7 +707,8 @@ struct SleepPage {
               }.width('100%').padding({ bottom: 8 })
 
               Row() {
-                Text('💡 深睡/浅睡/REM 将按健康睡眠比例自动估算').fontSize(12).fontColor(this.sub())
+                Image($r('app.media.ic_lightbulb')).width(14).height(14).fillColor(this.sub())
+                Text('深睡/浅睡/REM 将按健康睡眠比例自动估算').fontSize(12).fontColor(this.sub()).margin({ left: 4 })
               }.width('100%').padding({ bottom: 8 })
 
               Row() {
@@ -627,9 +737,9 @@ struct SleepPage {
             .margin({ left: 16, right: 16, bottom: 16 })
           }
 
-          // 近七天趋势图
+          // 近七天趋势图（睡眠评分）
           if (this.weekScores.length > 1) {
-            Text('近七天睡眠时长趋势（分钟）').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
+            Text('近七天睡眠评分趋势').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
               .width('100%').padding({ left: 16, bottom: 8 })
             TrendChart({
               dataPoints: this.weekScores,
@@ -688,7 +798,7 @@ struct SleepPage {
               Row() {
                 Column() {
                   Text(String(record.date)).fontSize(13).fontColor(this.sub())
-                  Text(String(record.start_time) + ' - ' + String(record.end_time)).fontSize(15).fontWeight(FontWeight.Medium)
+                  Text(String(record.start_time) + ' - ' + String(record.end_time)).fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.txt())
                 }
                 .alignItems(HorizontalAlign.Start)
                 .layoutWeight(1)
@@ -714,15 +824,15 @@ struct SleepPage {
               Row() {
                 Column() {
                   Text('深睡').fontSize(11).fontColor(this.sub())
-                  Text(String(record.deep_sleep_min) + 'min').fontSize(12).fontWeight(FontWeight.Bold)
+                  Text(String(record.deep_sleep_min) + 'min').fontSize(12).fontWeight(FontWeight.Bold).fontColor(this.txt())
                 }
                 Column() {
                   Text('浅睡').fontSize(11).fontColor(this.sub())
-                  Text(String(record.light_sleep_min) + 'min').fontSize(12).fontWeight(FontWeight.Bold)
+                  Text(String(record.light_sleep_min) + 'min').fontSize(12).fontWeight(FontWeight.Bold).fontColor(this.txt())
                 }
                 Column() {
                   Text('REM').fontSize(11).fontColor(this.sub())
-                  Text(String(record.rem_min) + 'min').fontSize(12).fontWeight(FontWeight.Bold)
+                  Text(String(record.rem_min) + 'min').fontSize(12).fontWeight(FontWeight.Bold).fontColor(this.txt())
                 }
               }
               .width('100%')
@@ -754,6 +864,7 @@ struct SleepPage {
       .edgeEffect(EdgeEffect.Spring)
       }
       .width('100%').height('100%').backgroundColor(this.bg())
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
       .onRefreshing(() => {
         // 下拉刷新：重新加载睡眠数据
         this.loadData().then(() => {
@@ -761,6 +872,9 @@ struct SleepPage {
         }).catch(() => { this.isRefreshing = false; });
       })
     }
+    .width('100%').height('100%')
+    .backgroundColor(this.bg())
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

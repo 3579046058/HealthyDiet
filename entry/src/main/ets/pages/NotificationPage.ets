@@ -7,6 +7,7 @@ import { ReminderScheduler } from '../services/ReminderScheduler';
 @Component
 struct NotifCard {
   @Prop title: string = '';
+  @Prop icon: ResourceStr = '';
   @Prop isEnabled: boolean = false;
   @Prop cardColor: string = '#1A1A2E';
   @Prop txtColor: string = '#FFFFFF';
@@ -21,6 +22,13 @@ struct NotifCard {
 
   build() {
     Row() {
+      if (typeof this.icon === 'string') {
+        if (this.icon.length > 0) {
+          Text(this.icon).fontSize(20).margin({ right: 10 })
+        }
+      } else {
+        Image(this.icon).width(20).height(20).fillColor(this.accentColor).margin({ right: 10 })
+      }
       Column() {
         Text(this.title).fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.txtColor)
         this.descContent();
@@ -223,12 +231,16 @@ struct NotificationPage {
       Scroll() {
         Column() {
           // ===== 健康提醒 =====
-          Text('📢 健康提醒').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.txt())
+          Row() {
+            Image($r('app.media.ic_notify')).width(20).height(20).fillColor(this.txt())
+            Text('健康提醒').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 8 })
+          }
             .width('100%').padding({ left: 16, bottom: 12 })
-          
+
           // 喝水提醒
           NotifCard({
-            title: '💧 喝水提醒',
+            title: '喝水提醒',
+            icon: $r('app.media.ic_water'),
             isEnabled: this.waterReminderEnabled,
             cardColor: this.card(),
             txtColor: this.txt(),
@@ -265,7 +277,7 @@ struct NotificationPage {
               .height(32).margin({ left: 12 })
               .onClick(() => { this.addWaterTime(); })
             Blank()
-            Text('✏️').fontSize(16).margin({ left: 8 })
+            Image($r('app.media.ic_edit')).width(16).height(16).margin({ left: 8 })
               .onClick(() => { this.showWaterTimePicker = !this.showWaterTimePicker; })
           }
           .width('100%').padding({ left: 16, right: 16, bottom: 4 })
@@ -282,7 +294,8 @@ struct NotificationPage {
 
           // 睡眠提醒
           NotifCard({
-            title: '🌙 睡眠提醒',
+            title: '睡眠提醒',
+            icon: $r('app.media.ic_moon'),
             isEnabled: this.sleepReminderEnabled,
             cardColor: this.card(),
             txtColor: this.txt(),
@@ -301,7 +314,7 @@ struct NotificationPage {
             Text(this.sleepReminderTime).fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.txt())
               .onClick(() => { this.showSleepTimePicker = !this.showSleepTimePicker; })
             Blank()
-            Text('✏️').fontSize(16).onClick(() => { this.showSleepTimePicker = !this.showSleepTimePicker; })
+            Image($r('app.media.ic_edit')).width(16).height(16).onClick(() => { this.showSleepTimePicker = !this.showSleepTimePicker; })
           }
           .width('100%').padding({ left: 16, right: 16, bottom: 4 })
 
@@ -318,7 +331,8 @@ struct NotificationPage {
 
           // 用药提醒（动态状态）
           NotifCard({
-            title: '💊 用药提醒',
+            title: '用药提醒',
+            icon: $r('app.media.ic_medication'),
             isEnabled: this.medicationEnabled,
             cardColor: this.card(),
             txtColor: this.txt(),
@@ -343,11 +357,15 @@ struct NotificationPage {
 
           // ===== 目标达成通知 =====
           Divider().margin({ left: 16, right: 16, bottom: 12 })
-          Text('🎯 目标达成通知').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.txt())
+          Row() {
+            Image($r('app.media.ic_target')).width(20).height(20).fillColor(this.txt())
+            Text('目标达成通知').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 8 })
+          }
             .width('100%').padding({ left: 16, bottom: 12 })
 
           NotifCard({
-            title: '👟 步数达标通知',
+            title: '步数达标通知',
+            icon: $r('app.media.ic_steps'),
             isEnabled: this.goalStepsNotify,
             cardColor: this.card(),
             txtColor: this.txt(),
@@ -362,7 +380,8 @@ struct NotificationPage {
           }
 
           NotifCard({
-            title: '🏃 运动达标通知',
+            title: '运动达标通知',
+            icon: $r('app.media.ic_sport'),
             isEnabled: this.goalSportNotify,
             cardColor: this.card(),
             txtColor: this.txt(),
@@ -377,7 +396,8 @@ struct NotificationPage {
           }
 
           NotifCard({
-            title: '😴 睡眠达标通知',
+            title: '睡眠达标通知',
+            icon: $r('app.media.ic_sleep'),
             isEnabled: this.goalSleepNotify,
             cardColor: this.card(),
             txtColor: this.txt(),
@@ -393,11 +413,15 @@ struct NotificationPage {
 
           // ===== 成就通知 =====
           Divider().margin({ left: 16, right: 16, bottom: 12 })
-          Text('🏆 成就通知').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.txt())
+          Row() {
+            Image($r('app.media.ic_trophy')).width(20).height(20).fillColor(this.txt())
+            Text('成就通知').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 8 })
+          }
             .width('100%').padding({ left: 16, bottom: 12 })
 
           NotifCard({
-            title: '🎖️ 成就解锁通知',
+            title: '成就解锁通知',
+            icon: $r('app.media.ic_trophy'),
             isEnabled: this.achievementNotify,
             cardColor: this.card(),
             txtColor: this.txt(),
@@ -413,11 +437,15 @@ struct NotificationPage {
 
           // ===== 追踪通知 =====
           Divider().margin({ left: 16, right: 16, bottom: 12 })
-          Text('📍 追踪通知').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.txt())
+          Row() {
+            Image($r('app.media.ic_gps')).width(20).height(20).fillColor(this.txt())
+            Text('追踪通知').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.txt()).margin({ left: 8 })
+          }
             .width('100%').padding({ left: 16, bottom: 12 })
 
           NotifCard({
-            title: '🏃 运动追踪通知',
+            title: '运动追踪通知',
+            icon: $r('app.media.ic_gps'),
             isEnabled: this.sportTrackingNotify,
             cardColor: this.card(),
             txtColor: this.txt(),
@@ -432,7 +460,8 @@ struct NotificationPage {
           }
 
           NotifCard({
-            title: '🌙 睡眠追踪通知',
+            title: '睡眠追踪通知',
+            icon: $r('app.media.ic_moon'),
             isEnabled: this.sleepTrackingNotify,
             cardColor: this.card(),
             txtColor: this.txt(),
@@ -452,6 +481,7 @@ struct NotificationPage {
       }
     }
     .width('100%').height('100%').backgroundColor(this.bg())
+        .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

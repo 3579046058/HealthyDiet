@@ -103,7 +103,7 @@ struct ProfilePage {
       Scroll() {
         Column() {
           Column() {
-            Text('👤').fontSize(64)
+            Image($r('app.media.ic_account')).width(64).height(64).fillColor(this.txt())
             Text('完善你的基本信息').fontSize(13).fontColor(this.sub()).margin({ top: 8 })
           }
           .width('100%').alignItems(HorizontalAlign.Center).padding(20)
@@ -168,6 +168,7 @@ struct ProfilePage {
       }
     }
     .width('100%').height('100%').backgroundColor(this.bg())
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

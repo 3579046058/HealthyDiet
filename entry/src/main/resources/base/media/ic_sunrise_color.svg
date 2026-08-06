@@ -1,0 +1,10 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sunriseG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFB74D"/>
+      <stop offset="100%" stop-color="#FF7043"/>
+    </linearGradient>
+  </defs>
+  <path d="M4 18H20V20H4V18ZM6 14H9V16H6V14ZM15 14H18V16H15V14ZM12 8C9.79 8 8 9.79 8 12H16C16 9.79 14.21 8 12 8ZM17.5 8.5L16.09 7.09L18.59 4.59L20 6L17.5 8.5ZM11 5H13V8H11V5ZM3.5 6L6 3.5L7.41 4.91L4.91 7.41L3.5 6Z" fill="url(#sunriseG)"/>
+  <path d="M12 10C10.9 10 10 10.9 10 12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12C14 10.9 13.1 10 12 10Z" fill="#FFF176"/>
+</svg>

@@ -107,8 +107,9 @@ struct QuickActionsCard {
       Row() {
         // 喝水按钮
         Column() {
-          Text('💧')
-            .fontSize(20)
+          Image($r('app.media.ic_water'))
+            .width(22).height(22)
+            .fillColor('#ff0880bc')
           Text('喝水')
             .fontSize(10)
             .fontColor($r('app.color.text_secondary'))
@@ -128,8 +129,11 @@ struct QuickActionsCard {
 
         // 入睡/醒来按钮
         Column() {
-          Text(this.isSleeping === 'true' ? '😴' : '🌙')
-            .fontSize(20)
+          if (this.isSleeping === 'true') {
+            Image($r('app.media.ic_sleep')).width(22).height(22).fillColor('#9C27B0')
+          } else {
+            Image($r('app.media.ic_moon')).width(22).height(22).fillColor('#9C27B0')
+          }
           Text(this.isSleeping === 'true' ? '醒来' : '入睡')
             .fontSize(10)
             .fontColor($r('app.color.text_secondary'))

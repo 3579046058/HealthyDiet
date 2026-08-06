@@ -293,25 +293,42 @@ struct DietPage {
   }
 
   @Builder
-  mealButton(emoji: string, type: string): void {
-    Button(emoji)
+  mealButton(icon: ResourceStr, type: string): void {
+    Button() {
+      if (typeof icon === 'string') {
+        Text(icon).fontSize(24).fontColor(this.mealType === type ? Color.White : this.txt())
+      } else {
+        Image(icon).width(24).height(24).supportSvg2(true)
+      }
+    }
       .width(56)
       .height(56)
       .borderRadius(28)
       .backgroundColor(this.mealType === type ? Constants.COLOR_DIET : this.card())
       .fontSize(24)
+      .fontColor(this.mealType === type ? Color.White : this.txt())
       .onClick(() => {
         this.mealType = type;
       })
   }
 
   @Builder
-  mealSection(emoji: string, type: string, label: string): void {
+  mealSection(icon: ResourceStr, type: string, label: string): void {
     Column() {
       Row() {
-        Text(emoji + ' ' + label)
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
+        if (typeof icon === 'string') {
+          Text(icon + ' ' + label)
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.txt())
+        } else {
+          Image(icon).width(16).height(16).supportSvg2(true)
+          Text(label)
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.txt())
+            .margin({ left: 6 })
+        }
         Blank()
         Text(this.getGramsByMeal(type) + 'g · ' + this.getCaloriesByMeal(type) + 'kcal')
           .fontSize(14)
@@ -327,6 +344,7 @@ struct DietPage {
               Row() {
                 Text(String(item.food_name))
                   .fontSize(14)
+                  .fontColor(this.txt())
                 Text(FoodCalories.getFoodLevel(String(item.food_name)))
                   .fontSize(10)
                   .fontColor('#FFFFFF')
@@ -349,7 +367,7 @@ struct DietPage {
             Text(Number(item.calories) > 0 ? String(Number(item.calories)) + ' kcal' : '未识别')
               .fontSize(12)
               .fontColor(this.txt())
-            Text('🗑').fontSize(16).margin({ left: 8 })
+            Image($r('app.media.ic_delete')).width(16).height(16).fillColor(this.sub()).margin({ left: 8 })
               .onClick(() => { this.deleteDietRecord(Number(item.id)); })
           }
           .width('100%')
@@ -417,10 +435,10 @@ struct DietPage {
                 .margin({ bottom: 12 })
 
               Row() {
-                this.mealButton('🌅', 'breakfast')
-                this.mealButton('🌞', 'lunch')
-                this.mealButton('🌙', 'dinner')
-                this.mealButton('🍪', 'snack')
+                this.mealButton($r('app.media.ic_sunrise_color'), 'breakfast')
+                this.mealButton($r('app.media.ic_sun_color'), 'lunch')
+                this.mealButton($r('app.media.ic_moon_color'), 'dinner')
+                this.mealButton($r('app.media.ic_cookie_color'), 'snack')
               }
               .width('100%')
               .justifyContent(FlexAlign.SpaceEvenly)
@@ -435,7 +453,12 @@ struct DietPage {
                   .onChange((v: string) => {
                     this.foodName = v;
                   })
-                Button('📖 食物库')
+                Button() {
+                  Row() {
+                    Image($r('app.media.ic_book')).width(16).height(16).fillColor(Color.White)
+                    Text('食物库').fontSize(13).fontColor(Color.White).margin({ left: 4 })
+                  }
+                }
                   .fontSize(13)
                   .backgroundColor(Constants.COLOR_DIET)
                   .borderRadius(10)
@@ -546,7 +569,8 @@ struct DietPage {
           // ==========今日统计卡片：已摄入 / 推荐热量 / 剩余/超出==========
           Column() {
             Row() {
-              Text('🍽️ 今日热量统计')
+              Image($r('app.media.ic_diet')).width(18).height(18).fillColor(Constants.COLOR_DIET)
+              Text('今日热量统计').fontSize(16).fontWeight(FontWeight.Bold).margin({ left: 6 })
                 .fontSize(16)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(this.txt())
@@ -611,10 +635,10 @@ struct DietPage {
           .borderRadius(10)
           .margin({ bottom: 16 })
 
-          this.mealSection('🌅', 'breakfast', '早餐')
-          this.mealSection('🌞', 'lunch', '午餐')
-          this.mealSection('🌙', 'dinner', '晚餐')
-          this.mealSection('🍪', 'snack', '零食')
+          this.mealSection($r('app.media.ic_sunrise_color'), 'breakfast', '早餐')
+          this.mealSection($r('app.media.ic_sun_color'), 'lunch', '午餐')
+          this.mealSection($r('app.media.ic_moon_color'), 'dinner', '晚餐')
+          this.mealSection($r('app.media.ic_cookie_color'), 'snack', '零食')
         }
         .width('100%')
         .padding(16)
@@ -634,6 +658,7 @@ struct DietPage {
     .width('100%')
     .height('100%')
     .backgroundColor(this.bg())
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

@@ -4,6 +4,7 @@ import { RingProgress } from './RingProgress';
 import { HealthCard } from './HealthCard';
 import { NestedRings } from './NestedRings';
 import { AnimatedNumber } from './AnimatedNumber';
+import { promptAction } from '@kit.ArkUI';
 
 @Component
 export struct HealthTab {
@@ -246,20 +247,58 @@ export struct HealthTab {
           Blank()
           if (this.streakCurrent > 0) {
             Column() {
-              Text('🔥').fontSize(20)
+              Image($r('app.media.ic_fire_color'))
+                .width(22).height(22)
+                .supportSvg2(true)
               Text(String(this.streakCurrent) + '天').fontSize(11).fontColor('#E65100')
             }
             .margin({ right: 12 })
           }
           // 成就入口图标
-          Text('🏆').fontSize(22).margin({ right: 12 })
+          Image($r('app.media.ic_trophy_color'))
+            .width(24).height(24)
+            .supportSvg2(true)
+            .margin({ right: 12 })
             .accessibilityText('查看成就')
             .accessibilityLevel('important')
             .onClick(() => { this.onNavigate('achievement'); })
-          Text(this.themeMode === 'dark' ? '🌙' : (this.themeMode === 'light' ? '☀️' : '🔄')).fontSize(22).margin({ right: 12 })
-            .accessibilityText(this.getThemeAccessibilityText())
-            .accessibilityLevel('important')
-            .onClick(() => { this.onToggleTheme(); })
+          if (this.themeMode === 'dark') {
+            Image($r('app.media.ic_theme_dark')).width(24).height(24).margin({ right: 12 }).supportSvg2(true)
+              .accessibilityText(this.getThemeAccessibilityText())
+              .accessibilityLevel('important')
+              .onClick(() => {
+                // 先计算下一个主题模式
+                const next: string = this.themeMode === 'dark' ? 'light' : (this.themeMode === 'light' ? 'follow' : 'dark');
+                this.onToggleTheme();
+                // 显示切换后的主题状态
+                const label = next === 'dark' ? '深色模式' : (next === 'light' ? '浅色模式' : '跟随系统');
+                promptAction.showToast({ message: '已切换到：' + label, duration: 1500 });
+              })
+          } else if (this.themeMode === 'light') {
+            Image($r('app.media.ic_theme_light')).width(24).height(24).margin({ right: 12 }).supportSvg2(true)
+              .accessibilityText(this.getThemeAccessibilityText())
+              .accessibilityLevel('important')
+              .onClick(() => {
+                // 先计算下一个主题模式
+                const next: string = this.themeMode === 'dark' ? 'light' : (this.themeMode === 'light' ? 'follow' : 'dark');
+                this.onToggleTheme();
+                // 显示切换后的主题状态
+                const label = next === 'dark' ? '深色模式' : (next === 'light' ? '浅色模式' : '跟随系统');
+                promptAction.showToast({ message: '已切换到：' + label, duration: 1500 });
+              })
+          } else {
+            Image($r('app.media.ic_theme_auto')).width(24).height(24).margin({ right: 12 }).supportSvg2(true)
+              .accessibilityText(this.getThemeAccessibilityText())
+              .accessibilityLevel('important')
+              .onClick(() => {
+                // 先计算下一个主题模式
+                const next: string = this.themeMode === 'dark' ? 'light' : (this.themeMode === 'light' ? 'follow' : 'dark');
+                this.onToggleTheme();
+                // 显示切换后的主题状态
+                const label = next === 'dark' ? '深色模式' : (next === 'light' ? '浅色模式' : '跟随系统');
+                promptAction.showToast({ message: '已切换到：' + label, duration: 1500 });
+              })
+          }
         }
         .width('100%').padding({ left: 20, right: 20, top: 12 + this.statusBarHeight })
 
@@ -454,6 +493,7 @@ export struct HealthTab {
       }
       .width('100%')
       .height('100%')
+      .backgroundColor(this.theme === 'dark' ? '#121212' : '#F5F5F5')
       .onRefreshing(() => {
         // 下拉刷新：重新加载数据（动画由 Index 的 refreshKey 触发）
         this.onRefreshData().then(() => {

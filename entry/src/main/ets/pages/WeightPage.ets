@@ -713,14 +713,18 @@ Text('历史记录')
       }
       .width('100%')
       .height('100%')
-      .backgroundColor(this.bg())
-      .onRefreshing(() => {
+    .backgroundColor(this.bg())
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
+    .onRefreshing(() => {
         // 下拉刷新：重新加载体重数据
         this.loadData().then(() => {
           setTimeout(() => { this.isRefreshing = false; }, 600);
         }).catch(() => { this.isRefreshing = false; });
       })
     }
+    .width('100%').height('100%')
+    .backgroundColor(this.bg())
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

@@ -40,6 +40,11 @@ export class DatabaseHelper {
     await this.recycleBin.init(this.rdbStore);
   }
 
+  // 获取RdbStore实例
+  getRdbStore(): relationalStore.RdbStore | null {
+    return this.rdbStore;
+  }
+
   // 旧库结构迁移：为已存在的表补充新增字段（列已存在时 ALTER 会报错，捕获即可）
   private async migrateSchema(): Promise<void> {
     if (!this.rdbStore) return;

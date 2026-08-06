@@ -1,0 +1,9 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="yogaG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#BA68C8"/>
+      <stop offset="100%" stop-color="#7B1FA2"/>
+    </linearGradient>
+  </defs>
+  <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM8.5 8.5L8 14L5.5 15L5 21H7.5L8 15.5L10.5 14.5L11 21H13.5L13 14.5L15.5 15.5L16 21H18.5L18 15L15.5 14L15 8.5C14.9 7.7 14.5 7 13.9 6.6L12 5.5L10.1 6.6C9.5 7 9.1 7.7 9 8.5H8.5Z" fill="url(#yogaG)"/>
+</svg>

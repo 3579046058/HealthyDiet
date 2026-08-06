@@ -327,7 +327,7 @@ struct MoodPage {
 
           if (this.records.length === 0) {
             Column() {
-              Text('😶').fontSize(40).margin({ top: 12 })
+              Image($r('app.media.ic_mood')).width(40).height(40).fillColor(this.sub()).margin({ top: 12 })
               Text('暂无情绪记录').fontSize(14).fontColor(this.sub()).margin({ top: 8 })
               Text('点击上方表情，记录今天的心情吧').fontSize(12).fontColor(this.sub()).margin({ top: 4 })
             }
@@ -361,22 +361,25 @@ struct MoodPage {
                   Text(this.isExpanded(Number(item.id)) ? '▲' : '▼')
                     .fontSize(12).fontColor(this.sub()).margin({ left: 6 })
                 } else {
-                  Text('🗑').fontSize(16).margin({ left: 8 })
+                  Image($r('app.media.ic_delete')).width(16).height(16).fillColor(this.sub()).margin({ left: 8 })
                     .onClick(() => { this.deleteRecord(Number(item.id)); })
                 }
               }
               .width('100%')
 
-              if (this.isExpanded(Number(item.id)) && String(item.note).length > 0) {
-                Row() {
-                  Text('收起').fontSize(11).fontColor(this.sub())
-                    .onClick(() => { this.toggleExpanded(Number(item.id)); })
-                  Blank()
-                  Text('🗑 删除').fontSize(12).fontColor('#F44336')
-                    .onClick(() => { this.deleteRecord(Number(item.id)); })
+                if (this.isExpanded(Number(item.id)) && String(item.note).length > 0) {
+                  Row() {
+                    Text('收起').fontSize(11).fontColor(this.sub())
+                      .onClick(() => { this.toggleExpanded(Number(item.id)); })
+                    Blank()
+                    Row() {
+                      Image($r('app.media.ic_delete')).width(14).height(14).fillColor('#F44336')
+                      Text('删除').fontSize(12).fontColor('#F44336').margin({ left: 3 })
+                    }
+                      .onClick(() => { this.deleteRecord(Number(item.id)); })
+                  }
+                  .width('100%').margin({ top: 8 })
                 }
-                .width('100%').margin({ top: 8 })
-              }
             }
             .width('100%').padding(12)
             .backgroundColor(this.card()).borderRadius(8)
@@ -401,6 +404,7 @@ struct MoodPage {
       .layoutWeight(1)
       }
       .width('100%').height('100%')    .backgroundColor(this.bg())
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
       .onRefreshing(() => {
         // 下拉刷新：重新加载情绪记录
         this.loadData().then(() => {
@@ -408,6 +412,9 @@ struct MoodPage {
         }).catch(() => { this.isRefreshing = false; });
       })
     }
+    .width('100%').height('100%')
+    .backgroundColor(this.bg())
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

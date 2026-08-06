@@ -65,19 +65,19 @@ struct SoundSettingsPage {
       Scroll() {
         Column() {
           // 总开关
-          this.soundItem('🔊', '音效总开关', '所有场景音效的开关', this.masterEnabled, 'sound_effect_enabled',
+          this.soundItem($r('app.media.ic_volume'), '音效总开关', '所有场景音效的开关', this.masterEnabled, 'sound_effect_enabled',
             (on: boolean) => { this.masterEnabled = on; }, () => {})
 
           Divider().margin({ left: 16, right: 16, top: 4, bottom: 8 })
 
           // 各场景开关
-          this.soundItem('💧', '喝水记录', '记录喝水时的滴水声', this.waterEnabled, 'sfx_water_enabled',
+          this.soundItem($r('app.media.ic_water'), '喝水记录', '记录喝水时的滴水声', this.waterEnabled, 'sfx_water_enabled',
             (on: boolean) => { this.waterEnabled = on; }, () => { this.testPlay('water'); })
-          this.soundItem('🏃', '运动开始', '开始运动时的哨声', this.sportStartEnabled, 'sfx_sport_start_enabled',
+          this.soundItem($r('app.media.ic_run'), '运动开始', '开始运动时的哨声', this.sportStartEnabled, 'sfx_sport_start_enabled',
             (on: boolean) => { this.sportStartEnabled = on; }, () => { this.testPlay('sport_start'); })
-          this.soundItem('🎉', '目标达成', '达成目标/解锁成就的庆祝声', this.successEnabled, 'sfx_success_enabled',
+          this.soundItem($r('app.media.ic_check_circle'), '目标达成', '达成目标/解锁成就的庆祝声', this.successEnabled, 'sfx_success_enabled',
             (on: boolean) => { this.successEnabled = on; }, () => { this.testPlay('success'); })
-          this.soundItem('🔔', '运动结束/情绪', '运动结束铃声和情绪记录提示', this.notifyEnabled, 'sfx_notify_enabled',
+          this.soundItem($r('app.media.ic_bell'), '运动结束/情绪', '运动结束铃声和情绪记录提示', this.notifyEnabled, 'sfx_notify_enabled',
             (on: boolean) => { this.notifyEnabled = on; }, () => { this.testPlay('notify'); })
 
           Text('点击右侧图标可试听对应音效')
@@ -90,13 +90,18 @@ struct SoundSettingsPage {
       .layoutWeight(1)
     }
     .width('100%').height('100%').backgroundColor(this.bg())
+        .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   @Builder
-  soundItem(icon: string, title: string, desc: string, enabled: boolean, key: string,
+  soundItem(icon: ResourceStr, title: string, desc: string, enabled: boolean, key: string,
     onChange: (on: boolean) => void, onTest: () => void) {
     Row() {
-      Text(icon).fontSize(22)
+      if (typeof icon === 'string') {
+        Text(icon).fontSize(22)
+      } else {
+        Image(icon).width(22).height(22).fillColor(this.txt())
+      }
       Column() {
         Text(title).fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.txt())
         Text(desc).fontSize(11).fontColor(this.sub()).margin({ top: 2 })

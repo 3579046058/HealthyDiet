@@ -971,6 +971,7 @@ struct Index {
       .width('100%')
       .height('100%')
       .backgroundColor(this.bgColor)
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
 
       if (this.showSharePanel) {
         SharePanel({
@@ -1169,7 +1170,10 @@ struct Index {
 
       // 饮食记录 - 显示所有
       if (this.shareDiet && this.diaryDietRecords.length > 0) {
-        Text('🍎 饮食').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
+        Row() {
+          Image($r('app.media.ic_diet')).width(16).height(16).fillColor(this.textColor)
+          Text('饮食').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).margin({ left: 6 })
+        }.width('100%').margin({ top: 12 })
         ForEach(this.diaryDietRecords, (item: DbRow) => {
           Column() {
             Row() {
@@ -1192,7 +1196,10 @@ struct Index {
 
       // 运动记录 - 显示所有
       if (this.shareSport && this.diarySportRecords.length > 0) {
-        Text('🏃 运动').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
+        Row() {
+          Image($r('app.media.ic_sport')).width(16).height(16).fillColor(this.textColor)
+          Text('运动').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).margin({ left: 6 })
+        }.width('100%').margin({ top: 12 })
         ForEach(this.diarySportRecords, (item: DbRow) => {
           Column() {
             Row() {
@@ -1215,7 +1222,10 @@ struct Index {
 
       // 睡眠记录 - 显示所有
       if (this.shareSleep && this.diarySleepRecords.length > 0) {
-        Text('😴 睡眠').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
+        Row() {
+          Image($r('app.media.ic_sleep')).width(16).height(16).fillColor(Constants.COLOR_SLEEP)
+          Text('睡眠').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).margin({ left: 6 })
+        }.width('100%').margin({ top: 12 })
         ForEach(this.diarySleepRecords, (item: DbRow) => {
           Column() {
             Row() {
@@ -1235,7 +1245,10 @@ struct Index {
 
       // 情绪记录 - 显示所有，带文本
       if (this.shareMood && this.diaryMoodRecords.length > 0) {
-        Text('😊 情绪').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).width('100%').margin({ top: 12 })
+        Row() {
+          Image($r('app.media.ic_mood')).width(16).height(16).fillColor(this.textColor)
+          Text('情绪').fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.textColor).margin({ left: 6 })
+        }.width('100%').margin({ top: 12 })
         ForEach(this.diaryMoodRecords, (item: DbRow) => {
           Column() {
             Row() {

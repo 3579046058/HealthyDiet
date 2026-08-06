@@ -99,7 +99,8 @@ export struct DiaryTab {
             Text('每日日记').fontSize(22).fontWeight(FontWeight.Bold).fontColor(this.textColor)
             Blank()
             // 分享按钮
-            Text('📤').fontSize(20)
+            Image($r('app.media.ic_share')).width(20).height(20)
+              .fillColor(this.textColor)
               .onClick(() => { this.onShare(); })
             // 日期导航
             Text('◀').fontSize(18).fontColor(this.accentColor).margin({ left: 16 })
@@ -120,7 +121,7 @@ export struct DiaryTab {
           if (this.diaryDietRecords.length === 0 && this.diarySportRecords.length === 0 &&
             this.diarySleepRecords.length === 0 && this.diaryMoodRecords.length === 0) {
             Column() {
-              Text('📝').fontSize(48).margin({ top: 40 })
+              Image($r('app.media.ic_diary')).width(48).height(48).margin({ top: 40 })
               Text('暂无记录').fontSize(16).fontColor(this.subTextColor).margin({ top: 12 })
               Text('开始记录你的健康生活吧').fontSize(13).fontColor(this.subTextColor)
             }
@@ -128,8 +129,11 @@ export struct DiaryTab {
           } else {
             // 饮食记录
             if (this.diaryDietRecords.length > 0) {
-              Text('🍎 饮食').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-                .width('100%').padding({ left: 20, top: 12, bottom: 6 })
+              Row() {
+                Image($r('app.media.ic_diet')).width(16).height(16).fillColor(this.textColor)
+                Text('饮食').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor).margin({ left: 6 })
+              }
+              .width('100%').padding({ left: 20, top: 12, bottom: 6 })
               ForEach(this.diaryDietRecords, (item: DbRow) => {
                 Column() {
                   Row() {
@@ -158,8 +162,11 @@ export struct DiaryTab {
 
             // 运动记录
             if (this.diarySportRecords.length > 0) {
-              Text('🏃 运动').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-                .width('100%').padding({ left: 20, top: 12, bottom: 6 })
+              Row() {
+                Image($r('app.media.ic_sport')).width(16).height(16).fillColor(this.textColor)
+                Text('运动').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor).margin({ left: 6 })
+              }
+              .width('100%').padding({ left: 20, top: 12, bottom: 6 })
               ForEach(this.diarySportRecords, (item: DbRow) => {
                 Column() {
                   Row() {
@@ -179,10 +186,6 @@ export struct DiaryTab {
                       Text(' · ' + Number(item.distance_km).toFixed(1) + 'km')
                         .fontSize(13).fontColor(this.subTextColor)
                     }
-                    if (item.avg_heart_rate && Number(item.avg_heart_rate) > 0) {
-                      Text(' · ❤️' + Number(item.avg_heart_rate))
-                        .fontSize(13).fontColor(this.subTextColor)
-                    }
                   }.width('100%').margin({ top: 4 })
                 }
                 .width('100%').padding(12).backgroundColor(this.cardColor).borderRadius(8)
@@ -192,8 +195,11 @@ export struct DiaryTab {
 
             // 睡眠记录
             if (this.diarySleepRecords.length > 0) {
-              Text('😴 睡眠').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-                .width('100%').padding({ left: 20, top: 12, bottom: 6 })
+              Row() {
+                Image($r('app.media.ic_sleep')).width(16).height(16).fillColor(Constants.COLOR_SLEEP)
+                Text('睡眠').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor).margin({ left: 6 })
+              }
+              .width('100%').padding({ left: 20, top: 12, bottom: 6 })
               ForEach(this.diarySleepRecords, (item: DbRow) => {
                 Column() {
                   Row() {
@@ -222,8 +228,11 @@ export struct DiaryTab {
 
             // 情绪记录
             if (this.diaryMoodRecords.length > 0) {
-              Text('😊 情绪').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
-                .width('100%').padding({ left: 20, top: 12, bottom: 6 })
+              Row() {
+                Image($r('app.media.ic_mood')).width(16).height(16).fillColor(this.textColor)
+                Text('情绪').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor).margin({ left: 6 })
+              }
+              .width('100%').padding({ left: 20, top: 12, bottom: 6 })
               ForEach(this.diaryMoodRecords, (item: DbRow) => {
                 Column() {
                   Row() {

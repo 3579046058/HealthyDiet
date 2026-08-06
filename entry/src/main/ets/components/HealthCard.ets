@@ -36,7 +36,6 @@ export struct HealthCard {
         .width(40)
         .height(40)
         .borderRadius(10)
-        .backgroundColor(this.iconColor + '22')
         .justifyContent(FlexAlign.Center)
         .alignItems(VerticalAlign.Center)
 

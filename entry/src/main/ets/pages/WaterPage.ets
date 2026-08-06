@@ -214,7 +214,10 @@ struct WaterPage {
           }
 
           Column() {
-            Text('💧').fontSize(60)
+            Image($r('app.media.ic_water'))
+              .width(60)
+              .height(60)
+              .fillColor('#03A9F4')
             Text(String(this.currentMl) + ' / ' + String(this.goalMl) + ' ml')
               .fontSize(24).fontWeight(FontWeight.Bold).margin({ top: 8 })
             Stack() {
@@ -226,7 +229,7 @@ struct WaterPage {
             .width('80%').margin({ top: 16 })
             Text('已喝 ' + String(Math.floor(this.currentMl / this.cupMl)) + ' 杯')
               .fontSize(14).fontColor(this.sub()).margin({ top: 8 })
-            Text('双击 💧 快速记录一杯 (' + String(this.cupMl) + 'ml)')
+            Text('双击水滴快速记录一杯 (' + String(this.cupMl) + 'ml)')
               .fontSize(11).fontColor(this.sub()).margin({ top: 6 })
           }
           .width('100%').padding(32)
@@ -301,7 +304,7 @@ struct WaterPage {
             .height(180)
           }
 
-          Text('💧 每天喝水，健康又美丽')
+          Text('每天喝水，健康又美丽')
             .fontSize(14).fontColor(this.sub())
             .margin({ top: 16, bottom: 24 })
       }
@@ -309,8 +312,9 @@ struct WaterPage {
       }
       }
       .width('100%').height('100%')
-      .backgroundColor(this.bg())
-      .onRefreshing(() => {
+    .backgroundColor(this.bg())
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
+    .onRefreshing(() => {
         // 下拉刷新：重新加载喝水记录，进度条/柱状图由原有 animateTo 机制从 0 动画
         this.loadData().then(() => {
           setTimeout(() => {
@@ -374,6 +378,8 @@ struct WaterPage {
       }
     }
     .width('100%').height('100%')
+    .backgroundColor(this.bg())
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

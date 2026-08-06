@@ -257,8 +257,9 @@ struct RecycleBinPage {
       // 数据列表
       if (this.filteredItems.length === 0) {
         Column() {
-          Text('🗑️')
-            .fontSize(60)
+          Image($r('app.media.ic_delete'))
+            .width(60).height(60)
+            .fillColor(ThemeColors.textSecondary(this.theme))
             .margin({ bottom: 16 })
 
           Text('回收站为空')
@@ -340,6 +341,6 @@ struct RecycleBinPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(ThemeColors.pageBg(this.theme))
+    .backgroundColor(ThemeColors.pageBg(this.theme)).expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 }

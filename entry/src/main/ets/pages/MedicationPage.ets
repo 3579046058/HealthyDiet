@@ -271,9 +271,13 @@ struct MedicationPage {
             Column() {
               ForEach(this.todayMeds, (item: DbRow) => {
                 Row() {
-                  Text(this.isChecked(Number(item.id)) ? '☑' : '☐')
-                    .fontSize(24)
-                    .onClick(() => { this.toggleCheck(Number(item.id)); })
+                  if (this.isChecked(Number(item.id))) {
+                    Image($r('app.media.ic_checkbox_on')).width(24).height(24)
+                      .onClick(() => { this.toggleCheck(Number(item.id)); })
+                  } else {
+                    Image($r('app.media.ic_checkbox_off')).width(24).height(24).fillColor(this.sub())
+                      .onClick(() => { this.toggleCheck(Number(item.id)); })
+                  }
                   Column() {
                     Text(String(item.name)).fontSize(16).fontColor(this.txt())
                     Text(String(item.dosage) + ' - ' + String(item.time).split(',').join(' / '))
@@ -429,7 +433,7 @@ struct MedicationPage {
                   }
                   .layoutWeight(1).alignItems(HorizontalAlign.Start)
 
-                  Button() { Text('🗑').fontSize(18) }
+                  Button() { Image($r('app.media.ic_delete')).width(20).height(20).fillColor('#F44336') }
                   .width(40).height(40).backgroundColor('transparent')
                   .onClick(() => { this.deleteRecord(Number(item.id)); })
                 }
@@ -454,6 +458,7 @@ struct MedicationPage {
       .layoutWeight(1)
       }
       .width('100%').height('100%')    .backgroundColor(this.bg())
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
       .onRefreshing(() => {
         // 下拉刷新：重新加载用药记录
         this.loadData().then(() => {
@@ -461,6 +466,9 @@ struct MedicationPage {
         }).catch(() => { this.isRefreshing = false; });
       })
     }
+    .width('100%').height('100%')
+    .backgroundColor(this.bg())
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

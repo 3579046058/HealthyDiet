@@ -78,14 +78,20 @@ export struct FoodItemCard {
     Column() {
       // 食物名称 + 识别来源标签
       Row() {
-        Text('🍽️').fontSize(24)
+        Image($r('app.media.ic_diet')).width(24).height(24)
         Column() {
           Text(this.item.foodName)
             .fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
           if (this.recogSource === 'cloud') {
-            Text('☁️ 云端识别').fontSize(11).fontColor('#03A9F4')
+            Row() {
+              Image($r('app.media.ic_cloud')).width(12).height(12).fillColor('#03A9F4')
+              Text('云端识别').fontSize(11).fontColor('#03A9F4').margin({ left: 3 })
+            }
           } else if (this.recogSource === 'local') {
-            Text('📱 本地识别').fontSize(11).fontColor('#4CAF50')
+            Row() {
+              Image($r('app.media.ic_phone')).width(12).height(12).fillColor('#4CAF50')
+              Text('本地识别').fontSize(11).fontColor('#4CAF50').margin({ left: 3 })
+            }
           }
         }
         .alignItems(HorizontalAlign.Start).margin({ left: 10 })
@@ -159,7 +165,8 @@ export struct FoodItemCard {
       
       // 自动归类餐次
       Row() {
-        Text('⏰ 将记录为: ').fontSize(13).fontColor(this.subTextColor)
+        Image($r('app.media.ic_alarm')).width(14).height(14).fillColor(this.subTextColor)
+        Text('将记录为: ').fontSize(13).fontColor(this.subTextColor).margin({ left: 4 })
         Text(this.getFinalMealLabel())
           .fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FF6B35')
         Text('（' + this.getTimeStr() + '）').fontSize(12).fontColor(this.subTextColor).margin({ left: 4 })
@@ -169,7 +176,17 @@ export struct FoodItemCard {
       
       // AI 零食判断
       Row() {
-        Button(this.snackAnswer.length > 0 ? '🔄 重新判断' : '🤔 AI判断中...')
+        Button() {
+          Row() {
+            if (this.snackAnswer.length > 0) {
+              Image($r('app.media.ic_refresh')).width(16).height(16).fillColor(Color.White)
+              Text('重新判断').fontSize(14).fontColor(Color.White).margin({ left: 4 })
+            } else {
+              Image($r('app.media.ic_ai')).width(16).height(16).fillColor(Color.White)
+              Text('AI判断中...').fontSize(14).fontColor(Color.White).margin({ left: 4 })
+            }
+          }
+        }
           .layoutWeight(1).height(40)
           .backgroundColor('#7B68EE')
           .borderRadius(20)
@@ -203,7 +220,12 @@ export struct FoodItemCard {
         
         // 单食物场景显示重新识别按钮
         if (this.showResetButton) {
-          Button('🔄 重新识别')
+          Button() {
+            Row() {
+              Image($r('app.media.ic_refresh')).width(16).height(16).fillColor(Color.White)
+              Text('重新识别').fontSize(15).fontColor(Color.White).margin({ left: 4 })
+            }
+          }
             .layoutWeight(1).height(48)
             .backgroundColor(this.subTextColor)
             .borderRadius(24)

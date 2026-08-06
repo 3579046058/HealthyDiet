@@ -459,9 +459,6 @@ struct SportPage {
     this.calorieBurn = 0;
     this.sportStartTimestamp = Date.now(); // 记录运动开始时间
     const met: number = Constants.MET_VALUES.get(this.currentSport) ?? 4.0;
-    const maxHr: number = Constants.MAX_HR;
-    const restHr: number = Constants.REST_HR;
-    this.heartRateAvg = Math.min(maxHr, restHr + Math.round(met * 8));
     if (this.isGpsSport()) {
       const tracker = LocationTrackerService.getInstance();
       tracker.reset();
@@ -728,7 +725,6 @@ struct SportPage {
       duration_min: minutes,
       distance_km: this.distanceKm,
       calories: calories,
-      avg_heart_rate: this.heartRateAvg,
     };
     await GlobalData.db.addSportRecord(record);
     await this.saveDailySummarySport(today, minutes, calories);
@@ -814,7 +810,6 @@ struct SportPage {
       duration_min: minutes,
       distance_km: distKm,
       calories: calories,
-      avg_heart_rate: this.heartRateAvg,
     };
     await GlobalData.db.addSportRecord(record);
     await this.saveDailySummarySport(today, minutes, calories);
@@ -893,9 +888,12 @@ struct SportPage {
               Text('运动类型').fontSize(13).fontColor(this.sub()).width('100%').margin({ bottom: 4 })
               Flex({ wrap: FlexWrap.Wrap }) {
                 ForEach(Constants.SPORT_TYPES, (item: SportTypeDef) => {
-                  Text(item.icon + ' ' + item.label)
-                    .fontSize(13)
-                    .fontColor(this.manualSport === item.value ? '#FFFFFF' : this.txt())
+                  Row() {
+                    Image($r('app.media.' + item.iconColor)).width(16).height(16).supportSvg2(true)
+                    Text(' ' + item.label)
+                      .fontSize(13)
+                      .fontColor(this.manualSport === item.value ? '#FFFFFF' : this.txt())
+                  }
                     .backgroundColor(this.manualSport === item.value ? '#FF6B35' : ThemeColors.inputBg(this.theme))
                     .borderRadius(16).padding({ left: 12, right: 12, top: 8, bottom: 8 })
                     .margin({ right: 8, bottom: 8 })
@@ -959,7 +957,7 @@ struct SportPage {
             Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
               ForEach(Constants.SPORT_TYPES, (item: SportTypeDef) => {
                 Column() {
-                  Text(item.icon).fontSize(28)
+                  Image($r('app.media.' + item.iconColor)).width(28).height(28).supportSvg2(true)
                   Text(item.label).fontSize(12).fontColor(this.sub()).margin({ top: 4 })
                 }
                 .width(64).height(64)
@@ -991,14 +989,20 @@ struct SportPage {
             .width('100%').padding({ left: 16, right: 16 })
 
             Button() {
-              Text('▶ 开始运动').fontSize(20).fontColor(this.txt())
+              Row() {
+                Image($r('app.media.ic_play')).width(20).height(20).fillColor(Color.White)
+                Text('开始运动').fontSize(20).fontColor(Color.White).margin({ left: 6 })
+              }
             }
             .width(200).height(56).backgroundColor('#FF6B35').borderRadius(28)
             .margin({ top: 20 })
             .onClick(() => { this.startTracking(); })
             if (this.isGpsSport()) {
-              Text('🚶 走路/跑步/骑行将使用 GPS 记录真实路程').fontSize(11)
-                .fontColor(this.sub()).margin({ top: 8 })
+              Row() {
+                Image($r('app.media.ic_gps')).width(12).height(12).fillColor(this.sub())
+                Text('走路/跑步/骑行将使用 GPS 记录真实路程').fontSize(11)
+                  .fontColor(this.sub()).margin({ left: 4 })
+              }.margin({ top: 8 })
             }
           } else {
             Column() {
@@ -1048,11 +1052,6 @@ struct SportPage {
                   }
                   Text('千卡').fontSize(12).fontColor(this.sub())
                 }
-                Divider().vertical(true).height(50).margin({ left: 24, right: 24 })
-                Column() {
-                  Text(String(this.heartRateAvg)).fontSize(24).fontWeight(FontWeight.Bold).fontColor(this.txt())
-                  Text('bpm').fontSize(12).fontColor(this.sub())
-                }
               }
               .width('100%').justifyContent(FlexAlign.Center).margin({ top: 16 })
 
@@ -1070,7 +1069,10 @@ struct SportPage {
 
               if (this.useGps) {
                 Row() {
-                  Text('📡 ' + this.gpsStatus).fontSize(11)
+                  Image($r('app.media.ic_gps')).width(14).height(14)
+                    .fillColor(this.gpsStatus.includes('定位') ? '#FF9800' : '#4CAF50')
+                    .margin({ right: 4 })
+                  Text(this.gpsStatus).fontSize(11)
                     .fontColor(this.gpsStatus.includes('定位') ? '#FF9800' : '#4CAF50')
                   if (this.gpsNeedRetry()) {
                     Button('重定位')
@@ -1088,18 +1090,38 @@ struct SportPage {
 
               Row() {
                 if (this.isPaused) {
-                  Button('▶ 继续').width(100).height(48)
+                  Button() {
+                    Row() {
+                      Image($r('app.media.ic_play')).width(18).height(18).fillColor(Color.White)
+                      Text('继续').fontSize(15).fontColor(Color.White).margin({ left: 4 })
+                    }
+                  }.width(100).height(48)
                     .backgroundColor('#4CAF50').borderRadius(24)
                     .onClick(() => { this.resumeTracking(); })
                 } else {
-                  Button('⏸ 暂停').width(100).height(48)
+                  Button() {
+                    Row() {
+                      Image($r('app.media.ic_pause')).width(18).height(18).fillColor(Color.White)
+                      Text('暂停').fontSize(15).fontColor(Color.White).margin({ left: 4 })
+                    }
+                  }.width(100).height(48)
                     .backgroundColor('#FF9800').borderRadius(24)
                     .onClick(() => { this.pauseTracking(); })
                 }
-                Button('⏹ 结束').width(120).height(48)
+                Button() {
+                  Row() {
+                    Image($r('app.media.ic_stop')).width(18).height(18).fillColor(Color.White)
+                    Text('结束').fontSize(15).fontColor(Color.White).margin({ left: 4 })
+                  }
+                }.width(120).height(48)
                   .backgroundColor('#F44336').borderRadius(24).margin({ left: 10 })
                   .onClick(() => { this.saveSportRecord(); })
-                Button('✖ 取消').width(90).height(48)
+                Button() {
+                  Row() {
+                    Image($r('app.media.ic_close')).width(18).height(18).fillColor(Color.White)
+                    Text('取消').fontSize(15).fontColor(Color.White).margin({ left: 4 })
+                  }
+                }.width(90).height(48)
                   .backgroundColor('#555555').borderRadius(24).margin({ left: 10 })
                   .onClick(() => { this.stopTracking(); })
               }
@@ -1129,7 +1151,7 @@ struct SportPage {
                     Text(String(record.calories) + '千卡').fontSize(12).fontColor(this.sub())
                   }
                   .alignItems(HorizontalAlign.End)
-                  Text('🗑').fontSize(16).margin({ left: 10 })
+                  Image($r('app.media.ic_delete')).width(16).height(16).fillColor(this.sub()).margin({ left: 10 })
                     .onClick(() => { this.deleteRecord(Number(record.id)); })
                 }
                 .width('100%').padding(14)
@@ -1145,6 +1167,7 @@ struct SportPage {
       }
       }
       .width('100%').height('100%').backgroundColor(this.bg())
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
       .onRefreshing(() => {
         // 下拉刷新：重新加载运动数据
         this.loadHistory().then(() => {
@@ -1153,6 +1176,9 @@ struct SportPage {
         }).catch(() => { this.isRefreshing = false; });
       })
     }
+    .width('100%').height('100%')
+    .backgroundColor(this.bg())
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   pageTransition() {

@@ -47,12 +47,12 @@ export struct AchievementDialog {
 
             // 天数标签
             Row() {
-              Text('🎉 ')
-                .fontSize(20)
+              Image($r('app.media.ic_check_circle')).width(20).height(20).fillColor(this.accentColor)
               Text(`${this.achievement?.days}天`)
                 .fontSize(20)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(this.accentColor)
+                .margin({ left: 6 })
               Text(' 健康生活')
                 .fontSize(16)
                 .fontColor(this.subTextColor)
@@ -122,11 +122,12 @@ export struct AchievementListDialog {
           Column() {
             // 标题
             Row() {
-              Text('🏆 成就系统')
+              Image($r('app.media.ic_trophy_color')).width(24).height(24).supportSvg2(true)
+              Text('成就系统')
                 .fontSize(22)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(this.textColor)
-              
+                .margin({ left: 8 })
               Blank()
               
               // 关闭按钮

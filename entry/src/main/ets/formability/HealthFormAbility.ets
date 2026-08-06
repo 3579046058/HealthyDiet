@@ -170,7 +170,8 @@ export default class HealthFormAbility extends FormExtensionAbility {
           if (!ok) {
             console.warn('HealthFormAbility sleep_toggle rejected: overlapping sleep record');
           } else {
-            await GlobalData.db.updateDailySummaryField(today, 'sleep_score', score);
+            // 聚合重算当天所有睡眠段（多段睡眠合并评分）
+            await this.recalcDailySleepSummary(today);
           }
           if (latestSleep.id) {
             await GlobalData.db.deleteSleepStartRecord(Number(latestSleep.id));
@@ -214,6 +215,55 @@ export default class HealthFormAbility extends FormExtensionAbility {
     const h = now.getHours();
     const m = now.getMinutes();
     return (h < 10 ? '0' + h : '' + h) + ':' + (m < 10 ? '0' + m : '' + m);
+  }
+
+  // 聚合重算某天所有睡眠段（多段睡眠：总时长+比例加权评分），写入 summary
+  private async recalcDailySleepSummary(date: string): Promise<void> {
+    try {
+      const rows: DbRow[] = await GlobalData.db.getSleepRecords(date, date);
+      let totalMin: number = 0;
+      let deepMin: number = 0;
+      let lightMin: number = 0;
+      let remMin: number = 0;
+      for (const r of rows) {
+        totalMin += Number(r.total_minutes) || 0;
+        deepMin += Number(r.deep_sleep_min) || 0;
+        lightMin += Number(r.light_sleep_min) || 0;
+        remMin += Number(r.rem_min) || 0;
+      }
+      let score: number = 0;
+      if (totalMin > 0) {
+        const deepRatio: number = deepMin / totalMin;
+        const lightRatio: number = lightMin / totalMin;
+        const remRatio: number = remMin / totalMin;
+        let durationScore = 0;
+        if (totalMin >= 420 && totalMin <= 540) { durationScore = 40; }
+        else if (totalMin >= 360 && totalMin <= 600) { durationScore = 32; }
+        else if (totalMin >= 300) { durationScore = 24; }
+        else { durationScore = 12; }
+        let deepScore = 0;
+        const deepDiff = Math.abs(deepRatio - 0.2);
+        if (deepRatio >= 0.15 && deepRatio <= 0.25) { deepScore = 25; }
+        else if (deepDiff <= 0.1) { deepScore = 18; }
+        else { deepScore = 10; }
+        let remScore = 0;
+        const remDiff = Math.abs(remRatio - 0.22);
+        if (remRatio >= 0.2 && remRatio <= 0.25) { remScore = 20; }
+        else if (remDiff <= 0.1) { remScore = 14; }
+        else { remScore = 8; }
+        let lightScore = 0;
+        if (lightRatio >= 0.45 && lightRatio <= 0.6) { lightScore = 15; }
+        else if (lightRatio >= 0.35 && lightRatio <= 0.65) { lightScore = 11; }
+        else { lightScore = 6; }
+        score = Math.min(100, durationScore + deepScore + remScore + lightScore);
+      }
+      const hours: number = Math.round(totalMin / 60 * 10) / 10;
+      await GlobalData.db.updateDailySummaryField(date, 'sleep_score', score);
+      await GlobalData.db.updateDailySummaryField(date, 'sleep_hours', hours);
+      console.info('HealthFormAbility recalc sleep ' + date + ' segments=' + String(rows.length) + ' score=' + String(score));
+    } catch (err) {
+      console.error('HealthFormAbility recalcDailySleepSummary error:', JSON.stringify(err));
+    }
   }
 
   private async getFormData(): Promise<formBindingData.FormBindingData> {

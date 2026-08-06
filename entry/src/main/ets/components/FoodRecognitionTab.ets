@@ -447,7 +447,7 @@ export struct FoodRecognitionTab {
                 })
             } else {
               Column() {
-                Text('🍽️').fontSize(72)
+                Image($r('app.media.ic_diet')).width(72).height(72).opacity(0.3)
                 Text('对准食物拍照或选择图片').fontSize(14).fontColor(this.subTextColor).margin({ top: 12 })
                 Text('自动识别这是什么菜').fontSize(12).fontColor(this.subTextColor).margin({ top: 4 })
               }
@@ -504,13 +504,23 @@ export struct FoodRecognitionTab {
 
         // 操作按钮
         Row() {
-          Button('📷 拍照')
+          Button() {
+            Row() {
+              Image($r('app.media.ic_camera')).width(18).height(18).fillColor(Color.White)
+              Text('拍照').fontSize(15).fontColor(Color.White).margin({ left: 4 })
+            }
+          }
             .layoutWeight(1).height(48)
             .backgroundColor('#FF6B35').borderRadius(24)
             .fontColor(Color.White).fontSize(15)
             .onClick(() => { this.takePhoto(); })
 
-          Button('🖼 相册')
+          Button() {
+            Row() {
+              Image($r('app.media.ic_gallery')).width(18).height(18).fillColor(Color.White)
+              Text('相册').fontSize(15).fontColor(Color.White).margin({ left: 4 })
+            }
+          }
             .layoutWeight(1).height(48)
             .backgroundColor('#4CAF50').borderRadius(24)
             .fontColor(Color.White).fontSize(15)
@@ -524,15 +534,19 @@ export struct FoodRecognitionTab {
           // 识别结果
           if (this.recognizedFoodItems.length > 0) {
             Column() {
-              Text('🍽️ 识别结果')
-                .fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+              Row() {
+                Image($r('app.media.ic_diet')).width(18).height(18)
+                Text('识别结果')
+                  .fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.textColor)
+                  .margin({ left: 6 })
+              }
                 .width('100%').margin({ bottom: 12 })
 
               // 多食物列表
               ForEach(this.recognizedFoodItems, (item: RecognizedFoodItem, index: number) => {
                 Column() {
                   Row() {
-                    Text('🍽️').fontSize(24)
+                    Image($r('app.media.ic_diet')).width(24).height(24)
                     Text(item.foodName)
                       .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.textColor)
                       .margin({ left: 8 })
@@ -610,7 +624,8 @@ export struct FoodRecognitionTab {
 
                   // 餐次归类显示
                   Row() {
-                    Text('⏰ 将记录为: ').fontSize(13).fontColor(this.subTextColor)
+                    Image($r('app.media.ic_alarm')).width(14).height(14).fillColor(this.subTextColor)
+                    Text('将记录为: ').fontSize(13).fontColor(this.subTextColor).margin({ left: 4 })
                     Text(this.getMealLabelForItem(item))
                       .fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FF6B35')
                     Text('（' + this.getTimeStr() + '）').fontSize(12).fontColor(this.subTextColor).margin({ left: 4 })
@@ -620,7 +635,17 @@ export struct FoodRecognitionTab {
 
                   // AI 零食判断
                   Row() {
-                    Button(item.snackAnswer.length > 0 ? '🔄 重新判断' : '🤔 AI判断中...')
+                    Button() {
+                      Row() {
+                        if (item.snackAnswer.length > 0) {
+                          Image($r('app.media.ic_refresh')).width(16).height(16).fillColor(Color.White)
+                          Text('重新判断').fontSize(14).fontColor(Color.White).margin({ left: 4 })
+                        } else {
+                          Image($r('app.media.ic_ai')).width(16).height(16).fillColor(Color.White)
+                          Text('AI判断中...').fontSize(14).fontColor(Color.White).margin({ left: 4 })
+                        }
+                      }
+                    }
                       .layoutWeight(1).height(40)
                       .backgroundColor('#7B68EE')
                       .borderRadius(20)
@@ -678,14 +703,24 @@ export struct FoodRecognitionTab {
 
               // 底部操作按钮
               Row() {
-                Button('➕ 全部添加到饮食记录')
+                Button() {
+                  Row() {
+                    Image($r('app.media.ic_add')).width(16).height(16).fillColor(Color.White)
+                    Text('全部添加到饮食记录').fontSize(14).fontColor(Color.White).margin({ left: 4 })
+                  }
+                }
                   .layoutWeight(1).height(44)
                   .backgroundColor('#FF6B35')
                   .borderRadius(22)
                   .fontColor(Color.White).fontSize(14)
                   .onClick(() => { this.saveAllToDiet(); })
 
-                Button('🔄 重新识别')
+                Button() {
+                  Row() {
+                    Image($r('app.media.ic_refresh')).width(16).height(16).fillColor(Color.White)
+                    Text('重新识别').fontSize(14).fontColor(Color.White).margin({ left: 4 })
+                  }
+                }
                   .layoutWeight(1).height(44)
                   .backgroundColor(this.subTextColor)
                   .borderRadius(22)

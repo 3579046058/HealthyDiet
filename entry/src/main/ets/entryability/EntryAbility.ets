@@ -81,6 +81,7 @@ export default class EntryAbility extends UIAbility {
     // 沉浸式状态栏：全屏布局 + 状态栏透明
     try {
       win.setWindowLayoutFullScreen(true);
+      win.setWindowBackgroundColor('#121212');
       const props: window.SystemBarProperties = {
         statusBarColor: '#00000000',
         navigationBarColor: '#00000000'
@@ -212,6 +213,12 @@ export default class EntryAbility extends UIAbility {
       return;
     }
     const isDark = theme === 'dark';
+    // 窗口背景色跟随主题：确保沉浸式状态下状态栏/导航栏透出的底色与应用一致，避免深色模式下顶部白边
+    try {
+      this.mainWindow.setWindowBackgroundColor(isDark ? '#121212' : '#F5F5F5');
+    } catch (err) {
+      hilog.error(DOMAIN, TAG, 'setWindowBackgroundColor error: %{public}s', JSON.stringify(err));
+    }
     const props: window.SystemBarProperties = {
       statusBarColor: '#00000000',
       navigationBarColor: '#00000000',

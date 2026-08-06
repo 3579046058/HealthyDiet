@@ -74,6 +74,7 @@ struct GoalPage {
       }
     }
     .width('100%').height('100%').backgroundColor(this.bg())
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
   }
 
   @Builder goalCard(title: string, label: string, value: string, unit: string, onChange: (v: string) => void) {
