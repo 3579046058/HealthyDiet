@@ -81,6 +81,7 @@ struct Index {
   @State streakBest: number = 0;
   @State makeupDaysCount: number = 0; // 补录天数数量
   @State currentTabIndex: number = 0;
+  @State healthRefreshKey: number = 0; // 健康页刷新动画标记（Tab切回时触发）
   @State isLoggedIn: boolean = false;
   @State diaryDietRecords: DbRow[] = [];
   @State diarySportRecords: DbRow[] = [];
@@ -147,7 +148,10 @@ struct Index {
   }
 
   aboutToAppear(): void {
-    this.loadAllData();
+    this.loadAllData().then(() => {
+      // 首次进入数据加载完成后，触发健康页动画重播（从0滚动到真实值）
+      this.healthRefreshKey++;
+    });
     this.startAutoRefresh();
     this.checkWeightPrompt();
     this.checkMoodPrompt();
@@ -744,9 +748,12 @@ struct Index {
       // 获取之前的连续天数
       const prevStreak = await GlobalData.prefs.getStreakData();
       const prevStreakCurrent = prevStreak.current;
+      console.info('[Achievement] score=' + String(score) + ' prevStreak=' + String(prevStreakCurrent) +
+        ' steps=' + String(this.stepCount) + ' sleep=' + String(this.sleepScore) +
+        ' water=' + String(this.waterMl) + ' ex=' + String(this.exerciseMin));
       
-      // 如果健康评分达到60分，更新连续天数
-      if (score >= 60) {
+      // 如果健康评分达到45分（放宽：原60，让连续打卡更容易达成），更新连续天数
+      if (score >= 45) {
         const streak: StreakData = await GlobalData.prefs.updateStreak(true);
         this.streakCurrent = streak.current;
         this.streakBest = streak.best;
@@ -888,9 +895,12 @@ struct Index {
                 this.saveQuickFunctionOrder();
               },
               onNavigate: (page: string) => { this.navigateTo(page); },
+              refreshKey: this.healthRefreshKey,
               onRefreshData: async () => {
                 await this.loadAllData();
                 await this.loadDiaryData();
+                // 下拉刷新完成也触发动画重播
+                this.healthRefreshKey++;
               }
             })
           }
@@ -941,7 +951,12 @@ struct Index {
         .backgroundColor(this.bgColor)
         .onChange((index: number) => {
           this.currentTabIndex = index;
-          if (index === 0) { this.loadAllData(); }
+          if (index === 0) {
+            this.loadAllData().then(() => {
+              // 数据加载完成后触发健康页动画重播
+              this.healthRefreshKey++;
+            });
+          }
           if (index === 1) { this.loadDiaryData(); }
         })
       }

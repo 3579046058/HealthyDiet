@@ -3,7 +3,6 @@ import { promptAction } from '@kit.ArkUI';
 import { GlobalData } from '../common/GlobalData';
 import { DbRow, ThemeColors } from '../common/Constants';
 import { CardDataHelper } from '../services/CardDataHelper';
-import { AnimatedNumber } from '../components/AnimatedNumber';
 
 @Entry
 @Component
@@ -18,7 +17,6 @@ struct WaterPage {
   @State barAnimWidth: number = 0; // 进度条动画宽度，从0开始渐变到目标值
   @State barHeights: number[] = []; // 柱状图每根柱子的动画高度，从0渐变到目标值
   @State isRefreshing: boolean = false; // 下拉刷新状态
-  @State refreshAnimKey: number = 0; // 刷新触发标记：数字从 0 重新动画
   @StorageLink('currentTheme') theme: string = 'dark';
   @StorageLink('statusBarHeight') statusBarHeight: number = 47;
   private lastClickTime: number = 0;
@@ -98,12 +96,7 @@ struct WaterPage {
     const now = GlobalData.getTimeStr();
     await GlobalData.db.addWaterCup(today, this.cupMl);
     await GlobalData.db.addWaterTimeline(today, now, this.cupMl);
-    this.currentMl += this.cupMl;
-    // 进度条动画过渡到新的宽度
-    const targetWidth = Math.min(100, (this.currentMl / this.goalMl) * 100);
-    animateTo({ duration: 600, curve: Curve.EaseOut }, () => {
-      this.barAnimWidth = targetWidth;
-    });
+    // 注意：不在此处手动叠加 currentMl，统一由 syncWaterSummary 从 timeline 重算，避免双源计数错误
     const prevLen = this.barHeights.length;
     this.timeline = await GlobalData.db.getWaterTimeline(today);
 
@@ -219,16 +212,8 @@ struct WaterPage {
 
           Column() {
             Text('💧').fontSize(60)
-            Row() {
-              AnimatedNumber({
-                targetValue: this.currentMl,
-                fontSize: 24,
-                animKey: this.refreshAnimKey
-              })
-              Text(' / ' + String(this.goalMl) + ' ml')
-                .fontSize(24).fontWeight(FontWeight.Bold).margin({ top: 8 })
-            }
-            .margin({ top: 8 })
+            Text(String(this.currentMl) + ' / ' + String(this.goalMl) + ' ml')
+              .fontSize(24).fontWeight(FontWeight.Bold).margin({ top: 8 })
             Stack() {
               Row().width('100%').height(14).backgroundColor(ThemeColors.divider(this.theme)).borderRadius(7)
               Row()
@@ -323,14 +308,12 @@ struct WaterPage {
       .width('100%').height('100%')
       .backgroundColor(this.bg())
       .onRefreshing(() => {
-        // 下拉刷新：重新加载喝水记录，数字/柱状图从0重新动画
+        // 下拉刷新：重新加载喝水记录，进度条/柱状图由原有 animateTo 机制从 0 动画
         this.loadData().then(() => {
           setTimeout(() => {
-            this.refreshAnimKey++;
             this.isRefreshing = false;
           }, 600);
         }).catch(() => {
-          this.refreshAnimKey++;
           this.isRefreshing = false;
         });
       })

@@ -6,6 +6,7 @@ import { LocationTrackerService } from '../services/LocationTrackerService';
 import { CardDataHelper } from '../services/CardDataHelper';
 import { NotificationService, NOTIFICATION_ID } from '../services/NotificationService';
 import { GoalNotificationHelper } from '../services/GoalNotificationHelper';
+import { BackgroundTaskService } from '../services/BackgroundTaskService';
 
 @Entry
 @Component
@@ -60,6 +61,9 @@ struct SportPage {
         if (result.index === 2) {
           // 后台继续：保存状态，显示后台追踪通知，返回主页
           this.isBackgroundTracking = true;
+          // 启动后台长时任务（location 模式），保持 GPS 后台持续定位
+          const bgOk: boolean = await BackgroundTaskService.getInstance().startBackgroundTask('SportTracking');
+          console.info('[SportPage] 后台长时任务启动: ' + String(bgOk));
           // 显示后台追踪通知
           const sportName = this.getSportName(this.currentSport);
           await NotificationService.getInstance().showSportTrackingNotification(sportName, this.durationSec, this.distanceKm);
@@ -68,12 +72,14 @@ struct SportPage {
         } else if (result.index === 1) {
           // 停止并保存：停止计时器，保存状态，返回主页
           this.isBackgroundTracking = false;
+          await BackgroundTaskService.getInstance().stopBackgroundTask();
           await this.saveCurrentSportState();
           this.stopTracking();
           router.back();
         } else {
           // 暂停并退出：暂停运动，保存状态，返回主页
           this.isBackgroundTracking = false;
+          await BackgroundTaskService.getInstance().stopBackgroundTask();
           this.pauseTracking(); // 暂停运动
           await this.saveCurrentSportState(); // 保存状态（下次可继续）
           router.back();
@@ -108,6 +114,8 @@ struct SportPage {
       if (this.isBackgroundTracking) {
         console.info('[SportPage] 后台继续模式，自动恢复计时');
         this.isTracking = true;
+        // 已回到前台，停止后台长时任务
+        BackgroundTaskService.getInstance().stopBackgroundTask();
         this.startTimer();
         // 停止后台GPS保存（已返回前台）
         this.stopBackgroundGpsSave();
@@ -469,8 +477,17 @@ struct SportPage {
           }
         }, 5000);
       } else {
-        this.gpsStatus = '定位启动失败';
-        this.getUIContext().getPromptAction().showToast({ message: 'GPS定位启动失败，请检查权限', duration: 2000 });
+        const errCode: number = tracker.getLastErrorCode();
+        if (errCode === 3301100) {
+          // 系统位置开关关闭
+          this.gpsStatus = '系统位置开关未开启';
+          this.getUIContext().getPromptAction().showToast({
+            message: '请开启系统"位置"开关后再试', duration: 2500
+          });
+        } else {
+          this.gpsStatus = '定位启动失败';
+          this.getUIContext().getPromptAction().showToast({ message: 'GPS定位启动失败，请检查权限', duration: 2000 });
+        }
       }
     } else {
       this.useGps = false;
@@ -478,10 +495,9 @@ struct SportPage {
     }
     this.startTimer();
     
-    // 发送运动开始通知和持续通知
+    // 发送运动开始通知（应用内计时只发开始通知，不发持续通知）
     const sportName: string = this.getSportName(this.currentSport);
     NotificationService.getInstance().notifySportStarted(sportName);
-    NotificationService.getInstance().showSportTrackingNotification(sportName, 0, 0);
   }
 
   // 重新定位：定位失效后手动重启 GPS
@@ -576,18 +592,10 @@ struct SportPage {
     if (this.timerId !== -1) {
       clearInterval(this.timerId);
     }
-    let notificationUpdateCounter: number = 0;
+    // 应用内计时不发持续通知（开始/结束通知由 start/stop 触发）
     this.timerId = setInterval(() => {
       this.durationSec++;
       this.updateMetrics();
-      
-      // 每10秒更新一次持续通知
-      notificationUpdateCounter++;
-      if (notificationUpdateCounter >= 10) {
-        notificationUpdateCounter = 0;
-        const sportName: string = this.getSportName(this.currentSport);
-        NotificationService.getInstance().updateSportTrackingNotification(sportName, this.durationSec, this.distanceKm);
-      }
     }, 1000);
   }
 
@@ -632,6 +640,8 @@ struct SportPage {
     }
     this.isTracking = false;
     this.isPaused = false;
+    // 停止后台长时任务（异步）
+    BackgroundTaskService.getInstance().stopBackgroundTask();
     if (this.useGps) {
       LocationTrackerService.getInstance().stop();
       this.useGps = false;
@@ -642,7 +652,12 @@ struct SportPage {
     // 清除保存的运动状态
     this.clearSavedSportState();
     
-    // 取消持续通知
+    // 发送运动结束通知（应用内计时只发开始/结束通知；仅实际运动过才发）
+    if (this.durationSec > 0) {
+      const endName: string = this.getSportName(this.currentSport);
+      NotificationService.getInstance().notifySportCompleted(endName, this.durationSec, this.distanceKm, this.calorieBurn);
+    }
+    // 取消持续通知（若有）
     NotificationService.getInstance().cancelSportTrackingNotification();
   }
 

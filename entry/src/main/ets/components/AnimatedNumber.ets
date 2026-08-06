@@ -6,7 +6,7 @@ import { ThemeColors } from '../common/Constants';
 
 @Component
 export struct AnimatedNumber {
-  @Prop targetValue: number = 0;
+  @Prop @Watch('onTargetValueChange') targetValue: number = 0;
   @Prop fontSize: number = 22;
   @Prop color: string = '';
   @Prop fontWeight: FontWeight = FontWeight.Bold;
@@ -14,11 +14,23 @@ export struct AnimatedNumber {
   @Prop ellipsis: TextOverflow = TextOverflow.Ellipsis;
   @Prop decimalPlaces: number = 0; // 小数位数（0=整数，1=1位小数）
   @Prop @Watch('onAnimKeyChange') animKey: number = 0; // 刷新触发标记：变化时强制从 0 重新动画
+  @Prop animateOnInit: boolean = true; // 首次加载是否从 0 动画（false 则直接显示目标值）
   @State displayValue: number = 0;
+  private isAnimating: boolean = false;
   @StorageLink('currentTheme') theme: string = 'dark';
 
   aboutToAppear(): void {
-    this.displayValue = 0;
+    if (this.animateOnInit) {
+      this.displayValue = 0;
+      this.animateTo(this.targetValue);
+    } else {
+      // 首次加载直接显示真实值，避免进页面显示 0
+      this.displayValue = this.targetValue;
+    }
+  }
+
+  // targetValue 变化（数据加载完成）：从当前值平滑滚动到新值
+  onTargetValueChange(): void {
     this.animateTo(this.targetValue);
   }
 
@@ -34,6 +46,7 @@ export struct AnimatedNumber {
     if (diff === 0) {
       return;
     }
+    this.isAnimating = true;
     const duration: number = Math.min(1200, Math.max(500, Math.abs(diff) * 6));
     const start: number = Date.now();
     const timer = setInterval(() => {
@@ -44,6 +57,7 @@ export struct AnimatedNumber {
       this.displayValue = from + diff * eased;
       if (progress >= 1) {
         this.displayValue = target;
+        this.isAnimating = false;
         clearInterval(timer);
       }
     }, 16);

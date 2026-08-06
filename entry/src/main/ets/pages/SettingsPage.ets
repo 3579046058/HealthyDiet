@@ -63,7 +63,7 @@ struct SettingsPage {
 
           this.settingItem('🔔', '通知设置', '喝水、久坐、用药提醒', () => { this.navigate('pages/NotificationPage'); })
           this.settingItem('🎯', '目标设置', '步数、喝水、运动、睡眠目标', () => { this.navigate('pages/GoalPage'); })
-          this.settingItem('🎨', '主题切换', '当前：' + this.themeLabel(), () => { this.toggleTheme(); })
+          this.settingItem('🎨', '主题切换', '切换应用外观主题，当前：' + this.themeLabel(), () => { this.toggleTheme(); })
           this.settingItem('🔐', '权限管理', '管理运动、位置、蓝牙、健康数据等权限', () => { this.navigate('pages/PermissionPage'); })
 
           Text('AI 服务').fontSize(14).fontColor(this.sub()).width('100%')
@@ -210,13 +210,14 @@ struct SettingsPage {
     AlertDialog.show({
       title: '评分标准',
       message: '每项按完成率计分后加总：\n' +
-        '· 步数（满分30）：完成率 × 30\n' +
-        '· 喝水（满分30）：完成率 × 30\n' +
+        '· 步数（满分20）：完成率 × 20\n' +
+        '· 喝水（满分20）：完成率 × 20\n' +
         '· 睡眠（满分20）：睡眠评分 × 0.2\n' +
         '· 运动（满分20）：运动分钟/60 × 20\n' +
-        '· 饮食（±10）：摄入量在推荐热量的90%~110% 得满分 +10；' +
+        '· 饮食（±20）：摄入量在推荐热量的90%~110% 得满分 +20；' +
         '偏低递减；超标 110%~130% 扣8、130%~160% 扣15、超160% 扣20\n\n' +
-        '短板加权：完成率最低的一项权重提升 1.5 倍，其余项按比例缩小，总分满分保持 100。\n\n' +
+        '短板加权：完成率最低的一项权重提升 1.5 倍，其余项按比例缩小。\n' +
+        '正则化：实际得分 ÷ 理论满分，保证正项满分归一化到 100。\n\n' +
         '未记录的项目不参与评分；完全没有数据时显示 "--"。\n' +
         '总分范围 -100 ~ 100。',
       confirm: { value: '知道了', action: () => {} }

@@ -16,7 +16,10 @@ export class AchievementLevel {
 }
 
 export const ACHIEVEMENT_LEVELS: AchievementLevel[] = [
+  new AchievementLevel(1, '初次打卡', '完成第一次健康打卡', 'achievement_7'),
+  new AchievementLevel(3, '渐入佳境', '连续3天健康生活', 'achievement_7'),
   new AchievementLevel(7, '坚持一周', '连续7天健康生活', 'achievement_7'),
+  new AchievementLevel(15, '半月达人', '连续15天健康生活', 'achievement_30'),
   new AchievementLevel(30, '坚持一月', '连续30天健康生活', 'achievement_30'),
   new AchievementLevel(100, '百日达人', '连续100天健康生活', 'achievement_100'),
   new AchievementLevel(200, '双百英雄', '连续200天健康生活', 'achievement_200'),

@@ -26,13 +26,13 @@ export class HealthScoreUtil {
   static readonly WATER_GOAL_DEFAULT: number = 2000;
   static readonly EXERCISE_MIN_GOAL: number = 60;
 
-  // 各分项基础权重（满分合计 100，不含饮食；饮食为附加分/倒扣）
-  static readonly W_STEP: number = 30;
+  // 各分项基础权重（正项满分合计 80：20+20+20+20）
+  static readonly W_STEP: number = 20;
   static readonly W_SLEEP: number = 20;
-  static readonly W_WATER: number = 30;
+  static readonly W_WATER: number = 20;
   static readonly W_EXERCISE: number = 20;
-  // 饮食附加分（满分 +10）与倒扣档位
-  static readonly W_DIET: number = 10;
+  // 饮食附加分（满分 +20）与倒扣档位
+  static readonly W_DIET: number = 20;
   static readonly DIET_PENALTY_1: number = 8;   // 110%~130%
   static readonly DIET_PENALTY_2: number = 15;  // 130%~160%
   static readonly DIET_PENALTY_3: number = 20;  // >160%
@@ -91,12 +91,9 @@ export class HealthScoreUtil {
       scaledWeights.push(weights[i] / totalW * 100);
     }
 
-    // 3. 计算正项得分（权重×完成率，满分100）
-    let positiveScore = 0;
-    // 仅一项有数据：无短板对比，直接按完成率×100（满分100）
+    // 3. 短板加权：最低完成率项权重放大，其余按比例缩小
     let adjustedWeights: number[] = scaledWeights;
     if (rates.length > 1) {
-      // 短板加权：最低完成率项权重放大，其余按比例缩小（满分保持 100）
       let minIdx = 0;
       for (let i = 1; i < rates.length; i++) {
         if (rates[i] < rates[minIdx]) {
@@ -117,23 +114,36 @@ export class HealthScoreUtil {
       adjustedWeights = adj;
     }
 
-    for (let i = 0; i < rates.length; i++) {
-      positiveScore += rates[i] / 100 * adjustedWeights[i];
+    // 4. 正则化：实际得分 = Σ(完成率×权重)，除以理论满分（调整后权重和）再×100
+    //    确保短板加权后即使权重和 ≠ 100，正项满分也归一化到 100
+    let theoryMax: number = 0;
+    for (let i = 0; i < adjustedWeights.length; i++) {
+      theoryMax += adjustedWeights[i];
     }
-    positiveScore = Math.round(positiveScore);
+    let positiveRaw: number = 0;
+    for (let i = 0; i < rates.length; i++) {
+      positiveRaw += rates[i] / 100 * adjustedWeights[i];
+    }
+    let positiveScore: number = 0;
+    if (theoryMax > 0) {
+      positiveScore = Math.round(positiveRaw / theoryMax * 100);
+    } else {
+      positiveScore = Math.round(positiveRaw);
+    }
 
-    // 各分项得分（对应当前有数据的项，缺失项为 0）
-    const stepScore = names.indexOf('step') >= 0 ? Math.round(rates[names.indexOf('step')] / 100 * adjustedWeights[names.indexOf('step')]) : 0;
-    const sleepScoreOut = names.indexOf('sleep') >= 0 ? Math.round(rates[names.indexOf('sleep')] / 100 * adjustedWeights[names.indexOf('sleep')]) : 0;
-    const waterScore = names.indexOf('water') >= 0 ? Math.round(rates[names.indexOf('water')] / 100 * adjustedWeights[names.indexOf('water')]) : 0;
-    const exerciseScore = names.indexOf('exercise') >= 0 ? Math.round(rates[names.indexOf('exercise')] / 100 * adjustedWeights[names.indexOf('exercise')]) : 0;
+    // 各分项得分（按正则化比例缩放，保证明细相加 = 总分）
+    const normFactor: number = theoryMax > 0 ? 100 / theoryMax : 1;
+    const stepScore = names.indexOf('step') >= 0 ? Math.round(rates[names.indexOf('step')] / 100 * adjustedWeights[names.indexOf('step')] * normFactor) : 0;
+    const sleepScoreOut = names.indexOf('sleep') >= 0 ? Math.round(rates[names.indexOf('sleep')] / 100 * adjustedWeights[names.indexOf('sleep')] * normFactor) : 0;
+    const waterScore = names.indexOf('water') >= 0 ? Math.round(rates[names.indexOf('water')] / 100 * adjustedWeights[names.indexOf('water')] * normFactor) : 0;
+    const exerciseScore = names.indexOf('exercise') >= 0 ? Math.round(rates[names.indexOf('exercise')] / 100 * adjustedWeights[names.indexOf('exercise')] * normFactor) : 0;
 
     // 4. 饮食：以推荐热量为基准（90%~110% 满分，梯度倒扣）
     let dietScore = 0;
     if (calorieIntake > 0 && recommendCalorie > 0) {
       const rate = calorieIntake / recommendCalorie;
       if (rate >= 0.9 && rate <= 1.1) {
-        dietScore = HealthScoreUtil.W_DIET; // 满分 +10
+        dietScore = HealthScoreUtil.W_DIET; // 满分 +20
       } else if (rate < 0.9 && rate >= 0.7) {
         dietScore = 6;
       } else if (rate < 0.7 && rate >= 0.5) {

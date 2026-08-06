@@ -32,7 +32,13 @@ export struct HealthTab {
   @Prop healthCardOrder: string[] = [];
   @Prop quickFunctionOrder: string[] = [];
   @State isRefreshing: boolean = false; // 下拉刷新状态
+  @Prop @Watch('onRefreshKeyChange') refreshKey: number = 0; // 外部（Index）触发的刷新动画标记
   @State refreshAnimKey: number = 0; // 刷新完成触发标记：变化时所有数字/圆环从 0 重新动画
+
+  // 外部 refreshKey 变化（Tab 切回/数据刷新完成）→ 触发动画重播
+  onRefreshKeyChange(): void {
+    this.refreshAnimKey++;
+  }
   onToggleTheme: () => void = () => {};
   onToggleRingMode: () => void = () => {};
   onCardDrag: (from: number, to: number) => void = () => {};
@@ -449,16 +455,12 @@ export struct HealthTab {
       .width('100%')
       .height('100%')
       .onRefreshing(() => {
-        // 下拉刷新：重新加载数据，顶部停顿后所有数字/圆环从 0 非线性动画
+        // 下拉刷新：重新加载数据（动画由 Index 的 refreshKey 触发）
         this.onRefreshData().then(() => {
-          // 顶部停顿 600ms，让刷新指示器稳定显示
           setTimeout(() => {
-            // 触发所有数字/圆环从 0 重新动画（无论数据是否变化）
-            this.refreshAnimKey++;
             this.isRefreshing = false;
           }, 600);
         }).catch(() => {
-          this.refreshAnimKey++;
           this.isRefreshing = false;
         });
       })

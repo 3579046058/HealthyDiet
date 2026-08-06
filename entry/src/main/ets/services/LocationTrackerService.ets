@@ -18,6 +18,7 @@ export class LocationTrackerService {
   private points: TrackPoint[] = [];
   private totalDistanceM: number = 0;
   private lastPoint: TrackPoint | null = null;
+  private lastErrorCode: number = 0;
   private locationCallback: (location: geoLocationManager.Location) => void =
     this.onLocationChange.bind(this);
   private distanceListener: ((distanceM: number) => void) | null = null;
@@ -27,6 +28,11 @@ export class LocationTrackerService {
       LocationTrackerService.instance = new LocationTrackerService();
     }
     return LocationTrackerService.instance;
+  }
+
+  // 最近一次启动失败的错误码（3301100=位置开关关闭）
+  getLastErrorCode(): number {
+    return this.lastErrorCode;
   }
 
   onDistanceChanged(listener: (distanceM: number) => void): void {
@@ -53,6 +59,16 @@ export class LocationTrackerService {
     this.points = [];
     this.totalDistanceM = 0;
     this.lastPoint = null;
+    // 位置服务总开关检查（仅记录日志，不阻断注册回调——注册本身可能成功，只是无数据回调）
+    try {
+      const enabled: boolean = geoLocationManager.isLocationEnabled();
+      if (!enabled) {
+        hilog.warn(DOMAIN, TAG, 'location service may be disabled, continuing registration');
+      }
+    } catch (err) {
+      const e: BusinessError = err as BusinessError;
+      hilog.warn(DOMAIN, TAG, 'check location enabled error code=%{public}d msg=%{public}s', e.code, e.message);
+    }
     try {
       const request: geoLocationManager.ContinuousLocationRequest = {
         interval: 1,
@@ -65,6 +81,7 @@ export class LocationTrackerService {
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, 'start location failed code=%{public}d msg=%{public}s', e.code, e.message);
+      this.lastErrorCode = e.code;
       return false;
     }
   }

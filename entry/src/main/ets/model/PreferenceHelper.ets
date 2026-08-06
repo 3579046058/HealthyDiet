@@ -32,6 +32,7 @@ const KEY_DAILY_CARBS = "daily_carbs";
 const KEY_ACHIEVEMENT_DAYS = 'achievement_days'; // 已解锁的成就天数列表
 const KEY_ACHIEVEMENT_DATES = 'achievement_dates'; // 成就解锁日期映射（天数:日期）
 const KEY_LAST_ACHIEVEMENT_CHECK_DATE = 'last_achievement_check_date'; // 上次检查成就的日期
+const KEY_TOTAL_DAYS = 'total_achieved_days'; // 累计达标天数（成就系统）
 const KEY_MAKEUP_DAYS = 'makeup_days'; // 补录达标日期列表
 
 export class PreferenceHelper {
@@ -183,8 +184,12 @@ export class PreferenceHelper {
 
     let current = await this.pref.get(KEY_STREAK_CURRENT, 0) as number;
     let best = await this.pref.get(KEY_STREAK_BEST, 0) as number;
+    console.info('[Streak] updateStreak achieved=' + String(achieved) + ' lastActive=' + lastActive +
+      ' today=' + todayStr + ' current=' + String(current));
 
-    if (lastActive === todayStr) {
+    // 同天已打卡且 current>0：直接返回（避免重复累加）
+    // 同天但 current=0：数据异常（历史bug把日期写了但没递增），继续正常计算
+    if (lastActive === todayStr && current > 0) {
       return { current, best };
     }
 

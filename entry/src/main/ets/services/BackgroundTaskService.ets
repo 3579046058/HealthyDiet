@@ -56,10 +56,10 @@ export class BackgroundTaskService {
 
       const agent: WantAgent = await wantAgent.getWantAgent(wantAgentInfo);
 
-      // 请求后台长时任务（数据传输模式）
+      // 请求后台长时任务（location 模式，用于后台持续定位追踪运动）
       await backgroundTaskManager.startBackgroundRunning(
         this.context,
-        ['dataTransfer'],  // 数据传输模式，用于后台同步健康数据
+        ['location'],  // location 模式：后台持续定位
         agent
       );
 
