@@ -17,23 +17,22 @@ export struct FoodItemCard {
     isCalcCalories: false,
     isJudgingSnack: false,
     snackAnswer: '',
-    snackAnswerIsSnack: false
+    snackAnswerIsSnack: false,
+    // 新增：三大营养素默认值，兼容新数据结构，不影响原有逻辑
+    protein: 0,
+    fat: 0,
+    carbs: 0
   };
-
   // 识别来源（cloud/local）
   @Prop recogSource: string = 'cloud';
-
   // AI 零食判断状态
   @Prop isJudgingSnack: boolean = false;
   @Prop snackAnswer: string = '';
   @Prop snackAnswerIsSnack: boolean = false;
-
   // 保存状态
   @Prop savedSuccess: boolean = false;
-
   // 是否显示重新识别按钮（单食物显示，多食物不显示）
   @Prop showResetButton: boolean = true;
-
   // 主题
   @StorageLink('currentTheme') @Watch('onThemeChange') theme: string = 'dark';
 
@@ -114,7 +113,6 @@ export struct FoodItemCard {
         }
         .alignItems(HorizontalAlign.Start).margin({ left: 10 })
         Blank()
-
         // 多食物场景显示已保存标记
         if (!this.showResetButton && this.item.saved) {
           Text('✅').fontSize(16)
@@ -168,7 +166,7 @@ export struct FoodItemCard {
 
       // 卡路里显示
       Row() {
-        Text('预计热量: ').fontSize(14).fontColor(this.subTextColor)
+        Text('每100g热量: ').fontSize(14).fontColor(this.subTextColor)
         Blank()
         if (this.item.isCalcCalories) {
           Text('AI 计算中...').fontSize(16).fontColor(this.subTextColor)
