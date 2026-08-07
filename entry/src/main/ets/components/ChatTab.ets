@@ -33,10 +33,11 @@ export struct ChatTab {
   }
 
   aboutToDisappear(): void {
-    if (this.vm.isRecording) {
+    if (VoiceInputService.getInstance().isActive()) {
       VoiceInputService.getInstance().cancel();
       this.vm.isRecording = false;
     }
+    VoiceInputService.getInstance().clearCallbacks();
   }
 
   private applyAdaptiveLayout(): void {
@@ -57,6 +58,10 @@ export struct ChatTab {
   sub(): string { return ThemeColors.textSecondary(this.activeTheme); }
 
   private send(): void {
+    if (VoiceInputService.getInstance().isActive()) {
+      VoiceInputService.getInstance().cancel();
+      this.vm.isRecording = false;
+    }
     this.controller.send();
     setTimeout(() => {
       this.scroller.scrollEdge(Edge.Bottom);
@@ -99,7 +104,11 @@ export struct ChatTab {
   }
 
   private async toggleVoice(): Promise<void> {
-    if (this.vm.isRecording) {
+    if (this.vm.isLoading) {
+      promptAction.showToast({ message: 'AI 输出期间暂不能使用语音输入' });
+      return;
+    }
+    if (VoiceInputService.getInstance().isActive()) {
       await VoiceInputService.getInstance().stop();
       return;
     }
@@ -391,6 +400,8 @@ export struct ChatTab {
             .height(44)
             .borderRadius(22)
             .margin({ right: 10 })
+            .enabled(!this.vm.isLoading)
+            .opacity(this.vm.isLoading ? 0.4 : 1)
             .onClick(() => { this.toggleVoice(); })
 
           TextInput({ placeholder: this.vm.isRecording ? '正在聆听，点击⏹结束…' : '输入你的健康问题…', text: this.vm.inputContent })
