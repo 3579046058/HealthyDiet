@@ -19,6 +19,7 @@ export class VoiceInputService {
   private isStarting: boolean = false;
   private started: boolean = false;
   private cancelled: boolean = false;
+  private isFinishing: boolean = false;
   private finalText: string = '';
   private lastPartial: string = '';
   private startupTimer: number = -1;
@@ -49,6 +50,7 @@ export class VoiceInputService {
     this.lastPartial = '';
     this.started = false;
     this.cancelled = false;
+    this.isFinishing = false;
     this.isStarting = true;
     this.sessionId = String(Date.now());
     const sessionToken: string = this.sessionId;
@@ -142,13 +144,7 @@ export class VoiceInputService {
       this.finishRecording();
       return;
     }
-    try {
-      if (this.capturer) {
-        await this.capturer.stop();
-      }
-    } catch (err) {
-      console.error('VoiceInput capturer stop error:', JSON.stringify(err));
-    }
+    // 先结束识别，UI 立即恢复
     try {
       if (this.engine) {
         this.engine.finish(this.sessionId);
@@ -156,14 +152,28 @@ export class VoiceInputService {
     } catch (err) {
       console.error('VoiceInput finish error:', JSON.stringify(err));
     }
+    this.isRecording = false;
+    this.notifyState(false);
+    // 停止录音不阻塞主流程
+    if (this.capturer) {
+      this.stopCapturerAsync(this.capturer);
+    }
     setTimeout(() => {
-      if (this.isRecording) {
+      if (this.engine !== null) {
         if (this.callbacks && this.finalText.length === 0 && this.lastPartial.length > 0) {
           this.callbacks.onFinal(this.lastPartial);
         }
         this.finishRecording();
       }
     }, 3000);
+  }
+
+  private async stopCapturerAsync(capturer: audio.AudioCapturer): Promise<void> {
+    try {
+      await capturer.stop();
+    } catch (err) {
+      console.error('VoiceInput capturer stop error:', JSON.stringify(err));
+    }
   }
 
   cancel(): void {
@@ -250,6 +260,10 @@ export class VoiceInputService {
   }
 
   private finishRecording(): void {
+    if (this.isFinishing) {
+      return;
+    }
+    this.isFinishing = true;
     this.cancelled = true;
     this.isRecording = false;
     this.isStarting = false;
@@ -261,6 +275,7 @@ export class VoiceInputService {
     this.pending = new Uint8Array(0);
     this.notifyState(false);
     this.cleanup();
+    this.isFinishing = false;
   }
 
   private cleanup(): void {

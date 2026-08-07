@@ -122,16 +122,24 @@ export struct ChatTab {
     }
     const callbacks: VoiceInputCallbacks = {
       onPartial: (text: string) => {
-        this.vm.inputContent = text;
+        setTimeout(() => {
+          this.vm.inputContent = text;
+        }, 0);
       },
       onFinal: (text: string) => {
-        this.vm.inputContent = text;
+        setTimeout(() => {
+          this.vm.inputContent = text;
+        }, 0);
       },
       onError: (message: string) => {
-        promptAction.showToast({ message: message });
+        setTimeout(() => {
+          promptAction.showToast({ message: message });
+        }, 0);
       },
       onStateChange: (recording: boolean) => {
-        this.vm.isRecording = recording;
+        setTimeout(() => {
+          this.vm.isRecording = recording;
+        }, 0);
       }
     };
     VoiceInputService.getInstance().setCallbacks(callbacks);
