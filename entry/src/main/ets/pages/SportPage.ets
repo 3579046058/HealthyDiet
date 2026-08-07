@@ -114,6 +114,8 @@ struct SportPage {
       if (this.isBackgroundTracking) {
         console.info('[SportPage] 后台继续模式，自动恢复计时');
         this.isTracking = true;
+        // 已回到前台：解除后台标志（否则退出时 aboutToDisappear 又走后台分支保存状态→残留）
+        this.isBackgroundTracking = false;
         // 已回到前台，停止后台长时任务
         BackgroundTaskService.getInstance().stopBackgroundTask();
         this.startTimer();
@@ -291,7 +293,9 @@ struct SportPage {
         startTime: Date.now() - this.durationSec * 1000, // 计算开始时间
         savedAt: Date.now(),
         isBackground: this.isBackgroundTracking, // 保存后台继续标志
-        startTimestamp: this.sportStartTimestamp, // 保存运动开始时间戳
+        // 关键：startTimestamp 必须与 durationSec 严格一致（用 durationSec 反推），
+        // 否则恢复逻辑(now - startTimestamp)会把手动加减的时间算丢
+        startTimestamp: Date.now() - this.durationSec * 1000, // 保存运动开始时间戳
         isPaused: this.isPaused // 保存暂停状态
       };
       await GlobalData.prefs.put('ongoing_sport_state', JSON.stringify(sportState));
@@ -717,7 +721,12 @@ struct SportPage {
     if (newVal < 0) {
       newVal = 0;
     }
+    const applied: number = newVal - this.durationSec; // 实际生效的增量
     this.durationSec = newVal;
+    // 关键：同步调整开始时间戳，否则恢复逻辑(now - startTimestamp)会丢失手动加减的时间
+    if (applied !== 0 && this.sportStartTimestamp > 0) {
+      this.sportStartTimestamp -= applied * 1000;
+    }
     this.updateMetrics();
   }
 
