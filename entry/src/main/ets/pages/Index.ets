@@ -799,9 +799,8 @@ struct Index {
       console.info('[Achievement] recordCount=' + String(recordCount) + ' insufficientData=' + String(insufficientData) +
         ' effectiveScore=' + String(effectiveScore));
 
-      // 如果健康评分达到45分（放宽：原60，让连续打卡更容易达成），更新连续天数
-      // 数据不足3项时即使达标也不能打卡（成就保护）
-      if (effectiveScore >= 45 && !insufficientData) {
+      // 如果健康评分达到60分，更新连续天数（数据不足3项时即使达标也不能打卡，成就保护）
+      if (effectiveScore >= 60 && !insufficientData) {
         const streak: StreakData = await GlobalData.prefs.updateStreak(true);
         this.streakCurrent = streak.current;
         this.streakBest = streak.best;
@@ -833,7 +832,7 @@ struct Index {
           this.dataUpdateTrigger = Date.now().toString();
         }
       } else {
-        // 没有达到45分，或数据不足3项（成就保护）：重置连续天数
+        // 没有达到60分，或数据不足3项（成就保护）：重置连续天数
         const streak: StreakData = await GlobalData.prefs.updateStreak(false);
         this.streakCurrent = streak.current;
         this.streakBest = streak.best;
