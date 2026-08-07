@@ -1,0 +1,103 @@
+健康1st 项目 .ets 文件职责说明
+================================
+
+一、入口层（entryability / formability / entrybackupability）
+------------------------------------------------------------
+entryability/EntryAbility.ets       应用主入口：初始化数据库/全局数据/各服务（AI/音乐/通知/后台）、
+                                    前台后台生命周期管理、刷新桌面卡片
+formability/HealthFormAbility.ets   桌面卡片服务：卡片数据组装、处理卡片按钮事件（喝水/入睡/醒来）、定时刷新
+entrybackupability/EntryBackupAbility.ets  系统级数据备份恢复接入
+
+
+二、数据/工具层（model）
+------------------------------------------------------------
+model/DatabaseHelper.ets        数据库核心：管理 19 张健康数据表，封装增删改查、事务、汇总计算
+model/PreferenceHelper.ets      偏好存储：用户设置、目标配置、连续打卡、AI 配置等 key-value 持久化
+model/RecycleBinHelper.ets      回收站：删除数据软删除入库、3 天过期清理、恢复
+model/DataBackupHelper.ets      数据备份还原：17 张表 + 音乐文件打包 zip、导入恢复
+model/AchievementHelper.ets     成就系统：成就定义、解锁判定
+model/ChatModels.ets            AI 对话数据模型（消息/会话结构体）
+model/ChatPersist.ets           AI 对话历史持久化（会话保存/恢复）
+
+
+三、服务层（services）
+------------------------------------------------------------
+services/PedometerService.ets       计步服务：硬件计步/加速度计双通道、跨天基准、定时落库
+services/HealthScoreUtil.ets        健康评分算法：加权+短板加权+饮食调节，对称 -100~100
+services/FoodRecognitionService.ets AI 识菜：视觉识别、营养查询（云端+本地库）、零食判定、非食物校验
+services/ChatService.ets            AI 对话：GLM 流式问答、多厂商配置
+services/KbService.ets              知识库：饮食/睡眠/运动/指南 RAG 检索
+services/VoiceInputService.ets      语音输入：麦克风识别转文字
+services/MusicService.ets           音乐播放：AVPlayer、后台播控、歌单、音量/淡入
+services/BackgroundTaskService.ets  后台长时任务：后台持续运行（定位等）
+services/LocationTrackerService.ets GPS 定位：运动轨迹、距离记录
+services/NotificationService.ets    通知中心：提醒/追踪/状态/成就通知
+services/ReminderScheduler.ets      定时提醒：喝水/用药/睡眠/打卡闹钟调度
+services/SoundEffectService.ets     音效反馈：按钮/运动开始结束/成就音效
+services/CardDataHelper.ets         卡片数据组装：桌面卡片与 App 数据同源
+services/PermissionService.ets      权限管理：按需申请系统权限
+services/GoalNotificationHelper.ets 目标达成通知辅助
+
+
+四、控制器层（controller）
+------------------------------------------------------------
+controller/ChatController.ets   AI 对话控制器：会话管理、system prompt 注入今日健康数据、知识库检索联动
+
+
+五、通用层（common）
+------------------------------------------------------------
+common/Constants.ets        全局常量：表名、颜色、MET 值、页面路由、默认目标等
+common/GlobalData.ets       全局数据中枢：AppStorage 桥接、数据库单例、日期工具
+common/SleepOverlap.ets     睡眠重叠/跨天处理算法
+
+
+六、组件层（components）— UI 核心
+------------------------------------------------------------
+components/HealthTab.ets          首页健康页：三环、卡片网格、评分、下拉刷新
+components/DiaryTab.ets           日记页：分日期展示饮食/运动/睡眠/情绪、分享
+components/ChatTab.ets            AI 助手页：流式对话、语音输入、会话列表
+components/AccountTab.ets         账号页：个人信息、备份还原、通知设置入口
+components/HealthCard.ets         原子卡片组件（数字动画/主题适配）
+components/AnimatedNumber.ets     数字滚动动画组件
+components/RingProgress.ets       单圆环进度组件
+components/NestedRings.ets        嵌套三环组件（Apple Watch 风格）
+components/BarChart.ets           柱状图组件
+components/TrendChart.ets         趋势图组件
+components/ScoreTrendChart.ets    评分趋势图组件
+components/FoodRecognitionTab.ets 识菜页：拍照识别、营养展示、餐次选择、保存
+components/FoodItemCard.ets       废弃的食物卡片组件（未被引用）
+components/SharePanel.ets         分享面板（内容勾选+预览）
+components/OverlayDialogs.ets     通用弹窗（情绪/体重/目标等）
+components/AchievementDialog.ets  成就解锁弹窗
+
+
+七、页面层（pages）
+------------------------------------------------------------
+pages/Index.ets               主框架：底部导航、各 Tab 挂载、分享卡片长图、成就/弹窗协调（大文件）
+pages/WeightPage.ets          体重管理：记录、BMI、推荐热量、30 天趋势
+pages/WaterPage.ets           喝水记录：快捷添加、目标、柱状图
+pages/SportPage.ets           运动：计时、GPS 轨迹、热量、后台继续
+pages/SleepPage.ets           睡眠：入睡/醒来、评分、重叠校验
+pages/DietPage.ets            饮食：热量摄入、蛋白质/脂肪/碳水、分类
+pages/MoodPage.ets            情绪记录
+pages/MedicationPage.ets      用药提醒：多闹铃、星期设置
+pages/WomenHealthPage.ets     女性健康：经期记录、预测
+pages/ReportPage.ets          健康报告
+pages/GoalPage.ets            目标设置
+pages/LoginPage.ets           登录/账号
+pages/ProfilePage.ets         个人资料
+pages/SettingsPage.ets        设置：主题、AI 配置、评分标准、权限
+pages/PermissionPage.ets      权限管理页
+pages/NotificationPage.ets    通知设置：喝水/久坐/打卡提醒
+pages/SoundSettingsPage.ets   音效设置
+pages/RecycleBinPage.ets      回收站页：恢复/永久删除
+pages/MakeupDaysPage.ets      补卡/补记录
+pages/MusicPlayerPage.ets     音乐播放页
+pages/MusicSettingsPage.ets   音乐设置
+pages/QuickActionsCard.ets    桌面快捷卡片 UI（2*4 组件渲染）
+
+
+架构分层一句话
+------------------------------------------------------------
+入口层（Ability）→ 数据层（model）+ 服务层（services）→ 控制器/组件 → 页面层，
+UI 通过 GlobalData 与各服务交互，数据统一走 DatabaseHelper。

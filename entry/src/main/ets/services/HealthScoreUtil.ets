@@ -16,9 +16,9 @@ export interface ScoreBreakdown {
  *  1. 各分项独立计分（完成率 × 权重），权重合计满分 100，不随短板变化
  *  2. 水桶加权：完成率最低的分项获得额外权重（在其原有权重上放大），
  *     其余分项按比例缩小，总分满分保持 100
- *  3. 饮食按推荐热量(GoalConfig.dailyCalorie)计分：90%~110% 满分 +100，
- *     吃太少/超标梯度扣分（对称调节项，范围 -100~+100）
- *  4. 总分 = 正项(0~100) + 饮食调节(-100~+100)，范围 [-100, 100]
+ *  3. 饮食按推荐热量(GoalConfig.dailyCalorie)计分：90%~110% 满分 +20，
+ *     吃太少/超标梯度扣分（附加调节项，范围 -20~+20）
+ *  4. 总分 = 正项(0~100) + 饮食调节(-20~+20)，clamp 到 [-100, 100]
  * 首页 / 桌面卡片 / 报告共用，保证分数一致
  */
 export class HealthScoreUtil {
@@ -31,14 +31,14 @@ export class HealthScoreUtil {
   static readonly W_SLEEP: number = 20;
   static readonly W_WATER: number = 20;
   static readonly W_EXERCISE: number = 20;
-  // 饮食调节（对称 -100~+100）：90%~110% 满分 +100，偏离越多越扣分
-  static readonly DIET_SCORE_MAX: number = 100;    // 达标满分
-  static readonly DIET_LOW_1: number = 50;         // 70%~90%（偏低一档）
-  static readonly DIET_LOW_2: number = 20;         // 50%~70%（偏低二档）
-  static readonly DIET_LOW_3: number = 0;          // <50%（过低无加分）
-  static readonly DIET_HIGH_1: number = -40;       // 110%~130%（超标一档）
-  static readonly DIET_HIGH_2: number = -70;       // 130%~160%（超标二档）
-  static readonly DIET_HIGH_3: number = -100;      // >160%（严重超标）
+  // 饮食调节（附加项 -20~+20）：90%~110% 满分 +20，偏离越多越扣分
+  static readonly DIET_SCORE_MAX: number = 20;    // 达标满分
+  static readonly DIET_LOW_1: number = 6;         // 70%~90%（偏低一档）
+  static readonly DIET_LOW_2: number = 3;         // 50%~70%（偏低二档）
+  static readonly DIET_LOW_3: number = 0;         // <50%（过低无加分）
+  static readonly DIET_HIGH_1: number = -8;       // 110%~130%（超标一档）
+  static readonly DIET_HIGH_2: number = -15;      // 130%~160%（超标二档）
+  static readonly DIET_HIGH_3: number = -20;      // >160%（严重超标）
   // 短板加权放大系数：最低完成率项权重放大为 1+BOOST
   static readonly BOOST: number = 0.5;
 
@@ -141,12 +141,12 @@ export class HealthScoreUtil {
     const waterScore = names.indexOf('water') >= 0 ? Math.round(rates[names.indexOf('water')] / 100 * adjustedWeights[names.indexOf('water')] * normFactor) : 0;
     const exerciseScore = names.indexOf('exercise') >= 0 ? Math.round(rates[names.indexOf('exercise')] / 100 * adjustedWeights[names.indexOf('exercise')] * normFactor) : 0;
 
-    // 4. 饮食：以推荐热量为基准（90%~110% 满分 +100，梯度扣分，对称调节项）
+    // 4. 饮食：以推荐热量为基准（90%~110% 满分 +20，梯度扣分，附加调节项）
     let dietScore = 0;
     if (calorieIntake > 0 && recommendCalorie > 0) {
       const rate = calorieIntake / recommendCalorie;
       if (rate >= 0.9 && rate <= 1.1) {
-        dietScore = HealthScoreUtil.DIET_SCORE_MAX; // 满分 +100
+        dietScore = HealthScoreUtil.DIET_SCORE_MAX; // 满分 +20
       } else if (rate < 0.9 && rate >= 0.7) {
         dietScore = HealthScoreUtil.DIET_LOW_1;
       } else if (rate < 0.7 && rate >= 0.5) {
@@ -162,7 +162,7 @@ export class HealthScoreUtil {
       }
     }
 
-    // 5. 总分 = 正项(0~100) + 饮食调节(-100~+100)，对称范围 [-100, 100]
+    // 5. 总分 = 正项(0~100) + 饮食调节(-20~+20)，clamp 到 [-100, 100]
     let total = positiveScore + dietScore;
     total = Math.max(-100, Math.min(100, total));
 
