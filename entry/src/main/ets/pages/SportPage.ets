@@ -71,11 +71,10 @@ struct SportPage {
           await this.saveCurrentSportState();
           router.back();
         } else if (result.index === 1) {
-          // 停止并保存：停止计时器，保存状态，返回主页
+          // 停止并保存：停止后台任务，清除保存状态，返回主页
           this.isBackgroundTracking = false;
           await BackgroundTaskService.getInstance().stopBackgroundTask();
-          await this.saveCurrentSportState();
-          this.stopTracking();
+          await this.stopTracking();
           router.back();
         } else {
           // 暂停并退出：暂停运动，保存状态，返回主页
@@ -273,7 +272,9 @@ struct SportPage {
       // 保存运动状态
       this.saveCurrentSportState();
     } else {
-      this.stopTracking();
+      this.stopTracking().catch((e: Error) => {
+        console.error('[SportPage] stopTracking in aboutToDisappear error:', JSON.stringify(e));
+      });
     }
   }
 
@@ -633,13 +634,17 @@ struct SportPage {
     return 0.5;
   }
 
-  stopTracking(): void {
+  async stopTracking(): Promise<void> {
+    // 先停后台GPS保存定时器（防止停止过程中回调再次写入状态）
+    this.stopBackgroundGpsSave();
     if (this.timerId !== -1) {
       clearInterval(this.timerId);
       this.timerId = -1;
     }
     this.isTracking = false;
     this.isPaused = false;
+    // 关键：清除后台继续标志，否则 aboutToDisappear 会走后台分支再次保存状态（残留）
+    this.isBackgroundTracking = false;
     // 停止后台长时任务（异步）
     BackgroundTaskService.getInstance().stopBackgroundTask();
     if (this.useGps) {
@@ -647,15 +652,23 @@ struct SportPage {
       this.useGps = false;
       this.gpsStatus = '';
     }
-    // 停止后台GPS保存
-    this.stopBackgroundGpsSave();
-    // 清除保存的运动状态
-    this.clearSavedSportState();
-    
-    // 发送运动结束通知（应用内计时只发开始/结束通知；仅实际运动过才发）
-    if (this.durationSec > 0) {
-      const endName: string = this.getSportName(this.currentSport);
-      NotificationService.getInstance().notifySportCompleted(endName, this.durationSec, this.distanceKm, this.calorieBurn);
+    // 结束通知需要停止时的真实数据，先取后重置
+    const endName: string = this.getSportName(this.currentSport);
+    const endDuration: number = this.durationSec;
+    const endDistance: number = this.distanceKm;
+    const endCalories: number = this.calorieBurn;
+
+    // 重置计时状态，避免残留（再进入不会误判"运动中"）
+    this.sportStartTimestamp = 0;
+    this.durationSec = 0;
+    this.distanceKm = 0;
+    this.calorieBurn = 0;
+    // 清除保存的运动状态（await 确保删除完成，避免与后台保存竞争残留）
+    await this.clearSavedSportState();
+
+    // 发送运动结束通知（仅实际运动过才发）
+    if (endDuration > 0) {
+      NotificationService.getInstance().notifySportCompleted(endName, endDuration, endDistance, endCalories);
       // 播放运动结束铃声
       SoundEffectService.getInstance().play('notify');
     }
@@ -671,6 +684,11 @@ struct SportPage {
       clearInterval(this.backgroundGpsSaveTimerId);
     }
     this.backgroundGpsSaveTimerId = setInterval(() => {
+      // 已停止：不再写回状态（防止停止后残留）
+      if (!this.isTracking) {
+        this.stopBackgroundGpsSave();
+        return;
+      }
       // 用运动开始时间戳实时计算时长（不受页面销毁/计时器停摆影响）
       if (this.sportStartTimestamp > 0) {
         this.durationSec = Math.floor((Date.now() - this.sportStartTimestamp) / 1000);
@@ -728,7 +746,7 @@ struct SportPage {
     };
     await GlobalData.db.addSportRecord(record);
     await this.saveDailySummarySport(today, minutes, calories);
-    this.stopTracking();
+    await this.stopTracking();
     await this.loadHistory();
     this.getUIContext().getPromptAction().showToast({ message: '运动记录已保存' });
     
@@ -1123,7 +1141,9 @@ struct SportPage {
                   }
                 }.width(90).height(48)
                   .backgroundColor('#555555').borderRadius(24).margin({ left: 10 })
-                  .onClick(() => { this.stopTracking(); })
+                  .onClick(() => { this.stopTracking().catch((e: Error) => {
+                    console.error('[SportPage] stopTracking btn error:', JSON.stringify(e));
+                  }); })
               }
               .margin({ top: 20 })
             }
