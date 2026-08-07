@@ -19,6 +19,7 @@ export struct ChatTab {
     '我今天的睡眠怎么样',
     '推荐一份健康早餐'
   ];
+  private mealTypes: Array<string> = ['breakfast', 'lunch', 'dinner', 'snack'];
 
   aboutToAppear(): void {
     const h: number | undefined = AppStorage.get<number>('statusBarHeight');
@@ -101,6 +102,19 @@ export struct ChatTab {
     const h: string = String(d.getHours()).padStart(2, '0');
     const min: string = String(d.getMinutes()).padStart(2, '0');
     return m + '-' + day + ' ' + h + ':' + min;
+  }
+
+  private mealLabel(mealType: string): string {
+    if (mealType === 'breakfast') {
+      return '早餐';
+    }
+    if (mealType === 'lunch') {
+      return '午餐';
+    }
+    if (mealType === 'dinner') {
+      return '晚餐';
+    }
+    return '加餐';
   }
 
   private async toggleVoice(): Promise<void> {
@@ -288,6 +302,79 @@ export struct ChatTab {
     .height('100%')
   }
 
+  @Builder
+  pendingDietCard() {
+    if (this.vm.pendingDiet !== null) {
+      Column({ space: 10 }) {
+        Text('确认饮食记录')
+          .fontSize(15)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.txt())
+          .width('100%')
+        Text(this.vm.pendingDiet.foodName +
+          (this.vm.pendingDiet.count > 0 ? ' × ' + String(this.vm.pendingDiet.count) + this.vm.pendingDiet.unit : ''))
+          .fontSize(14)
+          .fontColor(this.txt())
+          .width('100%')
+        TextInput({ placeholder: '请输入总重量（克）', text: this.vm.pendingDietAmount })
+          .type(InputType.Number)
+          .height(40)
+          .fontColor(this.txt())
+          .backgroundColor(this.bg())
+          .borderRadius(10)
+          .padding({ left: 12, right: 12 })
+          .onChange((value: string) => {
+            this.vm.pendingDietAmount = value;
+            this.vm.pendingDietError = '';
+          })
+        Row({ space: 8 }) {
+          ForEach(this.mealTypes, (mealType: string) => {
+            Button(this.mealLabel(mealType))
+              .fontSize(12)
+              .fontColor(this.vm.pendingDiet !== null && this.vm.pendingDiet.mealType === mealType ? Color.White : this.txt())
+              .backgroundColor(this.vm.pendingDiet !== null && this.vm.pendingDiet.mealType === mealType ? '#9C27B0' : this.bg())
+              .height(32)
+              .layoutWeight(1)
+              .onClick(() => { this.controller.setPendingDietMealType(mealType); })
+          }, (mealType: string): string => mealType)
+        }
+        .width('100%')
+        if (this.vm.pendingDietError.length > 0) {
+          Text(this.vm.pendingDietError)
+            .fontSize(12)
+            .fontColor('#F44336')
+            .width('100%')
+        }
+        Row({ space: 10 }) {
+          Button('取消')
+            .fontSize(13)
+            .fontColor(this.txt())
+            .backgroundColor(this.bg())
+            .height(36)
+            .layoutWeight(1)
+            .enabled(!this.vm.isSavingDiet)
+            .opacity(this.vm.isSavingDiet ? 0.5 : 1)
+            .onClick(() => { this.controller.cancelDietDraft(); })
+          Button(this.vm.isSavingDiet ? '保存中…' : '确认保存')
+            .fontSize(13)
+            .fontColor(Color.White)
+            .backgroundColor('#9C27B0')
+            .height(36)
+            .layoutWeight(1)
+            .enabled(!this.vm.isSavingDiet)
+            .opacity(this.vm.isSavingDiet ? 0.5 : 1)
+            .onClick(() => { this.controller.confirmDietDraft(); })
+        }
+        .width('100%')
+      }
+      .width('100%')
+      .padding(12)
+      .margin({ left: 16, right: 16, top: 8 })
+      .backgroundColor(this.card())
+      .borderRadius(14)
+    }
+  }
+
   build() {
     Stack() {
       Row() {
@@ -390,6 +477,8 @@ export struct ChatTab {
             .edgeEffect(EdgeEffect.Spring)
             .padding({ left: 16, right: 16, top: 4 })
           }
+
+          this.pendingDietCard()
 
         Row() {
           Button(this.vm.isRecording ? '⏹' : '🎤')

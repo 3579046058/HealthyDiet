@@ -3,6 +3,8 @@ import { ChatMessage, ChatHistoryItem, ChatRole, ChatSession } from '../model/Ch
 import { ChatPersist } from '../model/ChatPersist';
 import { ChatService, ChatCallbacks } from '../services/ChatService';
 import { KbService, KbChunk } from '../services/KbService';
+import { DietAgentDraft, DietIntentResult, DietRecordInput, DietRecordResult } from '../model/HealthAgentModels';
+import { HealthDataService } from '../services/HealthDataService';
 
 @ObservedV2
 export class ChatViewModel {
@@ -16,6 +18,10 @@ export class ChatViewModel {
   @Trace isExpanded: boolean = false;
   @Trace drawerOpen: boolean = false;
   @Trace isRecording: boolean = false;
+  @Trace pendingDiet: DietAgentDraft | null = null;
+  @Trace pendingDietAmount: string = '';
+  @Trace pendingDietError: string = '';
+  @Trace isSavingDiet: boolean = false;
 
   @Computed
   get sessionList(): Array<ChatSession> {
@@ -33,6 +39,7 @@ export class ChatController {
   private persist: ChatPersist;
   private context: Context | null = null;
   private seq: number = 0;
+  private turnToken: number = 0;
   private activeAiMessage: ChatMessage | null = null;
   private currentSession: ChatSession = new ChatSession();
 
@@ -99,10 +106,29 @@ export class ChatController {
     this.vm.inputContent = '';
     this.vm.isLoading = true;
     this.activeAiMessage = aiMsg;
+    this.turnToken += 1;
+    const activeTurn: number = this.turnToken;
 
     if (isFirstMessage) {
       const targetId: string = this.currentSession.id;
       this.generateTitleAsync(targetId, text);
+    }
+
+    const dietIntent: DietIntentResult = await this.service.extractDietIntent(text);
+    if (activeTurn !== this.turnToken || !this.vm.isLoading) {
+      return;
+    }
+    if (dietIntent.isDietAction) {
+      if (dietIntent.draft.mealType.length === 0) {
+        dietIntent.draft.mealType = HealthDataService.inferMealType(new Date().getHours());
+      }
+      this.vm.pendingDiet = dietIntent.draft;
+      this.vm.pendingDietAmount = dietIntent.draft.amountG > 0 ? String(dietIntent.draft.amountG) : '';
+      this.vm.pendingDietError = '';
+      aiMsg.isThinking = false;
+      aiMsg.content = this.buildDietConfirmationText(dietIntent.draft);
+      this.finishTurn(false, '');
+      return;
     }
 
     const hits: Array<KbChunk> = [];
@@ -118,24 +144,86 @@ export class ChatController {
     const history: Array<ChatHistoryItem> = await this.buildHistory(text, hits);
     const callbacks: ChatCallbacks = {
       onChunk: (chunk: string) => {
-        if (this.activeAiMessage) {
+        if (activeTurn === this.turnToken && this.activeAiMessage) {
           this.activeAiMessage.isSearching = false;
           this.activeAiMessage.content += chunk;
         }
       },
       onDone: () => {
-        this.finishTurn(false, '');
+        if (activeTurn === this.turnToken) {
+          this.finishTurn(false, '');
+        }
       },
       onError: (message: string) => {
-        this.finishTurn(true, message);
+        if (activeTurn === this.turnToken) {
+          this.finishTurn(true, message);
+        }
       }
     };
     await this.service.sendMessage(history, callbacks);
   }
 
   stop(): void {
+    this.turnToken += 1;
     this.service.cancel();
     this.finishTurn(false, '');
+  }
+
+  async confirmDietDraft(): Promise<void> {
+    const draft: DietAgentDraft | null = this.vm.pendingDiet;
+    if (draft === null || this.vm.isSavingDiet) {
+      return;
+    }
+    const amountG: number = Number(this.vm.pendingDietAmount.trim());
+    if (!Number.isFinite(amountG) || amountG <= 0 || amountG > 10000) {
+      this.vm.pendingDietError = '请输入 0 到 10000 克之间的有效重量';
+      return;
+    }
+    this.vm.isSavingDiet = true;
+    this.vm.pendingDietError = '';
+    try {
+      const input: DietRecordInput = new DietRecordInput();
+      input.date = await GlobalData.getTodayDate();
+      input.mealType = draft.mealType;
+      input.foodName = draft.foodName;
+      input.amountG = amountG;
+      const saveResult: DietRecordResult = await HealthDataService.getInstance().addDietRecord(input);
+      if (!saveResult.success) {
+        this.vm.pendingDietError = saveResult.message;
+        return;
+      }
+      this.vm.pendingDiet = null;
+      this.vm.pendingDietAmount = '';
+      this.vm.pendingDietError = '';
+      this.appendAssistantMessage(saveResult.message);
+      await this.saveCurrentSession();
+    } finally {
+      this.vm.isSavingDiet = false;
+    }
+  }
+
+  cancelDietDraft(): void {
+    if (this.vm.pendingDiet === null || this.vm.isSavingDiet) {
+      return;
+    }
+    this.vm.pendingDiet = null;
+    this.vm.pendingDietAmount = '';
+    this.vm.pendingDietError = '';
+    this.appendAssistantMessage('已取消这条饮食记录。');
+    this.saveCurrentSession();
+  }
+
+  setPendingDietMealType(mealType: string): void {
+    if (this.vm.pendingDiet !== null) {
+      const updated: DietAgentDraft = new DietAgentDraft();
+      updated.foodName = this.vm.pendingDiet.foodName;
+      updated.amountG = this.vm.pendingDiet.amountG;
+      updated.count = this.vm.pendingDiet.count;
+      updated.unit = this.vm.pendingDiet.unit;
+      updated.requiresAmount = this.vm.pendingDiet.requiresAmount;
+      updated.mealType = mealType;
+      this.vm.pendingDiet = updated;
+    }
   }
 
   async newSession(): Promise<void> {
@@ -148,6 +236,9 @@ export class ChatController {
     this.vm.currentSessionId = '';
     this.vm.currentSessionTitle = '';
     this.activeAiMessage = null;
+    this.vm.pendingDiet = null;
+    this.vm.pendingDietAmount = '';
+    this.vm.pendingDietError = '';
     this.currentSession = this.createSession();
   }
 
@@ -158,6 +249,7 @@ export class ChatController {
     if (id === this.currentSession.id) {
       return;
     }
+    this.clearPendingDiet();
     await this.saveCurrentSession();
     await this.loadSession(id);
   }
@@ -289,6 +381,32 @@ export class ChatController {
   private nextId(): number {
     this.seq += 1;
     return this.seq;
+  }
+
+  private clearPendingDiet(): void {
+    this.vm.pendingDiet = null;
+    this.vm.pendingDietAmount = '';
+    this.vm.pendingDietError = '';
+    this.vm.isSavingDiet = false;
+  }
+
+  private buildDietConfirmationText(draft: DietAgentDraft): string {
+    let quantity: string = '';
+    if (draft.count > 0) {
+      quantity = ' × ' + String(draft.count) + draft.unit;
+    }
+    if (draft.requiresAmount) {
+      return '识别到饮食记录：' + draft.foodName + quantity + '。请确认总重量和餐次后保存。';
+    }
+    return '识别到饮食记录：' + draft.foodName + '，共 ' + String(draft.amountG) + ' 克。请确认餐次后保存。';
+  }
+
+  private appendAssistantMessage(content: string): void {
+    const message: ChatMessage = new ChatMessage();
+    message.id = this.nextId();
+    message.role = ChatRole.ASSISTANT;
+    message.content = content;
+    this.vm.messages.push(message);
   }
 
   private finishTurn(isError: boolean, message: string): void {

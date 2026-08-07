@@ -3,6 +3,8 @@ import { util } from '@kit.ArkTS';
 import { ChatHistoryItem } from '../model/ChatModels';
 import { GlobalData } from '../common/GlobalData';
 import { AiDefaults } from '../common/Constants';
+import { DietIntentResult } from '../model/HealthAgentModels';
+import { DietIntentParser } from './DietIntentParser';
 
 export interface ChatCallbacks {
   onChunk: (chunk: string) => void;
@@ -52,6 +54,7 @@ export class ChatService {
   private model: string = AiDefaults.CHAT_MODEL;
   private glmApiKey: string = '';
   private request: http.HttpRequest | null = null;
+  private intentRequest: http.HttpRequest | null = null;
   private decoder: util.TextDecoder = util.TextDecoder.create('utf-8');
   private initError: string = '';
 
@@ -256,6 +259,74 @@ export class ChatService {
     if (this.request) {
       this.request.destroy();
       this.request = null;
+    }
+    if (this.intentRequest !== null) {
+      this.intentRequest.destroy();
+      this.intentRequest = null;
+    }
+  }
+
+  async extractDietIntent(userText: string): Promise<DietIntentResult> {
+    const empty: DietIntentResult = new DietIntentResult();
+    if (this.glmApiKey.length === 0 || !DietIntentParser.isCandidate(userText)) {
+      return empty;
+    }
+    const prompt: string = '你是健康记录操作解析器。判断用户是否明确表示自己已经吃了某种食物。' +
+      '只返回一个JSON对象，不要Markdown和解释。记录饮食时返回：' +
+      '{"action":"record_diet","foodName":"食物名","amountG":克数或0,"count":数量或0,"unit":"单位或空字符串","mealType":"breakfast/lunch/dinner/snack或空字符串"}。' +
+      '不是已发生的饮食记录（例如询问建议、计划吃、别人吃）时返回：{"action":"none"}。' +
+      '不得把个、碗、杯等数量猜测成克数；用户没有明确说克数时amountG必须为0。';
+    const messages: Array<GlmRequestMessage> = [
+      { role: 'system', content: prompt },
+      { role: 'user', content: userText }
+    ];
+    const body: GlmRequestBody = {
+      model: this.model,
+      messages: messages,
+      stream: false,
+      temperature: 0
+    };
+    const intentRequest: http.HttpRequest = http.createHttp();
+    if (this.intentRequest !== null) {
+      this.intentRequest.destroy();
+    }
+    this.intentRequest = intentRequest;
+    try {
+      const response = await intentRequest.request(this.normalizeUrl(this.apiUrl), {
+        method: http.RequestMethod.POST,
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + this.glmApiKey
+        },
+        extraData: JSON.stringify(body),
+        expectDataType: http.HttpDataType.STRING,
+        connectTimeout: 10000,
+        readTimeout: 20000
+      });
+      if (response.responseCode !== 200) {
+        return empty;
+      }
+      const raw: Object = response.result;
+      if (typeof raw !== 'string') {
+        return empty;
+      }
+      const parsed: GlmChatResult = JSON.parse(raw);
+      if (parsed.choices === undefined || parsed.choices.length === 0) {
+        return empty;
+      }
+      const message: GlmChatMessageResult | undefined = parsed.choices[0].message;
+      if (message === undefined || message.content === undefined) {
+        return empty;
+      }
+      return DietIntentParser.parse(message.content);
+    } catch (err) {
+      console.error('ChatService extractDietIntent error:', JSON.stringify(err));
+      return empty;
+    } finally {
+      if (this.intentRequest === intentRequest) {
+        this.intentRequest = null;
+      }
+      intentRequest.destroy();
     }
   }
 
